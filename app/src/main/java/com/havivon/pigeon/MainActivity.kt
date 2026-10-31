@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import com.havivon.pigeon.data.AppIconSwitcher
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
 import com.havivon.pigeon.domain.model.Folder
@@ -47,6 +48,8 @@ private sealed interface Screen {
 private fun PreviewApp() {
     val sample = SampleData.forLanguage(LocalConfiguration.current.locales[0].language)
     var screen by remember { mutableStateOf<Screen>(Screen.Inbox) }
+    val context = LocalContext.current
+    var appIcon by remember { mutableStateOf(AppIconSwitcher.current(context)) }
     BackHandler(enabled = screen != Screen.Inbox) { screen = Screen.Inbox }
     when (val s = screen) {
         Screen.Inbox -> InboxScreen(
@@ -60,7 +63,16 @@ private fun PreviewApp() {
         )
         is Screen.Thread -> ThreadPreview(sample, s.id, onBack = { screen = Screen.Inbox })
         Screen.Spam -> SpamScreen(sample.spam, onBack = { screen = Screen.Inbox })
-        Screen.Rules -> RulesScreen(sample.rules, sample.newRuleWord, onBack = { screen = Screen.Inbox })
+        Screen.Rules -> RulesScreen(
+            sample.rules,
+            sample.newRuleWord,
+            appIcon = appIcon,
+            onAppIcon = {
+                AppIconSwitcher.set(context, it)
+                appIcon = it
+            },
+            onBack = { screen = Screen.Inbox },
+        )
     }
 }
 

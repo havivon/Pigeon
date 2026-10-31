@@ -73,6 +73,11 @@
     <string name="rules_preview_label">כך זה ייראה:</string>
     <string name="rules_preview_message">ה%1$s שלך לחודש אוקטובר מוכנה</string>
     <string name="rules_save">שמור כלל</string>
+    <string name="rules_app_icon">סמל האפליקציה</string>
+    <string name="rules_icon_envelope">מעטפה</string>
+    <string name="rules_icon_origami">אוריגמי</string>
+    <string name="rules_icon_bubble">בועה</string>
+    <string name="rules_app_icon_note">יש מפעילים שמסירים את הסמל הישן ממסך הבית כשהוא מתחלף. אם זה קרה, הוסף את Pigeon שוב מרשימת האפליקציות.</string>
 
     <!-- widget_ -->
     <string name="widget_unread_label">הודעות שלא נקראו</string>

@@ -42,10 +42,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
+import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
+import com.havivon.pigeon.ui.components.LauncherIcon
 import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.RuleTag
 import com.havivon.pigeon.ui.components.SectionLabel
@@ -61,6 +63,8 @@ fun RulesScreen(
     rules: List<ColorRule>,
     newRuleWord: String,
     newRuleSwatch: Long = 0xFF14A3B8,
+    appIcon: AppIcon = AppIcon.Envelope,
+    onAppIcon: (AppIcon) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     val c = HebTheme.colors
@@ -88,6 +92,59 @@ fun RulesScreen(
         item { SpamRuleCard() }
         item { SectionLabel(stringResource(R.string.rules_new_rule)) }
         item { NewRuleCard(newRuleWord, newRuleSwatch) }
+        item { SectionLabel(stringResource(R.string.rules_app_icon)) }
+        item { AppIconPicker(appIcon, onAppIcon) }
+    }
+}
+
+/** The launcher icon choice: the three icons as a launcher draws them, the current one ringed. */
+@Composable
+fun AppIconPicker(current: AppIcon, onPick: (AppIcon) -> Unit) {
+    val c = HebTheme.colors
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        Modifier
+            .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .shadow(if (c.isDark) 0.dp else 3.dp, shape, spotColor = c.accent.copy(alpha = 0.3f))
+            .clip(shape)
+            .background(c.surface)
+            .padding(vertical = 16.dp, horizontal = 8.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            AppIcon.entries.forEach { icon ->
+                val selected = icon == current
+                Column(
+                    Modifier.clip(RoundedCornerShape(16.dp)).clickable { onPick(icon) }.padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        Modifier
+                            .size(76.dp)
+                            .then(if (selected) Modifier.border(3.dp, c.accent, CircleShape) else Modifier)
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        LauncherIcon(icon.foregroundRes, 64.dp)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(icon.labelRes),
+                        color = if (selected) c.accent else c.onSurfaceMuted,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.rules_app_icon_note),
+            color = c.onSurfaceMuted,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
     }
 }
 

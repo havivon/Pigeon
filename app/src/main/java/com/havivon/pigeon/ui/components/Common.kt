@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.components
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -31,7 +34,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -164,5 +169,14 @@ fun SectionLabel(text: String, icon: ImageVector? = null) {
             Spacer(Modifier.width(6.dp))
         }
         Text(text, color = c.onSurfaceMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** A launcher icon as the launcher draws it: both 108dp adaptive layers, masked to the central 72dp. */
+@Composable
+fun LauncherIcon(@DrawableRes foreground: Int, size: Dp, shape: Shape = CircleShape) {
+    Box(Modifier.size(size).clip(shape), contentAlignment = Alignment.Center) {
+        Image(painterResource(R.drawable.ic_launcher_background), contentDescription = null, modifier = Modifier.requiredSize(size * 1.5f))
+        Image(painterResource(foreground), contentDescription = null, modifier = Modifier.requiredSize(size * 1.5f))
     }
 }

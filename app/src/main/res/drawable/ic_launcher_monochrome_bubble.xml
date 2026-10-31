@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer for the bubble icon: the bubble as an outline, the pigeon filled inside it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M40,27.5H68A14.5,14.5 0,0 1,82.5 42V58A14.5,14.5 0,0 1,68 72.5H41.5L30,80.8L31.6,70.6Q25.5,66.5 25.5,58V42A14.5,14.5 0,0 1,40 27.5Z"
+        android:strokeWidth="3"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineJoin="round" />
+    <group
+        android:pivotX="52"
+        android:pivotY="52"
+        android:scaleX="0.62"
+        android:scaleY="0.62"
+        android:translateX="2"
+        android:translateY="-2">
+        <path
+            android:fillColor="#99FFFFFF"
+            android:pathData="M42,58L54,76L28,74L22,64Z" />
+        <path
+            android:fillColor="#E6FFFFFF"
+            android:pathData="M58,46L64,60L54,76L42,58Z" />
+        <path
+            android:fillColor="#CCFFFFFF"
+            android:pathData="M68,34L70,48L64,60L58,46Z" />
+        <path
+            android:fillColor="#99FFFFFF"
+            android:pathData="M38,28L42,58L34,48Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M38,28L58,46L42,58Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M68,34L82,42L70,48Z" />
+    </group>
+</vector>

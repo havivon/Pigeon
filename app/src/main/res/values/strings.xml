@@ -71,6 +71,11 @@
     <string name="rules_preview_label">This is how it will look:</string>
     <string name="rules_preview_message">Your %1$s for October is ready</string>
     <string name="rules_save">Save rule</string>
+    <string name="rules_app_icon">App icon</string>
+    <string name="rules_icon_envelope">Envelope</string>
+    <string name="rules_icon_origami">Origami</string>
+    <string name="rules_icon_bubble">Bubble</string>
+    <string name="rules_app_icon_note">Some launchers remove the old icon from the home screen when it changes. If that happens, add Pigeon again from the app list.</string>
 
     <!-- widget_ -->
     <string name="widget_unread_label">Unread messages</string>

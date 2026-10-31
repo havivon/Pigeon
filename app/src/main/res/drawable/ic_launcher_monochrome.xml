@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icon option C: an envelope on faceted wings, with a coral seal. -->
+<!--
+  Themed-icon layer (Android 13+): the launcher tints it one colour, so only alpha counts.
+  The envelope is an outline here, so the flap and the seal still read when everything is one colour.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -12,41 +15,37 @@
         android:scaleY="0.74"
         android:translateY="2">
         <path
-            android:fillColor="#26000000"
-            android:pathData="M36,78a18,2.5 0,1 0,36 0a18,2.5 0,1 0,-36 0z" />
-        <!-- left wing -->
-        <path
-            android:fillColor="#FFD8CBF6"
+            android:fillColor="#99FFFFFF"
             android:pathData="M40,56L18,54L26,64Z" />
         <path
-            android:fillColor="#FFEFE8FD"
+            android:fillColor="#CCFFFFFF"
             android:pathData="M40,52L14,40L22,56Z" />
         <path
             android:fillColor="#FFFFFFFF"
             android:pathData="M40,50L14,28L24,48Z" />
-        <!-- right wing -->
         <path
-            android:fillColor="#FFD8CBF6"
+            android:fillColor="#99FFFFFF"
             android:pathData="M68,56L90,54L82,64Z" />
         <path
-            android:fillColor="#FFEFE8FD"
+            android:fillColor="#CCFFFFFF"
             android:pathData="M68,52L94,40L86,56Z" />
         <path
             android:fillColor="#FFFFFFFF"
             android:pathData="M68,50L94,28L84,48Z" />
-        <!-- envelope -->
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M40,44H68A4,4 0,0 1,72 48V66A4,4 0,0 1,68 70H40A4,4 0,0 1,36 66V48A4,4 0,0 1,40 44Z" />
         <path
             android:fillColor="#00000000"
-            android:pathData="M38,47L54,59L70,47"
-            android:strokeWidth="2.4"
-            android:strokeColor="#FFC9B8F2"
+            android:pathData="M40,45.5H68A2.5,2.5 0,0 1,70.5 48V66A2.5,2.5 0,0 1,68 68.5H40A2.5,2.5 0,0 1,37.5 66V48A2.5,2.5 0,0 1,40 45.5Z"
+            android:strokeWidth="3"
+            android:strokeColor="#FFFFFFFF" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M39,48L54,59L69,48"
+            android:strokeWidth="2.6"
+            android:strokeColor="#FFFFFFFF"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
         <path
-            android:fillColor="#FFFF7A59"
+            android:fillColor="#FFFFFFFF"
             android:pathData="M54,59m-3.8,0a3.8,3.8 0,1 1,7.6 0a3.8,3.8 0,1 1,-7.6 0" />
     </group>
 </vector>
