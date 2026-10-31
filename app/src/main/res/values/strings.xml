@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">HebSMS</string>
+    <string name="app_name">Pigeon</string>
 
     <!-- common_ -->
     <string name="common_back">Back</string>

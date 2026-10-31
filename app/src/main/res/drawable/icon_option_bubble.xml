@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon option B: a white speech bubble carrying the origami pigeon in the gradient's colours. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#26000000"
+        android:pathData="M41,28H69A16,16 0,0 1,85 44V60A16,16 0,0 1,69 76H43L29,86L31,73Q25,69 25,60V44A16,16 0,0 1,41 28Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M40,26H68A16,16 0,0 1,84 42V58A16,16 0,0 1,68 74H42L28,84L30,71Q24,67 24,58V42A16,16 0,0 1,40 26Z" />
+    <group
+        android:pivotX="52"
+        android:pivotY="52"
+        android:scaleX="0.62"
+        android:scaleY="0.62"
+        android:translateX="2"
+        android:translateY="-2">
+        <path
+            android:fillColor="#FF9A45B8"
+            android:pathData="M42,58L54,76L28,74L22,64Z" />
+        <path
+            android:fillColor="#FFC2408F"
+            android:pathData="M42,58L28,74L22,64Z" />
+        <path
+            android:fillColor="#FF7B49D2"
+            android:pathData="M58,46L64,60L54,76L42,58Z" />
+        <path
+            android:fillColor="#FF6E46D6"
+            android:pathData="M68,34L70,48L64,60L58,46Z" />
+        <path
+            android:fillColor="#FF8E44C9"
+            android:pathData="M38,28L42,58L34,48Z" />
+        <path
+            android:fillColor="#FFB4479A"
+            android:pathData="M38,28L58,46L42,58Z" />
+        <path
+            android:fillColor="#FF5B3FD9"
+            android:pathData="M68,34L82,42L70,48Z" />
+        <path
+            android:fillColor="#FFFF7A59"
+            android:pathData="M82,42L76,41.5L77,44.5Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M71,39m-1.9,0a1.9,1.9 0,1 1,3.8 0a1.9,1.9 0,1 1,-3.8 0" />
+    </group>
+</vector>

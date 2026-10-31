@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hebsms.app"
+    namespace = "com.havivon.pigeon"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.hebsms.app"
+        applicationId = "com.havivon.pigeon"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

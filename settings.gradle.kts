@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "HebSMS"
+rootProject.name = "Pigeon"
 include(":app")

@@ -1,6 +1,6 @@
-# HebSMS — project instructions
+# Pigeon — project instructions
 
-Hebrew-first default SMS app for Android, in Hebrew and English. Scope: send and receive SMS only.
+Pigeon: a Hebrew-first default SMS app for Android, in Hebrew and English. Scope: send and receive SMS only.
 No MMS, no RCS. Feature list and decisions: [docs/research.md](docs/research.md).
 
 ## 1. Role Orchestration & Cost Optimization (Agent Team)
@@ -61,7 +61,7 @@ live in Android's system SMS database, readable by any app the user has granted 
 
 ## Project notes
 - The repo is public: never commit real messages, phone numbers, contacts or keystores.
-- Package `com.hebsms.app` is separate from HebReminder, so installing it never touches HebReminder.
+- Package `com.havivon.pigeon` is separate from HebReminder, so installing it never touches HebReminder.
 - Becoming the default SMS app affects the user's real messages: test carefully before switching.
 - Design shots: `gradlew :app:recordPaparazziDebug` renders the real screens to
   `app/src/test/snapshots/images/`. Hebrew tests use locale `iw` (Paparazzi only matches `values-iw`).
