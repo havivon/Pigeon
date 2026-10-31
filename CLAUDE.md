@@ -33,7 +33,11 @@ Baseline, always on, never a setting:
 - **Minimal attack surface.** Only the components Android requires of a default SMS app are
   exported, each guarded by its system permission: SMS_DELIVER receiver → `BROADCAST_SMS`,
   WAP_PUSH_DELIVER receiver → `BROADCAST_WAP_PUSH`, respond-via-message service →
-  `SEND_RESPOND_VIA_MESSAGE`. No exported ContentProvider. Everything else `exported="false"`.
+  `SEND_RESPOND_VIA_MESSAGE`. Widget receivers are exported as the widget framework requires
+  (APPWIDGET_UPDATE only), and Glance adds `GlanceRemoteViewsService`, guarded by
+  `BIND_REMOTEVIEWS`. No exported ContentProvider. Everything else `exported="false"`.
+  Glance's WorkManager merges in WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED and
+  FOREGROUND_SERVICE; they are harmless without INTERNET and stay.
 - **Never send silently.** An `sms:`/`smsto:` intent from another app only opens a draft; sending
   takes the user's tap (the system's permission-guarded respond-via-message is the one exception).
   Validate and length-limit every incoming intent extra.

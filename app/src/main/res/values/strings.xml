@@ -71,4 +71,34 @@
     <string name="rules_preview_label">This is how it will look:</string>
     <string name="rules_preview_message">Your %1$s for October is ready</string>
     <string name="rules_save">Save rule</string>
+
+    <!-- widget_ -->
+    <string name="widget_unread_label">Unread messages</string>
+    <string name="widget_unread_description">The conversations waiting for you, right on the home screen</string>
+    <string name="widget_unread_title">Unread</string>
+    <string name="widget_unread_empty">No unread messages</string>
+    <plurals name="widget_unread_new_messages">
+        <item quantity="one">%1$d new message</item>
+        <item quantity="other">%1$d new messages</item>
+    </plurals>
+    <string name="widget_code_label">Latest code</string>
+    <string name="widget_code_description">The latest verification code, one tap to copy</string>
+    <string name="widget_code_kind">Verification code</string>
+    <string name="widget_code_subtitle">%1$s · %2$s · %3$s</string>
+    <string name="widget_code_none">No code yet</string>
+    <string name="widget_code_copied">Code copied</string>
+    <plurals name="widget_ago_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <string name="widget_contacts_label">Quick contacts</string>
+    <string name="widget_contacts_description">A message to the people you write to most, one tap away</string>
+    <string name="widget_contacts_new">New</string>
+    <string name="widget_counter_label">Unread counter</string>
+    <string name="widget_counter_description">How many messages are waiting for you</string>
+    <string name="widget_counter_spam">%1$d spam</string>
+    <string name="widget_favorites_label">Favorite messages</string>
+    <string name="widget_favorites_description">The messages you starred, always at hand</string>
+    <string name="widget_favorites_title">Favorites</string>
+    <string name="widget_favorites_empty">No starred messages yet</string>
 </resources>

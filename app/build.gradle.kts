@@ -34,6 +34,8 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-compose:1.9.1")
+    // Home-screen widgets, in Compose-like code. Same version as the user's other app.
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)

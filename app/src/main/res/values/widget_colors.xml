@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colours of the widget drawables, as in ui/theme/Theme.kt. The dark values are in values-night. -->
+<resources>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_gradient_start">#5B3FD9</color>
+    <color name="widget_gradient_center">#C2408F</color>
+    <color name="widget_gradient_end">#FF7A59</color>
+    <color name="widget_spam">#E53935</color>
+</resources>

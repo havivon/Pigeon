@@ -2,6 +2,7 @@ package com.hebsms.app.data.sample
 
 import com.hebsms.app.domain.model.ColorRule
 import com.hebsms.app.domain.model.Conversation
+import com.hebsms.app.domain.model.FavoriteMessage
 import com.hebsms.app.domain.model.Folder
 import com.hebsms.app.domain.model.Message
 import com.hebsms.app.domain.model.RuleMatch
@@ -17,6 +18,8 @@ data class SampleSet(
     val spam: List<Conversation>,
     val folderCounts: Map<Folder, Int>,
     val dannyThread: List<ThreadItem>,
+    /** Starred messages, newest first. */
+    val favorites: List<FavoriteMessage>,
     /** The keyword typed into the "new rule" card. */
     val newRuleWord: String,
 )
@@ -76,6 +79,11 @@ object SampleData {
                 ThreadItem.Msg(Message(5, "מעולה. הכתובת: רחוב הרצל 12, קומה 3, דירה 7", "11:02", outgoing = false)),
                 ThreadItem.Msg(Message(6, "ותביא בבקשה את הטופס החתום 🙏", "11:05", outgoing = false)),
             ),
+            favorites = listOf(
+                FavoriteMessage(1, "דני כהן", "הכתובת: רחוב הרצל 12, קומה 3, דירה 7", "20.10.2026", 0xFF2F80ED),
+                FavoriteMessage(2, "אמא", "החניתי ברמה B, ליד העמוד הכתום, מקום 214", "15.10.2026", 0xFFE0559B),
+                FavoriteMessage(3, "נועה לוי", "הסיסמה של הוויי־פיי בדירה: sunny-lemon-4271, הכל באותיות קטנות", "02.09.2026", 0xFF14A3B8),
+            ),
             newRuleWord = "חשבונית",
         )
     }
@@ -129,6 +137,11 @@ object SampleData {
                 ),
                 ThreadItem.Msg(Message(5, "Great. The address: 12 Maple Street, floor 3, apt 7", "11:02 AM", outgoing = false)),
                 ThreadItem.Msg(Message(6, "And please bring the signed form 🙏", "11:05 AM", outgoing = false)),
+            ),
+            favorites = listOf(
+                FavoriteMessage(1, "Danny Cole", "The address: 12 Maple Street, floor 3, apt 7", "Oct 20, 2026", 0xFF2F80ED),
+                FavoriteMessage(2, "Mom", "Parked on level B, next to the orange pillar, spot 214", "Oct 15, 2026", 0xFFE0559B),
+                FavoriteMessage(3, "Nora Lewis", "The apartment Wi-Fi password: sunny-lemon-4271, all lowercase", "Sep 2, 2026", 0xFF14A3B8),
             ),
             newRuleWord = "invoice",
         )

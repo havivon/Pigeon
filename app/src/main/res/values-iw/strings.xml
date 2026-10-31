@@ -73,4 +73,36 @@
     <string name="rules_preview_label">כך זה ייראה:</string>
     <string name="rules_preview_message">ה%1$s שלך לחודש אוקטובר מוכנה</string>
     <string name="rules_save">שמור כלל</string>
+
+    <!-- widget_ -->
+    <string name="widget_unread_label">הודעות שלא נקראו</string>
+    <string name="widget_unread_description">השיחות שממתינות לקריאה, ישר במסך הבית</string>
+    <string name="widget_unread_title">לא נקראו</string>
+    <string name="widget_unread_empty">אין הודעות שלא נקראו</string>
+    <plurals name="widget_unread_new_messages">
+        <item quantity="one">הודעה חדשה אחת</item>
+        <item quantity="two">%1$d הודעות חדשות</item>
+        <item quantity="other">%1$d הודעות חדשות</item>
+    </plurals>
+    <string name="widget_code_label">הקוד האחרון</string>
+    <string name="widget_code_description">קוד האימות האחרון, העתקה בנגיעה אחת</string>
+    <string name="widget_code_kind">קוד אימות</string>
+    <string name="widget_code_subtitle">%1$s · %2$s · %3$s</string>
+    <string name="widget_code_none">אין קוד חדש</string>
+    <string name="widget_code_copied">הקוד הועתק</string>
+    <plurals name="widget_ago_minutes">
+        <item quantity="one">לפני דקה</item>
+        <item quantity="two">לפני שתי דקות</item>
+        <item quantity="other">לפני %1$d דקות</item>
+    </plurals>
+    <string name="widget_contacts_label">אנשי קשר מהירים</string>
+    <string name="widget_contacts_description">הודעה לאנשי הקשר הקבועים, בנגיעה אחת</string>
+    <string name="widget_contacts_new">חדשה</string>
+    <string name="widget_counter_label">מונה הודעות</string>
+    <string name="widget_counter_description">כמה הודעות ממתינות לקריאה</string>
+    <string name="widget_counter_spam">%1$d ספאם</string>
+    <string name="widget_favorites_label">הודעות מועדפות</string>
+    <string name="widget_favorites_description">ההודעות שסומנו בכוכב, תמיד בהישג יד</string>
+    <string name="widget_favorites_title">מועדפות</string>
+    <string name="widget_favorites_empty">עדיין אין הודעות מסומנות</string>
 </resources>

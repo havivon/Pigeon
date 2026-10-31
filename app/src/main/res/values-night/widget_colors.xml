@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_surface">#1C1631</color>
+    <color name="widget_gradient_start">#3A2596</color>
+    <color name="widget_gradient_center">#8A2C6B</color>
+    <color name="widget_gradient_end">#B8513A</color>
+    <color name="widget_spam">#FF5A52</color>
+</resources>

@@ -61,6 +61,15 @@ data class Message(
     val reminder: String? = null,
 )
 
+/** A message the user starred, shown by the favourites widget. */
+data class FavoriteMessage(
+    val id: Int,
+    val sender: String,
+    val text: String,
+    val date: String,
+    val avatarArgb: Long,
+)
+
 sealed interface ThreadItem {
     data class Day(val label: String) : ThreadItem
     data class Msg(val message: Message) : ThreadItem
