@@ -1,0 +1,55 @@
+# מחקר: מה חסר למשתמשים ב-Google Messages וב-Samsung Messages
+
+נאסף ב-31/10/2026. רקע: סמסונג הפסיקה לתמוך ב-Samsung Messages (ביולי 2026 בארה"ב) ומעבירה
+את המשתמשים ל-Google Messages. לכן רוב התלונות הן של משתמשי סמסונג שאיבדו פיצ'רים, וגם של
+משתמשים שמתלוננים על Google Messages עצמה.
+
+היקף האפליקציה: SMS בלבד, שליחה וקבלה. בלי MMS ובלי RCS.
+
+## א. אפשר להוסיף (עובד עם SMS רגיל)
+
+| # | פיצ'ר | מי מתלונן / מקור | הערכת מאמץ |
+|---|-------|------------------|-------------|
+| 1 | **תיקיות לשיחות**: ידניות (עבודה, משפחה) וגם מיון אוטומטי (קודים, בנקים, משלוחים, פרסומות) | Samsung היה, Google אין (AA ×2) | בינוני |
+| 2 | **התאמה אישית מלאה**: צבע בועות, תמונת רקע לכל שיחה, גופן וגודל, ערכת נושא לכל האפליקציה, מצב לילה שחור (AMOLED) | הפיצ'ר הכי מתגעגעים אליו מסמסונג (AA, BGR) | בינוני |
+| 3 | **חסימה לפי מילות מפתח**: כללי סינון ספאם משלך, לא רק לפי מספר | אין ב-Google (Android Central) | קטן |
+| 4 | **מחיקה אוטומטית**: קודי אימות אחרי 24 שעות (ב-Google רק בהודו), הגבלת מספר הודעות לשיחה | Samsung היה, Google חלקי | קטן |
+| 5 | **בחירה מרובה**: העברה או העתקה של כמה הודעות יחד | Reddit, קהילת סמסונג | קטן |
+| 6 | **שיחות נעולות**: שיחות נבחרות מאחורי טביעת אצבע | AA (מבוקש ב-2026) | קטן |
+| 7 | **השהיית שליחה וביטול שליחה**: כמה שניות לחרטה לפני שההודעה יוצאת | Pulse SMS, מבוקש (Android Central) | קטן |
+| 8 | **ביטול מחיקה**: "בטל" אחרי מחיקת הודעה או שיחה | Textra | קטן |
+| 9 | **תזמון שליחה** | קיים בשתיהן, חובה לשמור | קטן |
+| 10 | **תזכורת על הודעה**: "תזכיר לי על זה מחר" | Google הסירה את הפיצ'ר (PhoneArena) | קטן (אפשר לחבר ל-HebReminder) |
+| 11 | **תגובות (אימוג'י) שמגיעות כטקסט**: זיהוי "אהב/ה את..." או "Liked..." מאייפון ומ-Google והצגתן כאייקון על ההודעה | התגובות מגיעות כטקסט מכוער (AlternativeTo) | בינוני |
+| 12 | **בלי AI, בלי חשבון Google, בלי חלונות קופצים**, קלה ולא מרוקנת סוללה | תלונה מרכזית על Google (BGR) | מובנה |
+| 13 | **שיחות מוצמדות עם הפרדה ברורה** | AA | קטן |
+| 14 | **תזכורת על הודעות שלא נקראו**: רטט או צליל חוזר | תחליף ל"התראה כשמרימים את הטלפון" של סמסונג | קטן |
+| 15 | **"הגעתי"**: שליחת SMS אוטומטית לאיש קשר כשמגיעים למקום | Apple, מבוקש ב-Google (AA) | גדול (מיקום ברקע) |
+
+הצעות שלי (לא מתוך התלונות):
+- גיבוי וייצוא של כל ההודעות לקובץ, ושחזור.
+- עברית ו-RTL כמו שצריך, תאריך עברי לצד הלועזי.
+- כפתור "העתק קוד" בהתראה של קוד אימות.
+
+## ב. לא אפשרי עם SMS בלבד
+
+| פיצ'ר | למה לא |
+|-------|--------|
+| עריכה וביטול שליחה אחרי שההודעה יצאה | דורש RCS (או אפליקציה בשני הצדדים) |
+| אישורי קריאה, "מקליד..." | RCS בלבד. ב-SMS יש רק אישור מסירה |
+| הודעות נעלמות אצל הנמען | אין שליטה בטלפון של הצד השני (אפשר רק מחיקה אוטומטית אצלך) |
+| מודגש, נטוי, קו תחתון | SMS הוא טקסט פשוט |
+| סקרים, צ'אט וידאו | RCS או MMS |
+| אתר לשליחה מהמחשב, סנכרון בין מכשירים | אפשרי בתיאוריה, אבל פרויקט נפרד שדורש שרת |
+
+## מקורות
+- [Android Authority: פיצ'רים של Samsung Messages שעדיין חסרים ב-Google](https://www.androidauthority.com/samsung-messages-features-still-missing-from-google-messages-3664303/)
+- [Android Authority: פיצ'רים שחסרים ב-Google Messages ב-2026](https://www.androidauthority.com/google-messages-missing-features-2026-3658688/)
+- [Android Authority: פיצ'רים מבוקשים ל-Google Messages ב-2026](https://www.androidauthority.com/google-messages-wanted-features-2026-3715768/)
+- [BGR: מה משתמשי סמסונג מתגעגעים אליו](https://bgr.com/2241389/samsung-features-users-miss-switching-google-messages/)
+- [PhoneArena: Google Messages מאבדת תזכורות ושילוב עם Google Photos](https://www.phonearena.com/news/google-messages-loses-reminder-and-google-photos-integration-features_id152800)
+- [Android Central: Ask Jerry, סינון הודעות נכנסות](https://www.androidcentral.com/phones/ask-jerry-how-can-i-filter-incoming-messages)
+- [Android Central forums: חסימה לפי תוכן](https://forums.androidcentral.com/threads/blocking-content-of-spammers.1083724/latest)
+- [Android Central forums: למה Google Messages כל כך מוגבלת](https://forums.androidcentral.com/threads/why-is-google-messages-so-limited-in-terms-of-customization-features.996211/page-2)
+- [Android Central: מחיקה אוטומטית של קודים](https://www.androidcentral.com/google-messages-automatically-delete-otps-but-theres-catch)
+- [AlternativeTo: חלופות ל-Textra](https://alternativeto.net/software/textra)
