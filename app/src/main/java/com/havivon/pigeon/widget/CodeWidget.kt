@@ -66,7 +66,11 @@ class CopyCodeAction : ActionCallback {
 }
 
 /** The digits with thin spaces between them (Glance has no letter spacing), forced left to right inside a right-to-left page. */
-private fun spaced(code: String) = "‪" + code.toList().joinToString(" ") + "‬"
+private fun spaced(code: String): String {
+    val leftToRightIsolate = Char(0x2066)
+    val popIsolate = Char(0x2069)
+    return "$leftToRightIsolate${code.toList().joinToString(" ")}$popIsolate"
+}
 
 @Composable
 fun CodeWidgetContent(sample: SampleSet) {

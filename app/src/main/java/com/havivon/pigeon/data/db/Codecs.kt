@@ -12,24 +12,35 @@ object SpamReasonCodec {
     private const val UNKNOWN_SENDER = "unknown_sender"
     private const val SHORT_LINK = "short_link"
     private const val LOOKALIKE_DOMAIN = "lookalike_domain"
+    private const val MANY_LINKS = "many_links"
+    private const val BRAND_SENDER = "brand_sender"
     private const val KEYWORD = "keyword:"
+    private const val BLOCKED_KEYWORD = "blocked:"
 
     fun encode(reasons: List<SpamReason>): String = reasons.joinToString("\n") { r ->
         when (r) {
             SpamReason.UnknownSender -> UNKNOWN_SENDER
             SpamReason.ShortLink -> SHORT_LINK
             SpamReason.LookalikeDomain -> LOOKALIKE_DOMAIN
+            SpamReason.ManyLinks -> MANY_LINKS
+            SpamReason.BrandSender -> BRAND_SENDER
             // A line break inside the word would split the reason
-            is SpamReason.Keyword -> KEYWORD + r.word.replace('\n', ' ').replace('\r', ' ')
+            is SpamReason.Keyword -> KEYWORD + r.word.oneLine()
+            is SpamReason.BlockedKeyword -> BLOCKED_KEYWORD + r.word.oneLine()
         }
     }
+
+    private fun String.oneLine() = replace('\n', ' ').replace('\r', ' ')
 
     fun decode(value: String): List<SpamReason> = value.split('\n').mapNotNull { line ->
         when {
             line == UNKNOWN_SENDER -> SpamReason.UnknownSender
             line == SHORT_LINK -> SpamReason.ShortLink
             line == LOOKALIKE_DOMAIN -> SpamReason.LookalikeDomain
+            line == MANY_LINKS -> SpamReason.ManyLinks
+            line == BRAND_SENDER -> SpamReason.BrandSender
             line.startsWith(KEYWORD) -> SpamReason.Keyword(line.removePrefix(KEYWORD))
+            line.startsWith(BLOCKED_KEYWORD) -> SpamReason.BlockedKeyword(line.removePrefix(BLOCKED_KEYWORD))
             else -> null
         }
     }
