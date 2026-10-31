@@ -18,6 +18,12 @@ sealed interface SpamReason {
     data object ShortLink : SpamReason
     data object LookalikeDomain : SpamReason
     data class Keyword(val word: String) : SpamReason
+    /** A word from the user's own blocked list. */
+    data class BlockedKeyword(val word: String) : SpamReason
+    /** Three or more links in one message. */
+    data object ManyLinks : SpamReason
+    /** An alphanumeric sender named like a known company, with a link that does not go to that company. */
+    data object BrandSender : SpamReason
 }
 
 sealed interface RuleMatch {
