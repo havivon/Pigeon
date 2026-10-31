@@ -67,11 +67,11 @@ object SampleData {
             dannyThread = listOf(
                 ThreadItem.Day("אתמול"),
                 ThreadItem.Msg(Message(1, "היי, מה קורה? יש לך זמן השבוע לעבור על ההצעה?", "18:20", outgoing = false)),
-                ThreadItem.Msg(Message(2, "כן, בטח. מתי נוח לך?", "18:24", outgoing = true, delivered = true)),
+                ThreadItem.Msg(Message(2, "כן, בטח. מתי נוח לך?", "18:24", outgoing = true)),
                 ThreadItem.Msg(Message(3, "אולי מחר בבוקר?", "18:25", outgoing = false)),
                 ThreadItem.Day("היום"),
                 ThreadItem.Msg(
-                    Message(4, "סגרנו, מחר ב-10:00 אצלך. אני אביא את המסמכים", "10:58", outgoing = true, delivered = true, reminder = "מחר 10:00"),
+                    Message(4, "סגרנו, מחר ב-10:00 אצלך. אני אביא את המסמכים", "10:58", outgoing = true, reminder = "מחר 10:00"),
                 ),
                 ThreadItem.Msg(Message(5, "מעולה. הכתובת: רחוב הרצל 12, קומה 3, דירה 7", "11:02", outgoing = false)),
                 ThreadItem.Msg(Message(6, "ותביא בבקשה את הטופס החתום 🙏", "11:05", outgoing = false)),
@@ -121,11 +121,11 @@ object SampleData {
             dannyThread = listOf(
                 ThreadItem.Day("Yesterday"),
                 ThreadItem.Msg(Message(1, "Hey, what's up? Do you have time this week to go over the proposal?", "6:20 PM", outgoing = false)),
-                ThreadItem.Msg(Message(2, "Yes, sure. When works for you?", "6:24 PM", outgoing = true, delivered = true)),
+                ThreadItem.Msg(Message(2, "Yes, sure. When works for you?", "6:24 PM", outgoing = true)),
                 ThreadItem.Msg(Message(3, "Maybe tomorrow morning?", "6:25 PM", outgoing = false)),
                 ThreadItem.Day("Today"),
                 ThreadItem.Msg(
-                    Message(4, "Done, tomorrow at 10:00 AM at your place. I'll bring the documents", "10:58 AM", outgoing = true, delivered = true, reminder = "Tomorrow 10:00 AM"),
+                    Message(4, "Done, tomorrow at 10:00 AM at your place. I'll bring the documents", "10:58 AM", outgoing = true, reminder = "Tomorrow 10:00 AM"),
                 ),
                 ThreadItem.Msg(Message(5, "Great. The address: 12 Maple Street, floor 3, apt 7", "11:02 AM", outgoing = false)),
                 ThreadItem.Msg(Message(6, "And please bring the signed form 🙏", "11:05 AM", outgoing = false)),

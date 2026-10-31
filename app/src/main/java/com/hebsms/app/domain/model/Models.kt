@@ -57,7 +57,6 @@ data class Message(
     val text: String,
     val time: String,
     val outgoing: Boolean,
-    val delivered: Boolean = false,
     /** A date or time found in the text, offered as "create a reminder". */
     val reminder: String? = null,
 )

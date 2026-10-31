@@ -1,7 +1,7 @@
 # HebSMS — project instructions
 
-Hebrew-first default SMS app for Android. Scope: send and receive SMS only. No MMS, no RCS.
-Feature list and decisions: [docs/research.md](docs/research.md).
+Hebrew-first default SMS app for Android, in Hebrew and English. Scope: send and receive SMS only.
+No MMS, no RCS. Feature list and decisions: [docs/research.md](docs/research.md).
 
 ## 1. Role Orchestration & Cost Optimization (Agent Team)
 Act as Tech Lead (Primary Agent). Delegate efficiently to maintainers:
@@ -22,39 +22,42 @@ Act as Tech Lead (Primary Agent). Delegate efficiently to maintainers:
 - Deconstruct tasks -> Delegate -> Review against production standards -> Iterate until polished.
   Deliver fully functional, ready-to-build output.
 
-## 4. Security (the user's explicit requirement: nobody else may read or reach the messages)
-Every change is checked against these rules; a feature that needs to break one is raised with the
-user first, never just built.
+## 4. Security: as safe as Google's or Samsung's own messages app
+The user wants to recommend the app to friends with confidence. That means no hidden holes, not
+extra restrictions: anything the user notices in daily use is a setting, defaulting to what Google
+Messages does.
+
+Baseline, always on, never a setting:
 - **No network.** No `INTERNET` permission, no analytics, crash reporting, ads or any SDK that phones
-  home. Spam and link checks run on the device only.
-- **No backups out.** `allowBackup="false"`, `fullBackupContent="false"` and data extraction rules
-  that exclude everything (cloud and device transfer).
+  home. Spam and link checks run on the device.
 - **Minimal attack surface.** Only the components Android requires of a default SMS app are
   exported, each guarded by its system permission: SMS_DELIVER receiver → `BROADCAST_SMS`,
   WAP_PUSH_DELIVER receiver → `BROADCAST_WAP_PUSH`, respond-via-message service →
   `SEND_RESPOND_VIA_MESSAGE`. No exported ContentProvider. Everything else `exported="false"`.
 - **Never send silently.** An `sms:`/`smsto:` intent from another app only opens a draft; sending
-  always takes the user's tap (except the system's respond-via-message, which is permission-guarded).
+  takes the user's tap (the system's permission-guarded respond-via-message is the one exception).
   Validate and length-limit every incoming intent extra.
-- **Own data stays private.** Rules, favourites, lock settings and reminders live in app-private
-  storage only (Room/DataStore), never on external storage or in shared files.
-- **Locked chats and app lock** use `BiometricPrompt` (fingerprint or the screen lock). Their content
-  never appears in notifications, the widget, search results or recent-apps previews.
-- **Screens with message content** set `FLAG_SECURE` when locked chats are shown, and as a user
-  option everywhere (blocks screenshots, screen recording and the recent-apps thumbnail).
-- **Notifications** default to `VISIBILITY_PRIVATE` (content hidden on the lock screen), with an
-  option to hide content entirely.
-- **Clipboard.** Copied codes and messages are flagged sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`,
-  Android 13+) so the system clipboard preview hides them.
-- **Widget** shows counts only by default; content only if the user turns it on, never locked chats.
-- **No message content in logs**, ever. Release builds: R8 minify on, debuggable off, signed with the
+- **Own data in app-private storage only** (Room/DataStore), never external storage or shared files.
+  Android's normal encrypted backup is allowed, as in the official apps.
+- **No message content in logs**, ever. Release builds: R8 on, not debuggable, signed with the
   user's own key (kept out of the repo).
-- **Before each release** run a security review of the diff (`/security-review`) and fix findings.
-- Limits to be honest about: SMS itself is not encrypted (the carrier can see it), and the messages
-  live in Android's system SMS database, readable by any other app the user has granted SMS
-  permission. The app can open the system screen that lists them, but cannot revoke it.
+- **Copied codes and messages** are flagged sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`,
+  Android 13+), as the official apps do.
+- **Before each release**, run a security review of the diff (`/security-review`) and fix findings.
+
+User settings (default in brackets, matching Google Messages):
+- Message text on the lock screen [shown] / hidden.
+- Widgets show message text [shown] / counts only.
+- Block screenshots and the recent-apps preview [off].
+- App lock with fingerprint or screen lock [off]. Locked chats (feature 6) always use
+  `BiometricPrompt`, and their content never shows in notifications, widgets or search.
+
+Limits to be honest about: SMS itself is not encrypted (the carrier can read it), and messages
+live in Android's system SMS database, readable by any app the user has granted SMS permission.
 
 ## Project notes
 - The repo is public: never commit real messages, phone numbers, contacts or keystores.
 - Package `com.hebsms.app` is separate from HebReminder, so installing it never touches HebReminder.
-- Becoming the default SMS app affects the user's real messages: test on the emulator first.
+- Becoming the default SMS app affects the user's real messages: test carefully before switching.
+- Design shots: `gradlew :app:recordPaparazziDebug` renders the real screens to
+  `app/src/test/snapshots/images/`. Hebrew tests use locale `iw` (Paparazzi only matches `values-iw`).

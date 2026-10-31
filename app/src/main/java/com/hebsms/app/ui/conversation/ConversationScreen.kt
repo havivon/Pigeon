@@ -34,12 +34,10 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.SimCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -135,7 +133,7 @@ private fun ThreadBar(conv: Conversation, onBack: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(conv.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.thread_sim_subtitle), color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp)
+                Text(stringResource(R.string.thread_phone_subtitle), color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp)
             }
             HeaderIcon(Icons.Rounded.Call, stringResource(R.string.thread_call))
             HeaderIcon(Icons.Rounded.MoreVert, stringResource(R.string.thread_more))
@@ -256,13 +254,7 @@ private fun Bubble(msg: Message, ruleColor: Color?, selectingText: Boolean, prev
             else -> Text(msg.text, style = style)
         }
         Spacer(Modifier.height(2.dp))
-        Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-            Text(msg.time, color = textColor.copy(alpha = 0.7f), fontSize = 11.sp)
-            if (msg.outgoing && msg.delivered) {
-                Spacer(Modifier.width(4.dp))
-                Icon(Icons.Rounded.DoneAll, contentDescription = stringResource(R.string.thread_delivered), tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(14.dp))
-            }
-        }
+        Text(msg.time, color = textColor.copy(alpha = 0.7f), fontSize = 11.sp, modifier = Modifier.align(Alignment.End))
     }
 }
 
@@ -325,7 +317,6 @@ private fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun Composer(draft: String, onDraft: (String) -> Unit) {
     val c = HebTheme.colors
@@ -338,19 +329,6 @@ private fun Composer(draft: String, onDraft: (String) -> Unit) {
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(c.surfaceVariant)
-                    .clickable { }
-                    .padding(horizontal = 10.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Rounded.SimCard, contentDescription = null, tint = c.accent, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(3.dp))
-                Text("1", color = c.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(8.dp))
             Box(
                 Modifier
                     .weight(1f)
@@ -382,32 +360,5 @@ private fun Composer(draft: String, onDraft: (String) -> Unit) {
                 Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = stringResource(R.string.thread_send), tint = Color.White)
             }
         }
-        val count = smsCount(draft)
-        Text(
-            stringResource(
-                R.string.thread_sms_counter,
-                count.length,
-                count.limit,
-                pluralStringResource(R.plurals.thread_sms_parts, count.parts, count.parts),
-            ),
-            color = c.onSurfaceMuted,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(start = 64.dp, top = 4.dp),
-        )
     }
-}
-
-internal data class SmsCount(val length: Int, val limit: Int, val parts: Int)
-
-/**
- * "28/70 · הודעה אחת". Rough: any non-ASCII character means UCS-2 (70 per message, 67 per part);
- * the exact GSM-7 alphabet check comes with the real sending code.
- */
-internal fun smsCount(text: String): SmsCount {
-    val unicode = text.any { it.code > 0x7F }
-    val single = if (unicode) 70 else 160
-    val part = if (unicode) 67 else 153
-    val parts = if (text.length <= single) 1 else (text.length + part - 1) / part
-    val limit = if (parts == 1) single else parts * part
-    return SmsCount(text.length, limit, parts)
 }

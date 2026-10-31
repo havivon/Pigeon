@@ -3,11 +3,9 @@
 
     <!-- No INTERNET permission, on purpose: nothing the app holds can leave the phone. -->
 
-    <!-- Rules, favourites and locks never go to cloud backup, adb backup or device transfer -->
+    <!-- Settings (rules, favourites) follow the user to a new phone through Android's encrypted backup -->
     <application
-        android:allowBackup="false"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="false"
+        android:allowBackup="true"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"

@@ -25,7 +25,7 @@
     <string name="inbox_new_message">New message</string>
 
     <!-- thread_ -->
-    <string name="thread_sim_subtitle">SIM 1 · 052-555-0123</string>
+    <string name="thread_phone_subtitle">052-555-0123</string>
     <string name="thread_call">Call</string>
     <string name="thread_more">More</string>
     <string name="thread_clear_selection">Cancel selection</string>
@@ -35,17 +35,11 @@
     </plurals>
     <string name="thread_message_selected">Selected</string>
     <string name="thread_message_not_selected">Not selected</string>
-    <string name="thread_delivered">Delivered</string>
     <string name="thread_create_reminder">Create reminder · %1$s</string>
     <string name="thread_copy_together">Copy %1$d together</string>
     <string name="thread_draft_hint">SMS message</string>
     <string name="thread_send">Send</string>
     <string name="thread_sender_me">Me</string>
-    <string name="thread_sms_counter">%1$d/%2$d · %3$s</string>
-    <plurals name="thread_sms_parts">
-        <item quantity="one">%d message</item>
-        <item quantity="other">%d messages</item>
-    </plurals>
 
     <!-- spam_ -->
     <string name="spam_title">Spam</string>
