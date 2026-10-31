@@ -1,6 +1,31 @@
 package com.havivon.pigeon.ui.conversation
 
+import android.annotation.SuppressLint
+import android.os.Build
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.widget.TextView
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.ColorUtils
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,7 +50,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -50,10 +74,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,6 +112,8 @@ fun ConversationScreen(
     val c = HebTheme.colors
     val selecting = selectedIds.isNotEmpty()
     val ruleColor = rule?.takeIf { it.enabled }?.let { Color(it.argb) }
+    // The message whose text is being selected right now (framed in the accent colour)
+    var activeSelectionId by remember { mutableStateOf(textSelectionId) }
     Column(Modifier.fillMaxSize().background(c.background)) {
         if (selecting) {
             SelectionBar(selectedIds.size, onClearSelection, onSelectAll)
@@ -106,12 +130,16 @@ fun ConversationScreen(
                     is ThreadItem.Msg -> MessageRow(
                         msg = item.message,
                         ruleColor = ruleColor,
-                        selectingText = item.message.id == textSelectionId,
+                        selectingText = item.message.id == activeSelectionId,
                         previewSelection = previewSelection,
                         selectionMode = selecting,
                         selected = item.message.id in selectedIds,
                         onTap = { onMessageTap(item.message) },
                         onLongPress = { onMessageLongPress(item.message) },
+                        onSelectionActive = { active ->
+                            val id = item.message.id
+                            activeSelectionId = if (active) id else activeSelectionId.takeUnless { it == id }
+                        },
                     )
                 }
             }
@@ -187,13 +215,15 @@ private fun MessageRow(
     selected: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
+    onSelectionActive: (Boolean) -> Unit,
 ) {
     val c = HebTheme.colors
     Row(
         Modifier
             .fillMaxWidth()
             .background(if (selected) c.accent.copy(alpha = 0.13f) else Color.Transparent)
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            // Taps on the text itself are the TextView's; this covers the rest of the row
+            .combinedClickable(onClick = { if (selectionMode) onTap() }, onLongClick = onLongPress)
             .padding(horizontal = 12.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = if (msg.outgoing && !selectionMode) Arrangement.End else Arrangement.Start,
@@ -209,15 +239,23 @@ private fun MessageRow(
             if (msg.outgoing) Spacer(Modifier.weight(1f))
         }
         Column(horizontalAlignment = if (msg.outgoing) Alignment.End else Alignment.Start) {
-            if (selectingText) TextActions()
-            Bubble(msg, if (msg.outgoing) null else ruleColor, selectingText, previewSelection)
+            Bubble(msg, if (msg.outgoing) null else ruleColor, selectingText, previewSelection, selectionMode, onTap, onLongPress, onSelectionActive)
             if (msg.reminder != null && !selectionMode) ReminderChip(msg.reminder)
         }
     }
 }
 
 @Composable
-private fun Bubble(msg: Message, ruleColor: Color?, selectingText: Boolean, previewSelection: TextRange?) {
+private fun Bubble(
+    msg: Message,
+    ruleColor: Color?,
+    selectingText: Boolean,
+    previewSelection: TextRange?,
+    selectionMode: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    onSelectionActive: (Boolean) -> Unit,
+) {
     val c = HebTheme.colors
     // The corner nearest the sender's edge is the sharp one
     val shape = if (msg.outgoing) {
@@ -241,46 +279,113 @@ private fun Bubble(msg: Message, ruleColor: Color?, selectingText: Boolean, prev
             )
             .padding(horizontal = 14.dp, vertical = 9.dp),
     ) {
-        val style = TextStyle(color = textColor, fontSize = 16.sp, lineHeight = 23.sp)
-        when {
-            selectingText && previewSelection != null -> Text(
-                buildAnnotatedString {
-                    append(msg.text)
-                    addStyle(SpanStyle(background = c.accent.copy(alpha = 0.3f)), previewSelection.start, previewSelection.end)
-                },
-                style = style,
-            )
-            selectingText -> SelectionContainer { Text(msg.text, style = style) }
-            else -> Text(msg.text, style = style)
-        }
+        SelectableMessageText(
+            text = msg.text,
+            color = textColor,
+            previewSelection = previewSelection.takeIf { selectingText },
+            selectionMode = selectionMode,
+            onTap = onTap,
+            onLongPress = onLongPress,
+            onSelectionActive = onSelectionActive,
+        )
         Spacer(Modifier.height(2.dp))
         Text(msg.time, color = textColor.copy(alpha = 0.7f), fontSize = 11.sp, modifier = Modifier.align(Alignment.End))
     }
 }
 
-/** Shown above a bubble that is open for text selection. */
+/**
+ * The message text as a native selectable TextView. One tap selects the word under the finger and
+ * brings up Android's own handles and Copy / Share / Select all toolbar, inside the bubble itself
+ * (Compose's SelectionContainer only starts on a long press). A long press stays with the row for
+ * multi-select, and in multi-select mode a tap toggles the row instead.
+ */
+@SuppressLint("ClickableViewAccessibility")
 @Composable
-private fun TextActions() {
-    val c = HebTheme.colors
-    Row(
-        Modifier
-            .padding(bottom = 6.dp)
-            .shadow(6.dp, RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (c.isDark) c.surfaceVariant else Color(0xFF241B3D))
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        listOf(R.string.common_copy, R.string.common_share, R.string.common_select_all).forEach { label ->
-            Text(
-                stringResource(label),
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { }.padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-        }
-    }
+private fun SelectableMessageText(
+    text: String,
+    color: Color,
+    previewSelection: TextRange?,
+    selectionMode: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    onSelectionActive: (Boolean) -> Unit,
+) {
+    val accent = HebTheme.colors.accent.toArgb()
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val lineHeightPx = with(LocalDensity.current) { 23.sp.toPx() }.roundToInt()
+    val tap by rememberUpdatedState(onTap)
+    val longPress by rememberUpdatedState(onLongPress)
+    val selectionActive by rememberUpdatedState(onSelectionActive)
+    val multiSelect by rememberUpdatedState(selectionMode)
+    AndroidView(
+        factory = { context ->
+            TextView(context).apply {
+                textSize = 16f
+                if (Build.VERSION.SDK_INT >= 28) lineHeight = lineHeightPx
+                setTextIsSelectable(true)
+                highlightColor = ColorUtils.setAlphaComponent(accent, 0x59)
+                if (Build.VERSION.SDK_INT >= 29) {
+                    listOfNotNull(textSelectHandle, textSelectHandleLeft, textSelectHandleRight).forEach { it.setTint(accent) }
+                }
+                val slop = ViewConfiguration.get(context).scaledTouchSlop
+                var downX = 0f
+                var downY = 0f
+                // Set when a plain tap should open selection: the long click it triggers is then the editor's
+                var tapSelects = false
+                setOnTouchListener { _, e ->
+                    when (e.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            downX = e.x
+                            downY = e.y
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            val isTap = abs(e.x - downX) < slop && abs(e.y - downY) < slop &&
+                                e.eventTime - e.downTime < ViewConfiguration.getLongPressTimeout()
+                            if (isTap && multiSelect) {
+                                tap()
+                                return@setOnTouchListener true
+                            }
+                            if (isTap && !hasSelection()) {
+                                tapSelects = true
+                                post { performLongClick() }
+                            }
+                        }
+                    }
+                    false
+                }
+                setOnLongClickListener {
+                    if (tapSelects) {
+                        tapSelects = false
+                        false
+                    } else {
+                        longPress()
+                        true
+                    }
+                }
+                customSelectionActionModeCallback = object : ActionMode.Callback {
+                    override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+                        selectionActive(true)
+                        return true
+                    }
+                    override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
+                    override fun onActionItemClicked(mode: ActionMode, item: MenuItem) = false
+                    override fun onDestroyActionMode(mode: ActionMode) = selectionActive(false)
+                }
+            }
+        },
+        update = { view ->
+            view.setTextColor(color.toArgb())
+            view.layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+            view.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+            if (previewSelection != null) {
+                view.text = SpannableString(text).apply {
+                    setSpan(BackgroundColorSpan(view.highlightColor), previewSelection.start, previewSelection.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            } else if (view.text.toString() != text) {
+                view.text = text
+            }
+        },
+    )
 }
 
 @Composable

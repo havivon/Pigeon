@@ -1,14 +1,6 @@
 package com.havivon.pigeon.widget
 
-import android.content.ClipData
-import android.content.ClipDescription
-import android.content.ClipboardManager
 import android.content.Context
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.os.PersistableBundle
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -43,6 +35,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.data.sample.SampleSet
 import com.havivon.pigeon.domain.model.Conversation
 
@@ -65,18 +58,10 @@ class CodeWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CodeWidget()
 }
 
-/** Copies the code flagged as sensitive, so Android keeps it out of the clipboard preview, then confirms with a toast. */
 class CopyCodeAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val code = parameters[CodeKey] ?: return
-        val clip = ClipData.newPlainText(context.getString(R.string.widget_code_kind), code)
-        clip.description.extras = PersistableBundle().apply {
-            putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE", true)
-        }
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-        Handler(Looper.getMainLooper()).post {
-            Toast.makeText(context, R.string.widget_code_copied, Toast.LENGTH_SHORT).show()
-        }
+        SensitiveClipboard.copy(context, context.getString(R.string.widget_code_kind), code, R.string.widget_code_copied)
     }
 }
 

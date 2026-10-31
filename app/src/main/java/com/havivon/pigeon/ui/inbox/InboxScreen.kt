@@ -38,12 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
+import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Folder
@@ -271,12 +273,13 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
 
 @Composable
 private fun CopyCodeChip(code: String) {
+    val context = LocalContext.current
     val c = HebTheme.colors
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
             .background(c.accent.copy(alpha = 0.13f))
-            .clickable { }
+            .clickable { SensitiveClipboard.copy(context, context.getString(R.string.inbox_copy_code), code, R.string.widget_code_copied) }
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
