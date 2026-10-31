@@ -13,10 +13,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
@@ -26,8 +28,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.AppIconSwitcher
 import com.havivon.pigeon.data.DefaultSmsRole
+import com.havivon.pigeon.data.LaunchRequests
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
 import com.havivon.pigeon.domain.model.Folder
@@ -40,18 +44,28 @@ import com.havivon.pigeon.ui.onboarding.DefaultAppWelcome
 import com.havivon.pigeon.ui.rules.RulesScreen
 import com.havivon.pigeon.ui.spam.SpamScreen
 import com.havivon.pigeon.ui.theme.HebSmsTheme
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
-/** Design preview: the real screens on sample data. SMS access comes in the next stage. */
+/**
+ * Design preview: the real screens on sample data; the screens move to the real repositories in the
+ * next stage. What the activity was opened for (a draft from an `sms:` link, a notification's
+ * conversation) is already parsed and held in [LaunchRequests] for them.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // After a rotation the intent was already handled
+        if (savedInstanceState == null) LaunchRequests.handle(intent)
         enableEdgeToEdge()
         setContent { HebSmsTheme { DefaultAppGate { PreviewApp() } } }
     }
-}
 
-private const val PREFS = "onboarding"
-private const val WELCOME_DONE = "welcome_done"
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        LaunchRequests.handle(intent)
+    }
+}
 
 /** A result this fast means the system showed no dialog at all (it suppresses its request after a refusal). */
 private const val SUPPRESSED_DIALOG_MS = 400L
@@ -64,8 +78,11 @@ private const val SUPPRESSED_DIALOG_MS = 400L
 @Composable
 private fun DefaultAppGate(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
-    var welcomeDone by remember { mutableStateOf(prefs.getBoolean(WELCOME_DONE, false)) }
+    val settings = remember { AppContainer.from(context).settings }
+    // Read once from the settings (null for the few milliseconds that takes), then kept here
+    var welcomeDone by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) { if (welcomeDone == null) welcomeDone = settings.settings.first().welcomeDone }
+    val scope = rememberCoroutineScope()
     var notDefault by remember { mutableStateOf(false) }
     var hidden by remember { mutableStateOf(false) }
     var requestedAt by remember { mutableLongStateOf(0L) }
@@ -82,8 +99,12 @@ private fun DefaultAppGate(content: @Composable () -> Unit) {
         onDispose { lifecycle.removeObserver(observer) }
     }
 
+    fun saveWelcomeDone() {
+        scope.launch { settings.setWelcomeDone(true) }
+    }
+
     fun notNow() {
-        prefs.edit().putBoolean(WELCOME_DONE, true).apply()
+        saveWelcomeDone()
         welcomeDone = true
         hidden = true
     }
@@ -99,13 +120,15 @@ private fun DefaultAppGate(content: @Composable () -> Unit) {
 
     fun makeDefault() {
         // The flag is saved now, but the screen only changes once the system's answer is back
-        prefs.edit().putBoolean(WELCOME_DONE, true).apply()
+        saveWelcomeDone()
         requestedAt = SystemClock.elapsedRealtime()
         launcher.launch(DefaultSmsRole.requestIntent(context) ?: DefaultSmsRole.settingsIntent())
     }
 
     val showPrompt = notDefault && !hidden
-    if (showPrompt && !welcomeDone) {
+    if (showPrompt && welcomeDone == null) {
+        // Not known yet whether this is the first launch: show nothing rather than the wrong screen
+    } else if (showPrompt && welcomeDone == false) {
         DefaultAppWelcome(onMakeDefault = ::makeDefault, onNotNow = ::notNow)
     } else {
         content()

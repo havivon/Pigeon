@@ -117,4 +117,13 @@
     <string name="widget_favorites_description">The messages you starred, always at hand</string>
     <string name="widget_favorites_title">Favorites</string>
     <string name="widget_favorites_empty">No starred messages yet</string>
+
+    <!-- notification_ -->
+    <string name="notification_channel_messages">Messages</string>
+    <string name="notification_channel_messages_hidden">Messages (text hidden on the lock screen)</string>
+    <string name="notification_channel_reminders">Reminders</string>
+    <string name="notification_reply">Reply</string>
+    <string name="notification_mark_read">Mark as read</string>
+    <string name="notification_copy_code">Copy %1$s</string>
+    <string name="notification_locked_title">Locked conversation</string>
 </resources>

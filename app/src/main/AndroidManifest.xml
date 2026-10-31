@@ -3,8 +3,25 @@
 
     <!-- No INTERNET permission, on purpose: nothing the app holds can leave the phone. -->
 
+    <!-- SMS: what a default SMS app needs to receive, store, read and send. No RECEIVE_MMS: MMS is out of scope. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
+    <!-- Names for numbers, and the new-message picker; everything works (with numbers) without it -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Locked chats and app lock -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!-- SMS permissions would otherwise make telephony required; a tablet or Chromebook without it can still read its messages -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
     <!-- Settings (rules, favourites) follow the user to a new phone through Android's encrypted backup -->
     <application
+        android:name=".PigeonApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
@@ -12,10 +29,25 @@
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!--
+          Exported for the launcher aliases and for sms:/smsto: links from other apps (the default SMS
+          app must handle SENDTO). Such a link only opens a draft; sending always takes the user's tap.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+        </activity>
 
         <!-- One launcher entry per icon choice; settings enables exactly one (AppIconSwitcher). -->
         <activity-alias
@@ -54,6 +86,49 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <!--
+          The components Android requires of a default SMS app (RoleManager.ROLE_SMS). Each is exported
+          only because the system calls it, and each is guarded by a permission only the system holds.
+        -->
+        <receiver
+            android:name=".data.sms.SmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_DELIVER" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".data.sms.WapPushDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_WAP_PUSH">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
+        <service
+            android:name=".data.sms.RespondViaMessageService"
+            android:exported="true"
+            android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+        </service>
+
+        <!-- The app's own receivers: only its own PendingIntents reach them. -->
+        <receiver
+            android:name=".data.sms.SmsSentReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".data.notify.NotificationActionReceiver"
+            android:exported="false" />
 
         <!-- Home-screen widgets. The widget framework requires the receivers to be exported; they only accept the system update broadcast. -->
         <receiver

@@ -121,4 +121,13 @@
     <string name="widget_favorites_description">ההודעות שסומנו בכוכב, תמיד בהישג יד</string>
     <string name="widget_favorites_title">מועדפות</string>
     <string name="widget_favorites_empty">עדיין אין הודעות מסומנות</string>
+
+    <!-- notification_ -->
+    <string name="notification_channel_messages">הודעות</string>
+    <string name="notification_channel_messages_hidden">הודעות (בלי הטקסט במסך הנעילה)</string>
+    <string name="notification_channel_reminders">תזכורות</string>
+    <string name="notification_reply">השב</string>
+    <string name="notification_mark_read">סמן כנקרא</string>
+    <string name="notification_copy_code">העתק %1$s</string>
+    <string name="notification_locked_title">שיחה נעולה</string>
 </resources>
