@@ -181,4 +181,7 @@ private fun SpamReason.label(): String = when (this) {
     SpamReason.ShortLink -> stringResource(R.string.spam_reason_short_link)
     SpamReason.LookalikeDomain -> stringResource(R.string.spam_reason_lookalike_domain)
     is SpamReason.Keyword -> word
+    is SpamReason.BlockedKeyword -> word
+    SpamReason.ManyLinks -> stringResource(R.string.spam_reason_many_links)
+    SpamReason.BrandSender -> stringResource(R.string.spam_reason_brand_sender)
 }
