@@ -11,14 +11,15 @@ import android.provider.Telephony
 object DefaultSmsRole {
 
     /**
-     * Whether the app may ask to become the default SMS app. It must not before it has the
-     * SMS_DELIVER receiver that stores incoming messages: the default app is the only one Android
-     * delivers new messages to, so without the receiver the user's real incoming SMS would be lost.
-     * Flip to true in the SMS stage, together with the manifest components Android requires of a
-     * default SMS app. While it is false the running app never shows the prompt and never fires
-     * the request; the prompt screens only exist, and are rendered in the design snapshots.
+     * Whether the app may ask to become the default SMS app. The default app is the only one Android
+     * delivers new messages to, so this is true only because the app now handles them: the
+     * SMS_DELIVER receiver stores every incoming SMS in the system database before anything else
+     * (`SmsDeliverReceiver`, `IncomingSmsHandler`), sending writes to the Outbox and follows the
+     * radio's result (`TelephonySmsSender`), and the manifest has every component the role requires
+     * (SMS_DELIVER, WAP_PUSH_DELIVER, RESPOND_VIA_MESSAGE, SENDTO). Set it back to false if any of
+     * that is ever taken out: while it is false the app never shows the prompt or fires the request.
      */
-    const val SMS_HANDLING_READY = false
+    const val SMS_HANDLING_READY = true
 
     fun isDefault(context: Context): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
