@@ -32,10 +32,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hebsms.app.R
 import com.hebsms.app.ui.theme.HebTheme
 
 /** The coloured band at the top of every screen, with two soft circles for depth. */
@@ -89,7 +91,7 @@ fun SpamAvatar(size: Dp = 48.dp) {
             .border(2.dp, spam, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.Warning, contentDescription = "חשוד כספאם", tint = spam, modifier = Modifier.size(size * 0.5f))
+        Icon(Icons.Rounded.Warning, contentDescription = stringResource(R.string.common_suspected_spam), tint = spam, modifier = Modifier.size(size * 0.5f))
     }
 }
 

@@ -1,5 +1,7 @@
 package com.hebsms.app.ui.theme
 
+import android.text.TextUtils
+import android.view.View
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -87,9 +90,13 @@ private val HebTypography = Typography(
     labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium),
 )
 
-/** The app is Hebrew-only, so it is always laid out right to left. */
+/** The app is bilingual: it is laid out right to left when the current locale is a right-to-left one (Hebrew), and left to right otherwise. */
 @Composable
 fun HebSmsTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val layoutDirection = when (TextUtils.getLayoutDirectionFromLocale(LocalConfiguration.current.locales[0])) {
+        View.LAYOUT_DIRECTION_RTL -> LayoutDirection.Rtl
+        else -> LayoutDirection.Ltr
+    }
     val colors = if (darkTheme) DarkHebColors else LightHebColors
     val scheme = if (darkTheme) {
         darkColorScheme(primary = colors.accent, background = colors.background, surface = colors.surface, onSurface = colors.onSurface)
@@ -98,7 +105,7 @@ fun HebSmsTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
     }
     CompositionLocalProvider(
         LocalHebColors provides colors,
-        LocalLayoutDirection provides LayoutDirection.Rtl,
+        LocalLayoutDirection provides layoutDirection,
         LocalTextSelectionColors provides TextSelectionColors(colors.accent, colors.accent.copy(alpha = 0.3f)),
     ) {
         MaterialTheme(colorScheme = scheme, typography = HebTypography, content = content)

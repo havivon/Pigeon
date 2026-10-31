@@ -30,13 +30,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hebsms.app.R
 import com.hebsms.app.domain.model.Conversation
+import com.hebsms.app.domain.model.SpamReason
 import com.hebsms.app.ui.components.GradientHeader
 import com.hebsms.app.ui.components.HeaderIcon
 import com.hebsms.app.ui.components.PillButton
@@ -45,6 +50,7 @@ import com.hebsms.app.ui.theme.HebTheme
 
 private val LinkPattern = Regex("""\b[\w-]+\.(?:ly|co|com|net|info|xyz)(?:/\S*)?""")
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SpamScreen(
     items: List<Conversation>,
@@ -60,12 +66,16 @@ fun SpamScreen(
         item {
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, "חזרה", onBack)
+                    HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
                     Column(Modifier.weight(1f)) {
-                        Text("ספאם", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("${items.size} הודעות חשודות · בלי התראות", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                        Text(stringResource(R.string.spam_title), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            pluralStringResource(R.plurals.spam_subtitle, items.size, items.size),
+                            color = Color.White.copy(alpha = 0.82f),
+                            fontSize = 13.sp,
+                        )
                     }
-                    HeaderIcon(Icons.Rounded.Delete, "מחק הכל")
+                    HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all))
                 }
             }
         }
@@ -82,7 +92,7 @@ fun SpamScreen(
                 Icon(Icons.Rounded.Shield, contentDescription = null, tint = c.accent)
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    "הודעות חשודות עוברות לכאן אוטומטית. \"זה לא ספאם\" מחזיר את השולח לתיבה ומלמד את הסינון.",
+                    stringResource(R.string.spam_info),
                     color = c.onSurface,
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
@@ -123,7 +133,7 @@ private fun SpamCard(conv: Conversation, onNotSpam: (Conversation) -> Unit, onDe
             ) {
                 Icon(Icons.Rounded.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("חשוד כספאם", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_suspected_spam), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -146,7 +156,7 @@ private fun SpamCard(conv: Conversation, onNotSpam: (Conversation) -> Unit, onDe
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             conv.spamReasons.forEach { reason ->
                 Text(
-                    reason,
+                    reason.label(),
                     color = c.spam,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -159,8 +169,16 @@ private fun SpamCard(conv: Conversation, onNotSpam: (Conversation) -> Unit, onDe
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PillButton("זה לא ספאם", onClick = { onNotSpam(conv) })
-            PillButton("מחק", icon = Icons.Rounded.Delete, color = c.spam, onClick = { onDelete(conv) })
+            PillButton(stringResource(R.string.spam_not_spam), onClick = { onNotSpam(conv) })
+            PillButton(stringResource(R.string.spam_delete), icon = Icons.Rounded.Delete, color = c.spam, onClick = { onDelete(conv) })
         }
     }
+}
+
+@Composable
+private fun SpamReason.label(): String = when (this) {
+    SpamReason.UnknownSender -> stringResource(R.string.spam_reason_unknown_sender)
+    SpamReason.ShortLink -> stringResource(R.string.spam_reason_short_link)
+    SpamReason.LookalikeDomain -> stringResource(R.string.spam_reason_lookalike_domain)
+    is SpamReason.Keyword -> word
 }

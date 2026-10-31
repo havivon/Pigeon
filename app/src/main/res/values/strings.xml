@@ -1,4 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HebSMS</string>
+
+    <!-- common_ -->
+    <string name="common_back">Back</string>
+    <string name="common_copy">Copy</string>
+    <string name="common_share">Share</string>
+    <string name="common_select_all">Select all</string>
+    <string name="common_suspected_spam">Suspected spam</string>
+    <string name="common_folder_all">All</string>
+    <string name="common_folder_personal">Personal</string>
+    <string name="common_folder_banks">Banks</string>
+    <string name="common_folder_codes">Codes</string>
+    <string name="common_folder_deliveries">Deliveries</string>
+    <string name="common_folder_spam">Spam</string>
+
+    <!-- inbox_ -->
+    <string name="inbox_title">Messages</string>
+    <string name="inbox_settings_description">Colors and settings</string>
+    <string name="inbox_search_hint">Search messages, senders and codes</string>
+    <string name="inbox_pinned">Pinned</string>
+    <string name="inbox_all_conversations">All conversations</string>
+    <string name="inbox_copy_code">Copy code</string>
+    <string name="inbox_new_message">New message</string>
+
+    <!-- thread_ -->
+    <string name="thread_sim_subtitle">SIM 1 · 052-555-0123</string>
+    <string name="thread_call">Call</string>
+    <string name="thread_more">More</string>
+    <string name="thread_clear_selection">Cancel selection</string>
+    <plurals name="thread_selected_count">
+        <item quantity="one">%1$d message selected</item>
+        <item quantity="other">%1$d messages selected</item>
+    </plurals>
+    <string name="thread_message_selected">Selected</string>
+    <string name="thread_message_not_selected">Not selected</string>
+    <string name="thread_delivered">Delivered</string>
+    <string name="thread_create_reminder">Create reminder · %1$s</string>
+    <string name="thread_copy_together">Copy %1$d together</string>
+    <string name="thread_draft_hint">SMS message</string>
+    <string name="thread_send">Send</string>
+    <string name="thread_sender_me">Me</string>
+    <string name="thread_sms_counter">%1$d/%2$d · %3$s</string>
+    <plurals name="thread_sms_parts">
+        <item quantity="one">%d message</item>
+        <item quantity="other">%d messages</item>
+    </plurals>
+
+    <!-- spam_ -->
+    <string name="spam_title">Spam</string>
+    <plurals name="spam_subtitle">
+        <item quantity="one">%1$d suspicious message · no notifications</item>
+        <item quantity="other">%1$d suspicious messages · no notifications</item>
+    </plurals>
+    <string name="spam_delete_all">Delete all</string>
+    <string name="spam_info">Suspicious messages move here automatically. \"Not spam\" returns the sender to the inbox and teaches the filter.</string>
+    <string name="spam_not_spam">Not spam</string>
+    <string name="spam_delete">Delete</string>
+    <string name="spam_reason_unknown_sender">Unknown sender</string>
+    <string name="spam_reason_short_link">Shortened link</string>
+    <string name="spam_reason_lookalike_domain">Lookalike domain</string>
+
+    <!-- rules_ -->
+    <string name="rules_title">Colors and rules</string>
+    <string name="rules_subtitle">A colored frame by sender or word in the message</string>
+    <string name="rules_section_yours">Your rules · the top rule wins, drag to reorder</string>
+    <string name="rules_drag">Drag</string>
+    <string name="rules_sender_subtitle">Sender: %1$s</string>
+    <string name="rules_keyword_subtitle">Word in message: %1$s</string>
+    <string name="rules_spam_title">Suspected spam</string>
+    <string name="rules_spam_subtitle">Red frame ⚠ · moves to the Spam folder</string>
+    <string name="rules_new_rule">New rule</string>
+    <string name="rules_kind_sender">Sender</string>
+    <string name="rules_kind_keyword">Word in message</string>
+    <string name="rules_swatch_selected">Selected</string>
+    <string name="rules_preview_label">This is how it will look:</string>
+    <string name="rules_preview_message">Your %1$s for October is ready</string>
+    <string name="rules_save">Save rule</string>
 </resources>

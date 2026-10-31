@@ -38,10 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hebsms.app.R
 import com.hebsms.app.domain.model.ColorRule
 import com.hebsms.app.domain.model.Conversation
 import com.hebsms.app.domain.model.Folder
@@ -58,6 +60,7 @@ fun InboxScreen(
     conversations: List<Conversation>,
     rules: List<ColorRule>,
     folderCounts: Map<Folder, Int>,
+    dateLine: String,
     selectedFolder: Folder = Folder.All,
     onFolder: (Folder) -> Unit = {},
     onOpen: (Conversation) -> Unit = {},
@@ -68,9 +71,9 @@ fun InboxScreen(
     val pinned = conversations.filter { it.pinned }
     Box(Modifier.fillMaxSize().background(c.background)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
-            item { InboxHeader(selectedFolder, folderCounts, onFolder, onSettings) }
+            item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings) }
             if (pinned.isNotEmpty()) {
-                item { SectionLabel("מוצמדות", Icons.Rounded.PushPin) }
+                item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
                 item {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 12.dp),
@@ -80,7 +83,7 @@ fun InboxScreen(
                     }
                 }
             }
-            item { SectionLabel("כל השיחות", Icons.Rounded.Forum) }
+            item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
             items(conversations.filterNot { it.pinned }, key = { it.id }) {
                 ConversationCard(it, ruleById[it.ruleId], onOpen)
             }
@@ -91,6 +94,7 @@ fun InboxScreen(
 
 @Composable
 private fun InboxHeader(
+    dateLine: String,
     selected: Folder,
     counts: Map<Folder, Int>,
     onFolder: (Folder) -> Unit,
@@ -99,10 +103,10 @@ private fun InboxHeader(
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("הודעות", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-                Text("כ׳ בחשוון תשפ״ז · 31.10.2026", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                Text(stringResource(R.string.inbox_title), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+                Text(dateLine, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
             }
-            HeaderIcon(Icons.Rounded.Settings, "צבעים והגדרות", onSettings)
+            HeaderIcon(Icons.Rounded.Settings, stringResource(R.string.inbox_settings_description), onSettings)
         }
         Spacer(Modifier.height(12.dp))
         Row(
@@ -115,7 +119,7 @@ private fun InboxHeader(
         ) {
             Icon(Icons.Rounded.Search, contentDescription = null, tint = Color.White)
             Spacer(Modifier.width(10.dp))
-            Text("חיפוש בהודעות, שולחים וקודים", color = Color.White.copy(alpha = 0.88f), fontSize = 14.sp)
+            Text(stringResource(R.string.inbox_search_hint), color = Color.White.copy(alpha = 0.88f), fontSize = 14.sp)
         }
         Spacer(Modifier.height(12.dp))
         Row(
@@ -143,7 +147,7 @@ private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: (
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            folder.label,
+            stringResource(folder.labelRes),
             color = if (!selected) Color.White else if (c.isDark) Color(0xFF3A2596) else c.accent,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -276,7 +280,7 @@ private fun CopyCodeChip(code: String) {
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.ContentCopy, contentDescription = "העתק קוד", tint = c.accent, modifier = Modifier.size(14.dp))
+        Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.inbox_copy_code), tint = c.accent, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(5.dp))
         Text(code, color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
     }
@@ -297,6 +301,6 @@ private fun NewMessageButton(modifier: Modifier = Modifier) {
     ) {
         Icon(Icons.Rounded.Edit, contentDescription = null, tint = Color.White)
         Spacer(Modifier.width(8.dp))
-        Text("הודעה חדשה", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.inbox_new_message), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.ui.text.TextRange
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.hebsms.app.data.sample.SampleData
+import com.hebsms.app.domain.model.ThreadItem
 import com.hebsms.app.ui.conversation.ConversationScreen
 import com.hebsms.app.ui.inbox.InboxScreen
 import com.hebsms.app.ui.rules.RulesScreen
@@ -12,6 +13,14 @@ import com.hebsms.app.ui.spam.SpamScreen
 import com.hebsms.app.ui.theme.HebSmsTheme
 import org.junit.Rule
 import org.junit.Test
+
+/** The range of [part] inside the text of message [id], for the static selection highlight. */
+private fun highlight(thread: List<ThreadItem>, id: Int, part: String): TextRange {
+    val text = thread.filterIsInstance<ThreadItem.Msg>().first { it.message.id == id }.message.text
+    val start = text.indexOf(part)
+    check(start >= 0) { "\"$part\" is not in message $id" }
+    return TextRange(start, start + part.length)
+}
 
 /**
  * Renders the real screens to PNG, at phone size, so the design can be approved before the SMS
@@ -21,32 +30,65 @@ class DesignSnapshots {
 
     @get:Rule
     val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.PIXEL_6.copy(locale = "he"),
+        deviceConfig = DeviceConfig.PIXEL_6.copy(locale = "iw"),
         theme = "android:Theme.Material.Light.NoActionBar",
     )
 
     private fun shot(name: String, dark: Boolean = false, content: @Composable () -> Unit) =
         paparazzi.snapshot(name) { HebSmsTheme(darkTheme = dark) { content() } }
 
-    private val danny = SampleData.inbox.first { it.id == 2 }
+    private val sample = SampleData.hebrew
+    private val danny = sample.inbox.first { it.id == 2 }
 
     @Test
     fun screens() {
-        shot("1_inbox") { InboxScreen(SampleData.inbox, SampleData.rules, SampleData.folderCounts) }
-        shot("2_inbox_dark", dark = true) { InboxScreen(SampleData.inbox, SampleData.rules, SampleData.folderCounts) }
+        shot("1_inbox") { InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine) }
+        shot("2_inbox_dark", dark = true) { InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine) }
         shot("3_text_selection") {
             ConversationScreen(
-                danny, SampleData.dannyThread, rule = null, draft = "אני בדרך, אגיע בעוד עשר דקות",
-                textSelectionId = 5, previewSelection = TextRange(15, 43),
+                danny, sample.dannyThread, rule = null, draft = "אני בדרך, אגיע בעוד עשר דקות",
+                textSelectionId = 5, previewSelection = highlight(sample.dannyThread, 5, "רחוב הרצל 12, קומה 3, דירה 7"),
             )
         }
         shot("4_multi_select") {
-            ConversationScreen(danny, SampleData.dannyThread, rule = null, draft = "", selectedIds = setOf(4, 5, 6))
+            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4, 5, 6))
         }
-        shot("5_spam") { SpamScreen(SampleData.spam) }
-        shot("6_color_rules") { RulesScreen(SampleData.rules) }
+        shot("5_spam") { SpamScreen(sample.spam) }
+        shot("6_color_rules") { RulesScreen(sample.rules, sample.newRuleWord) }
         shot("7_conversation_dark", dark = true) {
-            ConversationScreen(danny, SampleData.dannyThread, rule = null, draft = "")
+            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "")
+        }
+    }
+}
+
+/** The same design in English, left to right. */
+class DesignSnapshotsEnglish {
+
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_6.copy(locale = "en"),
+        theme = "android:Theme.Material.Light.NoActionBar",
+    )
+
+    private fun shot(name: String, dark: Boolean = false, content: @Composable () -> Unit) =
+        paparazzi.snapshot(name) { HebSmsTheme(darkTheme = dark) { content() } }
+
+    private val sample = SampleData.english
+    private val danny = sample.inbox.first { it.id == 2 }
+
+    @Test
+    fun screens() {
+        shot("8_en_inbox") { InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine) }
+        shot("9_en_text_selection") {
+            ConversationScreen(
+                danny, sample.dannyThread, rule = null, draft = "On my way, I'll be there in ten minutes",
+                textSelectionId = 5, previewSelection = highlight(sample.dannyThread, 5, "12 Maple Street, floor 3, apt 7"),
+            )
+        }
+        shot("10_en_spam") { SpamScreen(sample.spam) }
+        shot("11_en_color_rules") { RulesScreen(sample.rules, sample.newRuleWord) }
+        shot("12_en_inbox_dark", dark = true) {
+            InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine)
         }
     }
 }

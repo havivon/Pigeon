@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HebSMS</string>
+
+    <!-- common_ -->
+    <string name="common_back">חזרה</string>
+    <string name="common_copy">העתק</string>
+    <string name="common_share">שתף</string>
+    <string name="common_select_all">בחר הכל</string>
+    <string name="common_suspected_spam">חשוד כספאם</string>
+    <string name="common_folder_all">הכל</string>
+    <string name="common_folder_personal">אישי</string>
+    <string name="common_folder_banks">בנקים</string>
+    <string name="common_folder_codes">קודים</string>
+    <string name="common_folder_deliveries">משלוחים</string>
+    <string name="common_folder_spam">ספאם</string>
+
+    <!-- inbox_ -->
+    <string name="inbox_title">הודעות</string>
+    <string name="inbox_settings_description">צבעים והגדרות</string>
+    <string name="inbox_search_hint">חיפוש בהודעות, שולחים וקודים</string>
+    <string name="inbox_pinned">מוצמדות</string>
+    <string name="inbox_all_conversations">כל השיחות</string>
+    <string name="inbox_copy_code">העתק קוד</string>
+    <string name="inbox_new_message">הודעה חדשה</string>
+
+    <!-- thread_ -->
+    <string name="thread_sim_subtitle">SIM 1 · 052-555-0123</string>
+    <string name="thread_call">חיוג</string>
+    <string name="thread_more">עוד</string>
+    <string name="thread_clear_selection">ביטול בחירה</string>
+    <plurals name="thread_selected_count">
+        <item quantity="one">הודעה אחת נבחרה</item>
+        <item quantity="two">%1$d הודעות נבחרו</item>
+        <item quantity="other">%1$d הודעות נבחרו</item>
+    </plurals>
+    <string name="thread_message_selected">נבחרה</string>
+    <string name="thread_message_not_selected">לא נבחרה</string>
+    <string name="thread_delivered">נמסרה</string>
+    <string name="thread_create_reminder">צור תזכורת · %1$s</string>
+    <string name="thread_copy_together">העתק %1$d יחד</string>
+    <string name="thread_draft_hint">הודעת SMS</string>
+    <string name="thread_send">שלח</string>
+    <string name="thread_sender_me">אני</string>
+    <string name="thread_sms_counter">%1$d/%2$d · %3$s</string>
+    <plurals name="thread_sms_parts">
+        <item quantity="one">הודעה אחת</item>
+        <item quantity="two">%d הודעות</item>
+        <item quantity="other">%d הודעות</item>
+    </plurals>
+
+    <!-- spam_ -->
+    <string name="spam_title">ספאם</string>
+    <plurals name="spam_subtitle">
+        <item quantity="one">הודעה חשודה אחת · בלי התראות</item>
+        <item quantity="two">%1$d הודעות חשודות · בלי התראות</item>
+        <item quantity="other">%1$d הודעות חשודות · בלי התראות</item>
+    </plurals>
+    <string name="spam_delete_all">מחק הכל</string>
+    <string name="spam_info">הודעות חשודות עוברות לכאן אוטומטית. \"זה לא ספאם\" מחזיר את השולח לתיבה ומלמד את הסינון.</string>
+    <string name="spam_not_spam">זה לא ספאם</string>
+    <string name="spam_delete">מחק</string>
+    <string name="spam_reason_unknown_sender">שולח לא מוכר</string>
+    <string name="spam_reason_short_link">קישור מקוצר</string>
+    <string name="spam_reason_lookalike_domain">דומיין מתחזה</string>
+
+    <!-- rules_ -->
+    <string name="rules_title">צבעים וכללים</string>
+    <string name="rules_subtitle">מסגרת בצבע לפי שולח או מילה בהודעה</string>
+    <string name="rules_section_yours">הכללים שלך · הכלל העליון קובע, גרור לשינוי הסדר</string>
+    <string name="rules_drag">גרור</string>
+    <string name="rules_sender_subtitle">שולח: %1$s</string>
+    <string name="rules_keyword_subtitle">מילה בהודעה: %1$s</string>
+    <string name="rules_spam_title">ספאם חשוד</string>
+    <string name="rules_spam_subtitle">מסגרת אדומה ⚠ · עובר לתיקיית ספאם</string>
+    <string name="rules_new_rule">כלל חדש</string>
+    <string name="rules_kind_sender">שולח</string>
+    <string name="rules_kind_keyword">מילה בהודעה</string>
+    <string name="rules_swatch_selected">נבחר</string>
+    <string name="rules_preview_label">כך זה ייראה:</string>
+    <string name="rules_preview_message">ה%1$s שלך לחודש אוקטובר מוכנה</string>
+    <string name="rules_save">שמור כלל</string>
+</resources>

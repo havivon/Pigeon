@@ -37,9 +37,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hebsms.app.R
 import com.hebsms.app.domain.model.ColorRule
 import com.hebsms.app.domain.model.RuleMatch
 import com.hebsms.app.ui.components.GradientHeader
@@ -57,7 +59,7 @@ val RuleSwatches = listOf(
 @Composable
 fun RulesScreen(
     rules: List<ColorRule>,
-    newRuleWord: String = "חשבונית",
+    newRuleWord: String,
     newRuleSwatch: Long = 0xFF14A3B8,
     onBack: () -> Unit = {},
 ) {
@@ -69,18 +71,22 @@ fun RulesScreen(
         item {
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, "חזרה", onBack)
+                    HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
                     Column(Modifier.weight(1f)) {
-                        Text("צבעים וכללים", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("מסגרת בצבע לפי שולח או מילה בהודעה", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                        Text(stringResource(R.string.rules_title), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            stringResource(R.string.rules_subtitle),
+                            color = Color.White.copy(alpha = 0.82f),
+                            fontSize = 13.sp,
+                        )
                     }
                 }
             }
         }
-        item { SectionLabel("הכללים שלך · הכלל העליון קובע, גרור לשינוי הסדר") }
+        item { SectionLabel(stringResource(R.string.rules_section_yours)) }
         items(rules, key = { it.id }) { RuleCard(it) }
         item { SpamRuleCard() }
-        item { SectionLabel("כלל חדש") }
+        item { SectionLabel(stringResource(R.string.rules_new_rule)) }
         item { NewRuleCard(newRuleWord, newRuleSwatch) }
     }
 }
@@ -89,8 +95,8 @@ fun RulesScreen(
 private fun RuleCard(rule: ColorRule) {
     val color = Color(rule.argb)
     val (icon, subtitle) = when (val m = rule.match) {
-        is RuleMatch.Sender -> Icons.Rounded.Person to "שולח: ${m.name}"
-        is RuleMatch.Keyword -> Icons.Rounded.Tag to "מילה בהודעה: ${m.word}"
+        is RuleMatch.Sender -> Icons.Rounded.Person to stringResource(R.string.rules_sender_subtitle, m.name)
+        is RuleMatch.Keyword -> Icons.Rounded.Tag to stringResource(R.string.rules_keyword_subtitle, m.word)
     }
     RuleRow(icon, rule.label, subtitle, if (rule.enabled) color else HebTheme.colors.divider, color, rule.enabled, dragHandle = true)
 }
@@ -98,7 +104,15 @@ private fun RuleCard(rule: ColorRule) {
 @Composable
 private fun SpamRuleCard() {
     val spam = HebTheme.colors.spam
-    RuleRow(Icons.Rounded.Warning, "ספאם חשוד", "מסגרת אדומה ⚠ · עובר לתיקיית ספאם", spam, spam, enabled = true, dragHandle = false)
+    RuleRow(
+        Icons.Rounded.Warning,
+        stringResource(R.string.rules_spam_title),
+        stringResource(R.string.rules_spam_subtitle),
+        spam,
+        spam,
+        enabled = true,
+        dragHandle = false,
+    )
 }
 
 @Composable
@@ -125,7 +139,7 @@ private fun RuleRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (dragHandle) {
-            Icon(Icons.Rounded.DragIndicator, contentDescription = "גרור", tint = c.onSurfaceMuted)
+            Icon(Icons.Rounded.DragIndicator, contentDescription = stringResource(R.string.rules_drag), tint = c.onSurfaceMuted)
         } else {
             Spacer(Modifier.width(24.dp))
         }
@@ -166,7 +180,7 @@ private fun NewRuleCard(word: String, swatch: Long) {
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(c.surfaceVariant).padding(3.dp),
         ) {
-            listOf("שולח" to false, "מילה בהודעה" to true).forEach { (label, on) ->
+            listOf(stringResource(R.string.rules_kind_sender) to false, stringResource(R.string.rules_kind_keyword) to true).forEach { (label, on) ->
                 Text(
                     label,
                     color = if (on) Color.White else c.onSurfaceMuted,
@@ -206,16 +220,16 @@ private fun NewRuleCard(word: String, swatch: Long) {
                         .clickable { },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (selected) Icon(Icons.Rounded.Check, contentDescription = "נבחר", tint = Color.White, modifier = Modifier.size(18.dp))
+                    if (selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.rules_swatch_selected), tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
         Spacer(Modifier.height(14.dp))
-        Text("כך זה ייראה:", color = c.onSurfaceMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.rules_preview_label), color = c.onSurfaceMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "ה$word שלך לחודש אוקטובר מוכנה",
+                stringResource(R.string.rules_preview_message, word),
                 color = c.onSurface,
                 fontSize = 14.sp,
                 modifier = Modifier
@@ -228,6 +242,6 @@ private fun NewRuleCard(word: String, swatch: Long) {
             RuleTag(word, color)
         }
         Spacer(Modifier.height(14.dp))
-        PillButton("שמור כלל", Modifier.fillMaxWidth(), filled = true)
+        PillButton(stringResource(R.string.rules_save), Modifier.fillMaxWidth(), filled = true)
     }
 }

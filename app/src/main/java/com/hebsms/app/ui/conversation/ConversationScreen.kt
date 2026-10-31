@@ -44,11 +44,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hebsms.app.R
 import com.hebsms.app.domain.model.ColorRule
 import com.hebsms.app.domain.model.Conversation
 import com.hebsms.app.domain.model.Message
@@ -126,32 +130,33 @@ fun ConversationScreen(
 private fun ThreadBar(conv: Conversation, onBack: () -> Unit) {
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, "חזרה", onBack)
+            HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
             Avatar(conv.name, conv.avatarArgb, size = 42.dp)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(conv.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("SIM 1 · 052-555-0123", color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp)
+                Text(stringResource(R.string.thread_sim_subtitle), color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp)
             }
-            HeaderIcon(Icons.Rounded.Call, "חיוג")
-            HeaderIcon(Icons.Rounded.MoreVert, "עוד")
+            HeaderIcon(Icons.Rounded.Call, stringResource(R.string.thread_call))
+            HeaderIcon(Icons.Rounded.MoreVert, stringResource(R.string.thread_more))
         }
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SelectionBar(count: Int, onClear: () -> Unit, onSelectAll: () -> Unit) {
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderIcon(Icons.Rounded.Close, "ביטול בחירה", onClear)
+            HeaderIcon(Icons.Rounded.Close, stringResource(R.string.thread_clear_selection), onClear)
             Text(
-                "$count הודעות נבחרו",
+                pluralStringResource(R.plurals.thread_selected_count, count, count),
                 color = Color.White,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
-            HeaderIcon(Icons.Rounded.SelectAll, "בחר הכל", onSelectAll)
+            HeaderIcon(Icons.Rounded.SelectAll, stringResource(R.string.common_select_all), onSelectAll)
         }
     }
 }
@@ -198,7 +203,7 @@ private fun MessageRow(
         if (selectionMode) {
             Icon(
                 if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = if (selected) "נבחרה" else "לא נבחרה",
+                contentDescription = stringResource(if (selected) R.string.thread_message_selected else R.string.thread_message_not_selected),
                 tint = if (selected) c.accent else c.onSurfaceMuted,
                 modifier = Modifier.size(24.dp),
             )
@@ -255,7 +260,7 @@ private fun Bubble(msg: Message, ruleColor: Color?, selectingText: Boolean, prev
             Text(msg.time, color = textColor.copy(alpha = 0.7f), fontSize = 11.sp)
             if (msg.outgoing && msg.delivered) {
                 Spacer(Modifier.width(4.dp))
-                Icon(Icons.Rounded.DoneAll, contentDescription = "נמסרה", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(14.dp))
+                Icon(Icons.Rounded.DoneAll, contentDescription = stringResource(R.string.thread_delivered), tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(14.dp))
             }
         }
     }
@@ -274,9 +279,9 @@ private fun TextActions() {
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        listOf("העתק", "שתף", "בחר הכל").forEach { label ->
+        listOf(R.string.common_copy, R.string.common_share, R.string.common_select_all).forEach { label ->
             Text(
-                label,
+                stringResource(label),
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -300,7 +305,7 @@ private fun ReminderChip(text: String) {
     ) {
         Icon(Icons.Rounded.Alarm, contentDescription = null, tint = c.accent, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(5.dp))
-        Text("צור תזכורת · $text", color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.thread_create_reminder, text), color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -315,11 +320,12 @@ private fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PillButton("העתק $count יחד", Modifier.weight(1f), icon = Icons.Rounded.ContentCopy, filled = true, onClick = onCopy)
-        PillButton("שתף", Modifier.weight(1f), icon = Icons.Rounded.Share, onClick = onShare)
+        PillButton(stringResource(R.string.thread_copy_together, count), Modifier.weight(1f), icon = Icons.Rounded.ContentCopy, filled = true, onClick = onCopy)
+        PillButton(stringResource(R.string.common_share), Modifier.weight(1f), icon = Icons.Rounded.Share, onClick = onShare)
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun Composer(draft: String, onDraft: (String) -> Unit) {
     val c = HebTheme.colors
@@ -358,7 +364,7 @@ private fun Composer(draft: String, onDraft: (String) -> Unit) {
                     textStyle = TextStyle(color = c.onSurface, fontSize = 16.sp),
                     cursorBrush = SolidColor(c.accent),
                     decorationBox = { inner ->
-                        if (draft.isEmpty()) Text("הודעת SMS", color = c.onSurfaceMuted, fontSize = 16.sp)
+                        if (draft.isEmpty()) Text(stringResource(R.string.thread_draft_hint), color = c.onSurfaceMuted, fontSize = 16.sp)
                         inner()
                     },
                 )
@@ -373,11 +379,17 @@ private fun Composer(draft: String, onDraft: (String) -> Unit) {
                     .clickable { },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "שלח", tint = Color.White)
+                Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = stringResource(R.string.thread_send), tint = Color.White)
             }
         }
+        val count = smsCount(draft)
         Text(
-            smsCounter(draft),
+            stringResource(
+                R.string.thread_sms_counter,
+                count.length,
+                count.limit,
+                pluralStringResource(R.plurals.thread_sms_parts, count.parts, count.parts),
+            ),
             color = c.onSurfaceMuted,
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 64.dp, top = 4.dp),
@@ -385,15 +397,17 @@ private fun Composer(draft: String, onDraft: (String) -> Unit) {
     }
 }
 
+internal data class SmsCount(val length: Int, val limit: Int, val parts: Int)
+
 /**
  * "28/70 · הודעה אחת". Rough: any non-ASCII character means UCS-2 (70 per message, 67 per part);
  * the exact GSM-7 alphabet check comes with the real sending code.
  */
-internal fun smsCounter(text: String): String {
+internal fun smsCount(text: String): SmsCount {
     val unicode = text.any { it.code > 0x7F }
     val single = if (unicode) 70 else 160
     val part = if (unicode) 67 else 153
     val parts = if (text.length <= single) 1 else (text.length + part - 1) / part
     val limit = if (parts == 1) single else parts * part
-    return "${text.length}/$limit · ${if (parts == 1) "הודעה אחת" else "$parts הודעות"}"
+    return SmsCount(text.length, limit, parts)
 }

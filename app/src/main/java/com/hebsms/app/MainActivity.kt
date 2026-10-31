@@ -12,9 +12,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import com.hebsms.app.data.sample.SampleData
+import com.hebsms.app.data.sample.SampleSet
 import com.hebsms.app.domain.model.Folder
 import com.hebsms.app.domain.model.Message
 import com.hebsms.app.domain.model.ThreadItem
@@ -42,36 +45,39 @@ private sealed interface Screen {
 
 @Composable
 private fun PreviewApp() {
+    val sample = SampleData.forLanguage(LocalConfiguration.current.locales[0].language)
     var screen by remember { mutableStateOf<Screen>(Screen.Inbox) }
     BackHandler(enabled = screen != Screen.Inbox) { screen = Screen.Inbox }
     when (val s = screen) {
         Screen.Inbox -> InboxScreen(
-            conversations = SampleData.inbox,
-            rules = SampleData.rules,
-            folderCounts = SampleData.folderCounts,
+            conversations = sample.inbox,
+            rules = sample.rules,
+            folderCounts = sample.folderCounts,
+            dateLine = sample.dateLine,
             onFolder = { if (it == Folder.Spam) screen = Screen.Spam },
             onOpen = { screen = Screen.Thread(it.id) },
             onSettings = { screen = Screen.Rules },
         )
-        is Screen.Thread -> ThreadPreview(s.id, onBack = { screen = Screen.Inbox })
-        Screen.Spam -> SpamScreen(SampleData.spam, onBack = { screen = Screen.Inbox })
-        Screen.Rules -> RulesScreen(SampleData.rules, onBack = { screen = Screen.Inbox })
+        is Screen.Thread -> ThreadPreview(sample, s.id, onBack = { screen = Screen.Inbox })
+        Screen.Spam -> SpamScreen(sample.spam, onBack = { screen = Screen.Inbox })
+        Screen.Rules -> RulesScreen(sample.rules, sample.newRuleWord, onBack = { screen = Screen.Inbox })
     }
 }
 
 @Composable
-private fun ThreadPreview(id: Int, onBack: () -> Unit) {
-    val conversation = SampleData.inbox.first { it.id == id }
-    val items = SampleData.dannyThread
+private fun ThreadPreview(sample: SampleSet, id: Int, onBack: () -> Unit) {
+    val conversation = sample.inbox.first { it.id == id }
+    val items = sample.dannyThread
     val messages = items.filterIsInstance<ThreadItem.Msg>().map { it.message }
     var textSelectionId by remember { mutableStateOf<Int?>(null) }
     var selected by remember { mutableStateOf(emptySet<Int>()) }
     var draft by remember { mutableStateOf("") }
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    val me = stringResource(R.string.thread_sender_me)
 
     fun joined(): String = messages.filter { it.id in selected }.joinToString("\n") { m ->
-        "[${m.time}] ${if (m.outgoing) "אני" else conversation.name}: ${m.text}"
+        "[${m.time}] ${if (m.outgoing) me else conversation.name}: ${m.text}"
     }
 
     BackHandler(enabled = selected.isNotEmpty() || textSelectionId != null) {
@@ -81,7 +87,7 @@ private fun ThreadPreview(id: Int, onBack: () -> Unit) {
     ConversationScreen(
         conversation = conversation,
         items = items,
-        rule = SampleData.rules.firstOrNull { it.id == conversation.ruleId },
+        rule = sample.rules.firstOrNull { it.id == conversation.ruleId },
         draft = draft,
         textSelectionId = textSelectionId,
         selectedIds = selected,

@@ -1,12 +1,23 @@
 package com.hebsms.app.domain.model
 
-enum class Folder(val label: String) {
-    All("הכל"),
-    Personal("אישי"),
-    Banks("בנקים"),
-    Codes("קודים"),
-    Deliveries("משלוחים"),
-    Spam("ספאם"),
+import androidx.annotation.StringRes
+import com.hebsms.app.R
+
+enum class Folder(@StringRes val labelRes: Int) {
+    All(R.string.common_folder_all),
+    Personal(R.string.common_folder_personal),
+    Banks(R.string.common_folder_banks),
+    Codes(R.string.common_folder_codes),
+    Deliveries(R.string.common_folder_deliveries),
+    Spam(R.string.common_folder_spam),
+}
+
+/** Why the spam filter flagged a conversation. The UI turns each reason into text. */
+sealed interface SpamReason {
+    data object UnknownSender : SpamReason
+    data object ShortLink : SpamReason
+    data object LookalikeDomain : SpamReason
+    data class Keyword(val word: String) : SpamReason
 }
 
 sealed interface RuleMatch {
@@ -36,7 +47,7 @@ data class Conversation(
     /** A one-time code found in the last message, offered as a copy button. */
     val code: String? = null,
     /** Why the spam filter flagged it; empty when it is not spam. */
-    val spamReasons: List<String> = emptyList(),
+    val spamReasons: List<SpamReason> = emptyList(),
 ) {
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }
