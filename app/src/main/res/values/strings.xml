@@ -2,6 +2,17 @@
 <resources>
     <string name="app_name">Pigeon</string>
 
+    <!-- onboarding_ -->
+    <string name="onboarding_welcome_title">Welcome to Pigeon</string>
+    <string name="onboarding_welcome_body">To receive and send messages, Pigeon has to be your phone\'s messaging app. You can bring back the previous one at any time in Settings.</string>
+    <string name="onboarding_benefit_colors">Colors by sender or topic</string>
+    <string name="onboarding_benefit_spam">Spam is moved aside automatically</string>
+    <string name="onboarding_benefit_offline">No internet, so your messages never leave the phone</string>
+    <string name="onboarding_make_default">Make Pigeon my messaging app</string>
+    <string name="onboarding_not_now">Not now</string>
+    <string name="onboarding_reminder_title">Pigeon isn\'t your messaging app yet</string>
+    <string name="onboarding_reminder_body">Until you make it your messaging app, new messages will not reach it.</string>
+
     <!-- common_ -->
     <string name="common_back">Back</string>
     <string name="common_copy">Copy</string>

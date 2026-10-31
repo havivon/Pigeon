@@ -2,6 +2,17 @@
 <resources>
     <string name="app_name">Pigeon</string>
 
+    <!-- onboarding_ -->
+    <string name="onboarding_welcome_title">ברוכים הבאים ל-Pigeon</string>
+    <string name="onboarding_welcome_body">כדי שהודעות יגיעו אליך ויישלחו ממך, Pigeon צריכה להיות אפליקציית ההודעות של הטלפון. אפשר להחזיר את האפליקציה הקודמת בכל רגע דרך ההגדרות.</string>
+    <string name="onboarding_benefit_colors">צבעים לפי שולח או נושא</string>
+    <string name="onboarding_benefit_spam">ספאם מועבר הצידה אוטומטית</string>
+    <string name="onboarding_benefit_offline">בלי אינטרנט, כך שההודעות לא יוצאות מהטלפון לעולם</string>
+    <string name="onboarding_make_default">הפוך את Pigeon לאפליקציית ההודעות שלי</string>
+    <string name="onboarding_not_now">לא עכשיו</string>
+    <string name="onboarding_reminder_title">Pigeon עדיין לא אפליקציית ההודעות שלך</string>
+    <string name="onboarding_reminder_body">כל עוד היא לא אפליקציית ההודעות שלך, הודעות חדשות לא יגיעו אליה.</string>
+
     <!-- common_ -->
     <string name="common_back">חזרה</string>
     <string name="common_copy">העתק</string>
