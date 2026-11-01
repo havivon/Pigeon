@@ -66,7 +66,7 @@ import com.havivon.pigeon.ui.theme.HebTheme
 import kotlinx.coroutines.launch
 
 /** A result this fast means the system showed no dialog at all (it suppresses its request after a refusal). */
-private const val SUPPRESSED_DIALOG_MS = 400L
+private const val SUPPRESSED_DIALOG_MS = 1000L
 
 /** Away for less than this (a share, the dialer, the browser), the app does not lock again. */
 private const val LOCK_GRACE_MS = 10_000L
@@ -304,7 +304,11 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         when {
             now.sms == SmsAccess.Default -> Unit
             DefaultSmsRole.mayBeRestrictedByAndroid(context) -> restricted = Blocked.Role
-            SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openDefaultAppSettings(context)
+            // An answer faster than anyone can decide: Android did not ask at all. Either restricted
+            // settings blocked it (whatever the install source says now: an adb update keeps the
+            // block) or an earlier refusal stops the dialog; app info is the way out of both
+            SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS ->
+                if (Build.VERSION.SDK_INT >= 33) restricted = Blocked.Role else openDefaultAppSettings(context)
             else -> hidden = true
         }
     }
@@ -333,8 +337,9 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         when {
             now.sms != SmsAccess.None -> Unit
             DefaultSmsRole.mayBeRestrictedByAndroid(context) -> restricted = Blocked.Viewer
-            // Refused for good earlier: the system no longer asks, only the app's info screen can allow it
-            SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openAppInfo(context)
+            // Not asked at all (restricted settings, or refused for good earlier): the help leads to app info
+            SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS ->
+                if (Build.VERSION.SDK_INT >= 33) restricted = Blocked.Viewer else openAppInfo(context)
             else -> hidden = true
         }
     }
