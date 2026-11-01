@@ -69,6 +69,7 @@
     <string name="search_start_body">Names, numbers, words and codes. Locked chats are never searched.</string>
     <string name="search_none_title">No results for “%1$s”</string>
     <string name="search_none_body">Try another word or part of a number.</string>
+    <string name="search_none_filtered_title">No messages match these filters</string>
     <string name="search_none_filtered">Try turning off some of the filters.</string>
 
     <!-- compose_ (new message) -->
@@ -305,7 +306,7 @@
         <item quantity="other">%1$d words</item>
     </plurals>
     <string name="settings_auto_delete">Delete verification codes after 24 hours</string>
-    <string name="settings_auto_delete_note">Starred messages are kept.</string>
+    <string name="settings_auto_delete_note">Codes from your contacts and starred messages are kept.</string>
     <string name="settings_section_notifications">Notifications</string>
     <string name="settings_lock_screen_text">Show message text on the lock screen</string>
     <string name="settings_lock_screen_text_note">Off: a notification only says that a message arrived.</string>

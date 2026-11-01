@@ -32,7 +32,9 @@ import com.havivon.pigeon.ui.common.sendStatus
 import com.havivon.pigeon.ui.common.threadItems
 import com.havivon.pigeon.ui.common.verdictFor
 import java.time.ZoneId
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -88,6 +91,11 @@ class ConversationViewModel(
     /** Sends and deletes outlive the screen: a message handed to the radio must be finished. */
     private val appScope: CoroutineScope,
     private val now: () -> Long = System::currentTimeMillis,
+    /**
+     * Where the messages are mapped (dates, reminders and rules for each one): off the main thread,
+     * since a long conversation is read again on every change.
+     */
+    work: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val _draft = MutableStateFlow("")
@@ -106,7 +114,11 @@ class ConversationViewModel(
     /** The phrases found in each message, by id: the text of a message never changes. */
     private val reminderCache = HashMap<Long, ReminderMatch?>()
 
+    // Written where the state is built (off the main thread), read by the screen's actions
+    @Volatile
     private var latest: List<SmsMessage> = emptyList()
+
+    @Volatile
     private var latestConversation: SmsConversation? = null
 
     private val threadMessages = messages.messages(threadId)
@@ -139,7 +151,7 @@ class ConversationViewModel(
         val threadRule = ruleList.firstOrNull { it.id == conversation?.ruleId }?.takeIf { it.match is RuleMatch.Sender }
         val items = threadItems(list, labels, t) { m -> toMessage(m, t, contactName, ruleList, starred, withReminder) }
         ConversationUiState(loaded = true, conversation = conversation, items = items, rule = threadRule)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
+    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
     init {
         markRead()

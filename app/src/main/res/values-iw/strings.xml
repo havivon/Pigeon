@@ -69,6 +69,7 @@
     <string name="search_start_body">שמות, מספרים, מילים וקודים. שיחות נעולות לא נכללות בחיפוש.</string>
     <string name="search_none_title">לא נמצא “%1$s”</string>
     <string name="search_none_body">נסה מילה אחרת או חלק ממספר.</string>
+    <string name="search_none_filtered_title">אין הודעות שמתאימות למסננים</string>
     <string name="search_none_filtered">נסה לכבות חלק מהמסננים.</string>
 
     <!-- compose_ (new message) -->
@@ -318,7 +319,7 @@
         <item quantity="other">%1$d מילים</item>
     </plurals>
     <string name="settings_auto_delete">מחק קודי אימות אחרי 24 שעות</string>
-    <string name="settings_auto_delete_note">הודעות שסימנת בכוכב נשמרות.</string>
+    <string name="settings_auto_delete_note">קודים מאנשי הקשר והודעות שסימנת בכוכב נשמרים.</string>
     <string name="settings_section_notifications">התראות</string>
     <string name="settings_lock_screen_text">הצג את טקסט ההודעה במסך הנעילה</string>
     <string name="settings_lock_screen_text_note">כבוי: ההתראה רק מודיעה שהגיעה הודעה.</string>

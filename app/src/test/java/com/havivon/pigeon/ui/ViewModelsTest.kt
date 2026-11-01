@@ -80,11 +80,11 @@ class ViewModelsTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect { } }
     }
 
-    private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now })
+    private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher)
 
     private fun TestScope.thread(threadId: Long = 1) = ConversationViewModel(
         threadId, messages, sender, rules, favorites, reminders, scheduler, spam, locks, pins, mapper, labels, Utc,
-        me = "Me", cancelNotification = { cancelled += it }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now },
+        me = "Me", cancelNotification = { cancelled += it }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher,
     )
 
     private fun seedInbox() {
@@ -284,7 +284,7 @@ class ViewModelsTest {
     fun `the spam screen lists spam with its reasons, not spam goes back`() = runTest {
         seedInbox()
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink, SpamReason.Keyword("won")))
-        val vm = SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now })
+        val vm = SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher)
         collect(vm.state)
         val item = vm.state.value.items.single()
         assertEquals(4L, item.id)
@@ -299,7 +299,7 @@ class ViewModelsTest {
         seedInbox()
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
         spam.markSpam("Leumi", 2, listOf(SpamReason.BrandSender))
-        val vm = SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now })
+        val vm = SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher)
         collect(vm.state)
         val (count, deletion) = vm.deleteAll()!!
         assertEquals(2, count)
@@ -335,7 +335,7 @@ class ViewModelsTest {
     fun `search waits for typing to pause, then shows names and messages`() = runTest {
         messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny"), conversation(2, "Verify"))
         messages.searchResults = found
-        val vm = SearchViewModel(messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now })
+        val vm = SearchViewModel(messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now }, work = main.dispatcher)
         collect(vm.state)
         vm.setQuery("Dan")
         vm.setQuery("Danny")
@@ -412,5 +412,64 @@ class ViewModelsTest {
         vm.send()
         assertEquals(listOf(NewMessageEvent.Failed, NewMessageEvent.SentToMany(2)), events)
         assertEquals("", vm.bodyText.first())
+    }
+
+    @Test
+    fun `a person saved twice is suggested once, so the list never has two rows with one key`() = runTest {
+        val twice = FakeContacts(listOf(Contact(1, "Mom", listOf("052-555-0111")), Contact(2, "Mom", listOf("+972525550111"))))
+        val vm = NewMessageViewModel(twice, messages, sender, emptyList(), "", CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        collect(vm.state)
+        vm.setQuery("mom")
+        advanceTimeBy(200)
+        assertEquals(1, vm.state.value.suggestions.size)
+    }
+
+    @Test
+    fun `sent to one number without a conversation to open, it says so instead of opening an empty screen`() = runTest {
+        messages.nextThreadId = 0
+        val vm = newMessage(listOf("0587770000"), "Hi")
+        collect(vm.state)
+        val events = mutableListOf<NewMessageEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.eventFlow.collect { events += it } }
+        vm.send()
+        assertEquals(listOf<NewMessageEvent>(NewMessageEvent.SentToMany(1)), events)
+    }
+
+    // Search filters without typing
+
+    private fun TestScope.search() = SearchViewModel(
+        messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now }, lockedThreads = locks.state, work = main.dispatcher,
+    )
+
+    @Test
+    fun `a filter works without typing, has a code lists the messages with a code`() = runTest {
+        messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny"), conversation(2, "Verify"))
+        messages.allMessages.value = listOf(
+            sms(1, 1, "See you at 8", millis(2026, 10, 31, 9, 0)),
+            sms(2, 2, "Your verification code is 482913", millis(2026, 10, 31, 10, 0), address = "Verify"),
+        )
+        val vm = search()
+        collect(vm.state)
+        assertTrue("nothing typed and no filter, nothing is read", messages.browsed.isEmpty())
+        vm.toggleHasCode()
+        advanceTimeBy(300)
+        assertEquals(listOf(2L), vm.state.value.messages.map { it.messageId })
+        assertTrue(messages.searched.isEmpty())
+    }
+
+    @Test
+    fun `the sender chip offers the conversations before anything is typed, never a locked one`() = runTest {
+        messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny"), conversation(2, "Verify"), conversation(3, "0535550100", name = "Secret"))
+        messages.allMessages.value = listOf(sms(1, 1, "Hello", millis(2026, 10, 31, 9, 0)), sms(2, 2, "Code 1234", millis(2026, 10, 31, 10, 0), address = "Verify"))
+        locks.state.value = setOf(3L)
+        val vm = search()
+        collect(vm.state)
+        advanceTimeBy(300)
+        assertEquals(listOf("Danny", "Verify"), vm.state.value.senders.map { it.name })
+        vm.setSender(1)
+        advanceTimeBy(300)
+        assertEquals(listOf(1L), messages.browsed)
+        assertEquals("Danny", vm.state.value.senderName)
+        assertEquals(listOf(1L), vm.state.value.messages.map { it.messageId })
     }
 }

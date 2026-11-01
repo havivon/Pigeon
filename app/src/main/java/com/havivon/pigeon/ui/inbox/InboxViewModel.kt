@@ -18,6 +18,8 @@ import com.havivon.pigeon.ui.common.ConversationMapper
 import com.havivon.pigeon.ui.common.folderCounts
 import com.havivon.pigeon.ui.common.inFolder
 import com.havivon.pigeon.ui.common.verdictFor
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -60,6 +63,8 @@ class InboxViewModel(
     private val dateLine: () -> String,
     private val cancelNotification: (Long) -> Unit,
     private val now: () -> Long = System::currentTimeMillis,
+    /** Where the conversations are mapped (rules, folders, codes for each one): off the main thread. */
+    work: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val folder = MutableStateFlow(Folder.All)
@@ -77,7 +82,7 @@ class InboxViewModel(
 
     val state: StateFlow<InboxUiState> = combine(mapped, folder) { (all, ruleList), f ->
         InboxUiState(loaded = true, all = all, folder = f, rules = ruleList, dateLine = dateLine())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
+    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
 
     /** Spam opens its own screen, so it is never the chosen chip. */
     fun selectFolder(value: Folder) {

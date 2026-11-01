@@ -91,13 +91,14 @@ fun SearchScreen(
     ) {
         item { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onRange, autoFocus) }
         when {
-            state.query.isBlank() -> item {
+            state.query.isBlank() && !state.filters.any -> item {
                 EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
             }
             state.isEmpty && !state.searching -> item {
                 EmptyState(
                     Icons.Rounded.SearchOff,
-                    stringResource(R.string.search_none_title, state.query.trim()),
+                    // Nothing typed: the filters alone found nothing
+                    if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
                     stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
                 )
             }

@@ -9,13 +9,16 @@ import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
 import com.havivon.pigeon.ui.common.ConversationMapper
 import com.havivon.pigeon.ui.common.verdictFor
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,6 +37,8 @@ class SpamViewModel(
     accessChanges: Flow<Int>,
     private val appScope: CoroutineScope,
     private val now: () -> Long = System::currentTimeMillis,
+    /** Where the conversations are mapped: off the main thread. */
+    work: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     val state: StateFlow<SpamUiState> = combine(
@@ -46,7 +51,7 @@ class SpamViewModel(
             loaded = true,
             items = conversations.mapNotNull { c -> verdictFor(c, verdicts)?.let { mapper.map(c, t, locked = locked, verdict = it) } },
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpamUiState())
+    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpamUiState())
 
     /** Back to the inbox, and the filter leaves the sender alone from now on. */
     fun notSpam(c: Conversation) {

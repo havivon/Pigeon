@@ -104,7 +104,12 @@ class NewMessageViewModel(
     }
 
     private suspend fun suggestionsFor(q: String): List<Suggestion> {
-        val fromContacts = contacts.search(q).flatMap { c -> c.numbers.map { Suggestion(c.name, it) } }.take(MAX_SUGGESTIONS)
+        // The same person can be saved twice (phone and SIM, two accounts): one row each, since the list keys by name and number
+        val fromContacts = mutableListOf<Suggestion>()
+        for (s in contacts.search(q).flatMap { c -> c.numbers.map { Suggestion(c.name, it) } }) {
+            if (fromContacts.size >= MAX_SUGGESTIONS) break
+            if (fromContacts.none { it.name == s.name && PhoneNumbers.same(it.number, s.number) }) fromContacts += s
+        }
         val typed = typedNumber(q)?.takeIf { t -> fromContacts.none { PhoneNumbers.same(it.number, t) } }
         return listOfNotNull(typed?.let { Suggestion(null, it) }) + fromContacts
     }
@@ -153,10 +158,12 @@ class NewMessageViewModel(
         sending.value = true
         appScope.launch {
             val ids = sender.send(to, text)
+            val thread = if (ids.size == 1 && to.size == 1) messages.message(ids.first())?.threadId?.takeIf { it > 0 } ?: messages.threadIdFor(to) else 0L
             val event = when {
                 ids.isEmpty() -> NewMessageEvent.Failed
-                to.size == 1 -> NewMessageEvent.OpenThread(messages.message(ids.first())?.threadId ?: messages.threadIdFor(to))
-                else -> NewMessageEvent.SentToMany(to.size)
+                thread > 0 -> NewMessageEvent.OpenThread(thread)
+                // Sent, but there is no single conversation to open: say so and go back
+                else -> NewMessageEvent.SentToMany(ids.size)
             }
             if (event != NewMessageEvent.Failed) body.value = ""
             sending.value = false

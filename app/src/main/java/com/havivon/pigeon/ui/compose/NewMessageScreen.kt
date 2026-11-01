@@ -127,7 +127,7 @@ fun NewMessageScreen(
             if (state.query.isBlank() && state.recipients.isEmpty()) {
                 item { EmptyState(Icons.Rounded.PersonSearch, stringResource(R.string.compose_start_title), stringResource(R.string.compose_start_body)) }
             }
-            items(state.suggestions, key = { it.number + (it.name ?: "") }) { SuggestionRow(it) { onAdd(it) } }
+            items(state.suggestions, key = { (it.name ?: "") + "|" + PhoneNumbers.normalize(it.number) }) { SuggestionRow(it) { onAdd(it) } }
         }
         Composer(state.body, onBody, onSend, canSend = state.canSend)
     }

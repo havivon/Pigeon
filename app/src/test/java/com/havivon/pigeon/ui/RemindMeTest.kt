@@ -56,11 +56,11 @@ class RemindMeTest {
 
     private fun TestScope.thread() = ConversationViewModel(
         1, messages, FakeSmsSender(messages), FakeRules(), FakeFavorites(), reminders, scheduler, FakeSpam(), locks, FakePins(), mapper, labels, Utc,
-        me = "Me", cancelNotification = { }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now },
+        me = "Me", cancelNotification = { }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher,
     )
 
     private fun inbox() = InboxViewModel(
-        messages, FakeRules(), FakePins(), locks, FakeSpam(), reminders, scheduler, mapper, MutableStateFlow(0), { "" }, { }, now = { Now },
+        messages, FakeRules(), FakePins(), locks, FakeSpam(), reminders, scheduler, mapper, MutableStateFlow(0), { "" }, { }, now = { Now }, work = main.dispatcher,
     )
 
     private fun seedThread() {
