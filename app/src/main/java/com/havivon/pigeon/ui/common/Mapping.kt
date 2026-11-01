@@ -72,16 +72,24 @@ class ConversationMapper(
 fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? =
     verdicts.firstOrNull { v -> c.addresses.any { PhoneNumbers.same(it, v.address) } }
 
-/** The conversations a folder chip shows: spam only under Spam, and only there. */
+/** The conversations a folder chip shows: spam only under Spam, and only there; Unread is every other one with unread messages. */
 fun inFolder(all: List<Conversation>, folder: Folder): List<Conversation> = when (folder) {
     Folder.All -> all.filter { !it.isSpam }
+    Folder.Unread -> all.filter { !it.isSpam && it.unread > 0 }
     Folder.Spam -> all.filter { it.isSpam }
     else -> all.filter { !it.isSpam && it.folder == folder }
 }
 
-/** The numbers on the folder chips: unread messages per folder, and the number of spam conversations. */
+/**
+ * The numbers on the folder chips: unread messages per folder, the number of conversations with unread
+ * messages on Unread, and the number of spam conversations on Spam.
+ */
 fun folderCounts(all: List<Conversation>): Map<Folder, Int> = Folder.entries.associateWith { folder ->
-    if (folder == Folder.Spam) all.count { it.isSpam } else inFolder(all, folder).sumOf { it.unread }
+    when (folder) {
+        Folder.Spam -> all.count { it.isSpam }
+        Folder.Unread -> inFolder(all, folder).size
+        else -> inFolder(all, folder).sumOf { it.unread }
+    }
 }
 
 /** Builds a conversation's messages, oldest first, with a day separator before each new day. */

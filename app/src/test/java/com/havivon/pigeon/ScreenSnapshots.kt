@@ -155,6 +155,9 @@ class NewScreensSnapshots {
         }
         shot("40_search_dark", dark = true) { SearchScreen(s.search, autoFocus = false) }
         shot("41_new_message_dark", dark = true) { NewMessageScreen(s.newMessage, autoFocus = false) }
+        shot("66_inbox_unread_empty") {
+            InboxScreen(emptyList(), s.sample.rules, s.sample.folderCounts - Folder.Unread, s.sample.dateLine, selectedFolder = Folder.Unread, emptyState = { InboxEmpty(Folder.Unread) })
+        }
     }
 }
 

@@ -36,6 +36,7 @@
     <string name="common_select_all">בחר הכל</string>
     <string name="common_suspected_spam">חשוד כספאם</string>
     <string name="common_folder_all">הכל</string>
+    <string name="common_folder_unread">לא נקראו</string>
     <string name="common_folder_personal">אישי</string>
     <string name="common_folder_banks">בנקים</string>
     <string name="common_folder_codes">קודים</string>
@@ -61,6 +62,8 @@
     <string name="inbox_empty_body">כשתגיע הודעה, היא תופיע כאן. כדי לכתוב הודעה, הקש על \"הודעה חדשה\".</string>
     <string name="inbox_empty_folder_title">אין כלום ב%1$s</string>
     <string name="inbox_empty_folder_body">שיחות מתאימות ממוינות לכאן אוטומטית.</string>
+    <string name="inbox_empty_unread_title">אין הודעות שלא נקראו</string>
+    <string name="inbox_empty_unread_body">שיחות עם הודעות חדשות מופיעות כאן עד שקוראים אותן.</string>
     <string name="inbox_empty_not_default">ההודעות שלך יופיעו כאן ברגע ש-Pigeon תהיה אפליקציית ההודעות שלך, או כשתאפשר לה להציג אותן.</string>
 
     <!-- action_ (the long-press sheet and the conversation menu) -->

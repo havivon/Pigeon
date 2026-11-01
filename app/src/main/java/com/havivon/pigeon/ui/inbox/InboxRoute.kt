@@ -185,6 +185,7 @@ internal fun InboxEmpty(folder: Folder) {
             }
         }
         folder == Folder.All -> EmptyState(Icons.Rounded.Forum, stringResource(R.string.inbox_empty_title), stringResource(R.string.inbox_empty_body))
+        folder == Folder.Unread -> EmptyState(Icons.Rounded.DoneAll, stringResource(R.string.inbox_empty_unread_title), stringResource(R.string.inbox_empty_unread_body))
         else -> EmptyState(
             Icons.Rounded.Forum,
             stringResource(R.string.inbox_empty_folder_title, stringResource(folder.labelRes)),

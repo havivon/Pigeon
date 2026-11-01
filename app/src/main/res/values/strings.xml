@@ -36,6 +36,7 @@
     <string name="common_select_all">Select all</string>
     <string name="common_suspected_spam">Suspected spam</string>
     <string name="common_folder_all">All</string>
+    <string name="common_folder_unread">Unread</string>
     <string name="common_folder_personal">Personal</string>
     <string name="common_folder_banks">Banks</string>
     <string name="common_folder_codes">Codes</string>
@@ -61,6 +62,8 @@
     <string name="inbox_empty_body">When a message arrives, it shows up here. To write one, tap New message.</string>
     <string name="inbox_empty_folder_title">Nothing in %1$s</string>
     <string name="inbox_empty_folder_body">Conversations are sorted here automatically when they fit.</string>
+    <string name="inbox_empty_unread_title">No unread messages</string>
+    <string name="inbox_empty_unread_body">Conversations with new messages show up here until you read them.</string>
     <string name="inbox_empty_not_default">Your messages show up here once Pigeon is your messaging app, or once you let it view them.</string>
 
     <!-- action_ (the long-press sheet and the conversation menu) -->

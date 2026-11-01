@@ -129,6 +129,20 @@ class ViewModelsTest {
     }
 
     @Test
+    fun `the unread chip shows the unread conversations and lets go of one once it is read`() = runTest {
+        seedInbox()
+        spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectFolder(Folder.Unread)
+        assertEquals(listOf(1L, 2L, 3L), vm.state.value.conversations.map { it.id })
+        assertEquals(3, vm.state.value.folderCounts[Folder.Unread])
+        vm.markRead(vm.state.value.conversations.first { it.id == 2L })
+        assertEquals(listOf(1L, 3L), vm.state.value.conversations.map { it.id })
+        assertEquals(2, vm.state.value.folderCounts[Folder.Unread])
+    }
+
+    @Test
     fun `pin, mark read, lock and delete with undo`() = runTest {
         seedInbox()
         val vm = inbox()

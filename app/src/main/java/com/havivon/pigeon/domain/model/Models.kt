@@ -5,6 +5,12 @@ import com.havivon.pigeon.R
 
 enum class Folder(@StringRes val labelRes: Int) {
     All(R.string.common_folder_all),
+
+    /**
+     * A filter rather than a folder: the conversations with unread messages, whatever their folder
+     * (spam aside). No conversation is ever classified into it.
+     */
+    Unread(R.string.common_folder_unread),
     Personal(R.string.common_folder_personal),
     Banks(R.string.common_folder_banks),
     Codes(R.string.common_folder_codes),

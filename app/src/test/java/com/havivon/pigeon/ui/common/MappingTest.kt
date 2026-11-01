@@ -92,6 +92,21 @@ class MappingTest {
     }
 
     @Test
+    fun `the unread chip holds every folder's unread conversations but spam, and counts conversations`() {
+        val all = listOf(
+            Conversation(1, "Mom", "", "", 0, unread = 2, folder = Folder.Personal),
+            Conversation(2, "Bank", "", "", 0, unread = 1, folder = Folder.Banks),
+            Conversation(3, "Shop", "", "", 0, unread = 4, folder = Folder.All),
+            Conversation(4, "Dana", "", "", 0, unread = 0, folder = Folder.Personal),
+            Conversation(5, "Scam", "", "", 0, unread = 3, folder = Folder.Spam, spamReasons = listOf(SpamReason.UnknownSender)),
+        )
+        assertEquals(listOf(1L, 2L, 3L), inFolder(all, Folder.Unread).map { it.id })
+        assertEquals(3, folderCounts(all)[Folder.Unread])
+        assertEquals(0, folderCounts(all.filter { it.unread == 0 })[Folder.Unread])
+        assertEquals(emptyList<Conversation>(), inFolder(all.filter { it.unread == 0 || it.isSpam }, Folder.Unread))
+    }
+
+    @Test
     fun `copied messages are oldest first, one line each`() {
         val list = listOf(
             sms(2, 1, "See you there", millis(2026, 11, 1, 11, 5), type = SmsType.Sent),
