@@ -177,6 +177,13 @@
     <string name="spam_reason_marked_by_user">סימנת כספאם</string>
     <string name="spam_reason_poll">סקר או בחירות</string>
     <string name="spam_reason_money_bait">מבטיח כסף או בדיקה חינם</string>
+    <string name="spam_reason_gov_impersonation">מתחזה לגוף ממשלתי</string>
+    <string name="spam_reason_investment">הצעת השקעה או קריפטו</string>
+    <string name="spam_reason_asks_for_details">מבקש פרטי כרטיס או קוד</string>
+    <string name="spam_reason_foreign_number">מספר מחו״ל</string>
+    <string name="spam_reason_contact_elsewhere">מבקש להתקשר או לעבור לוואטסאפ</string>
+    <string name="spam_reason_money_amount">מזכיר סכום כסף</string>
+    <string name="spam_reason_all_caps">כתוב באותיות גדולות</string>
     <string name="spam_back_to_inbox">הוחזר לתיבה. הסינון לא יחסום יותר את השולח הזה.</string>
     <string name="spam_empty_title">אין ספאם</string>
     <string name="spam_empty_body">הודעות חשודות יועברו לכאן, בלי התראות.</string>

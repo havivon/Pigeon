@@ -31,6 +31,20 @@ sealed interface SpamReason {
     data object Poll : SpamReason
     /** Money bait: "ייתכן שמגיע לכם כסף", "החזר מס", "בדיקה חינם", "you may be owed". */
     data object MoneyBait : SpamReason
+    /** Claims to be a government body, the toll roads or the courts, and asks to click or pay: "פיקוד העורף", "חוב אגרה", "קנס". */
+    data object GovImpersonation : SpamReason
+    /** An investment or crypto scheme: "ביטקוין", "תשואה מובטחת", "רווח יומי", "guaranteed return". */
+    data object Investment : SpamReason
+    /** Asks for card details or a code: "הזינו את פרטי הכרטיס", "שלחו את הקוד", "confirm your card". */
+    data object AsksForDetails : SpamReason
+    /** A phone number from outside Israel. */
+    data object ForeignNumber : SpamReason
+    /** Asks to call a number or to move to WhatsApp or Telegram (wa.me, t.me). */
+    data object ContactElsewhere : SpamReason
+    /** Names a sum of money: "₪", ש"ח, "NIS", "$". */
+    data object MoneyAmount : SpamReason
+    /** Long English text in capital letters. */
+    data object AllCaps : SpamReason
 }
 
 sealed interface RuleMatch {

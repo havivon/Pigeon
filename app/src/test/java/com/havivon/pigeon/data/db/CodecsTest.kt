@@ -15,6 +15,8 @@ class CodecsTest {
             SpamReason.UnknownSender, SpamReason.ShortLink, SpamReason.LookalikeDomain, SpamReason.Keyword("זכית"),
             SpamReason.BlockedKeyword("הלוואה"), SpamReason.ManyLinks, SpamReason.BrandSender, SpamReason.MarkedByUser,
             SpamReason.Poll, SpamReason.MoneyBait,
+            SpamReason.GovImpersonation, SpamReason.Investment, SpamReason.AsksForDetails, SpamReason.ForeignNumber,
+            SpamReason.ContactElsewhere, SpamReason.MoneyAmount, SpamReason.AllCaps,
         )
         assertEquals(reasons, SpamReasonCodec.decode(SpamReasonCodec.encode(reasons)))
     }

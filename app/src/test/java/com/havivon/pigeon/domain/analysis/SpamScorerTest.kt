@@ -303,7 +303,7 @@ class SpamScorerTest {
             "בוצעה עסקה בסך 250 ₪ בכרטיס המסתיים ב-1234. לפרטים https://www.bankhapoalim.co.il להסרה הסר" to "0509990001",
             "Your appointment with Dr. Smith is on Monday at 10:00. Reply 1 to confirm, 2 to cancel. Reply STOP to opt out" to "+15551230000",
             "Survey results from the school committee: school.example.com/r" to "+15553334444",
-            "Did you vote yet? The polls close at 8" to "+15557778888",
+            "Did you vote yet? The polls close at 8" to "0547778888",
             "שלום, אנחנו מחפשים מועמדים לתפקיד מנהל משמרת. לפרטים התקשרו" to "0523334455",
             "פוליסת ביטוח הרכב שלך מס' 5512345 חודשה. להסרה השב הסר" to "0525556677",
             "מבצע סוף עונה! 20% הנחה. לקטלוג: https://www.super-pharm.co.il להסרה השב הסר" to "SuperPharm",

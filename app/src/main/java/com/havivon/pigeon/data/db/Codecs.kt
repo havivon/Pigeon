@@ -17,6 +17,13 @@ object SpamReasonCodec {
     private const val MARKED_BY_USER = "marked_by_user"
     private const val POLL = "poll"
     private const val MONEY_BAIT = "money_bait"
+    private const val GOV_IMPERSONATION = "gov_impersonation"
+    private const val INVESTMENT = "investment"
+    private const val ASKS_FOR_DETAILS = "asks_for_details"
+    private const val FOREIGN_NUMBER = "foreign_number"
+    private const val CONTACT_ELSEWHERE = "contact_elsewhere"
+    private const val MONEY_AMOUNT = "money_amount"
+    private const val ALL_CAPS = "all_caps"
     private const val KEYWORD = "keyword:"
     private const val BLOCKED_KEYWORD = "blocked:"
 
@@ -30,6 +37,13 @@ object SpamReasonCodec {
             SpamReason.MarkedByUser -> MARKED_BY_USER
             SpamReason.Poll -> POLL
             SpamReason.MoneyBait -> MONEY_BAIT
+            SpamReason.GovImpersonation -> GOV_IMPERSONATION
+            SpamReason.Investment -> INVESTMENT
+            SpamReason.AsksForDetails -> ASKS_FOR_DETAILS
+            SpamReason.ForeignNumber -> FOREIGN_NUMBER
+            SpamReason.ContactElsewhere -> CONTACT_ELSEWHERE
+            SpamReason.MoneyAmount -> MONEY_AMOUNT
+            SpamReason.AllCaps -> ALL_CAPS
             // A line break inside the word would split the reason
             is SpamReason.Keyword -> KEYWORD + r.word.oneLine()
             is SpamReason.BlockedKeyword -> BLOCKED_KEYWORD + r.word.oneLine()
@@ -48,6 +62,13 @@ object SpamReasonCodec {
             line == MARKED_BY_USER -> SpamReason.MarkedByUser
             line == POLL -> SpamReason.Poll
             line == MONEY_BAIT -> SpamReason.MoneyBait
+            line == GOV_IMPERSONATION -> SpamReason.GovImpersonation
+            line == INVESTMENT -> SpamReason.Investment
+            line == ASKS_FOR_DETAILS -> SpamReason.AsksForDetails
+            line == FOREIGN_NUMBER -> SpamReason.ForeignNumber
+            line == CONTACT_ELSEWHERE -> SpamReason.ContactElsewhere
+            line == MONEY_AMOUNT -> SpamReason.MoneyAmount
+            line == ALL_CAPS -> SpamReason.AllCaps
             line.startsWith(KEYWORD) -> SpamReason.Keyword(line.removePrefix(KEYWORD))
             line.startsWith(BLOCKED_KEYWORD) -> SpamReason.BlockedKeyword(line.removePrefix(BLOCKED_KEYWORD))
             else -> null

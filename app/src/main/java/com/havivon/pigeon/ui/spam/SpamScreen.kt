@@ -376,4 +376,11 @@ private fun SpamReason.label(): String = when (this) {
     SpamReason.MarkedByUser -> stringResource(R.string.spam_reason_marked_by_user)
     SpamReason.Poll -> stringResource(R.string.spam_reason_poll)
     SpamReason.MoneyBait -> stringResource(R.string.spam_reason_money_bait)
+    SpamReason.GovImpersonation -> stringResource(R.string.spam_reason_gov_impersonation)
+    SpamReason.Investment -> stringResource(R.string.spam_reason_investment)
+    SpamReason.AsksForDetails -> stringResource(R.string.spam_reason_asks_for_details)
+    SpamReason.ForeignNumber -> stringResource(R.string.spam_reason_foreign_number)
+    SpamReason.ContactElsewhere -> stringResource(R.string.spam_reason_contact_elsewhere)
+    SpamReason.MoneyAmount -> stringResource(R.string.spam_reason_money_amount)
+    SpamReason.AllCaps -> stringResource(R.string.spam_reason_all_caps)
 }

@@ -57,11 +57,14 @@ internal object Text {
     /** [containsPhrase] with the phrase already split by [words]: for keyword lists checked against many messages. */
     fun containsWords(words: List<String>, target: List<String>): Boolean {
         if (target.isEmpty() || target.size > words.size) return false
-        for (start in 0..words.size - target.size) {
-            if (!sameWord(words[start], target[0], prefixAllowed = true)) continue
-            if ((1 until target.size).all { words[start + it] == target[it] }) return true
-        }
-        return false
+        return (0..words.size - target.size).any { matchesAt(words, it, target) }
+    }
+
+    /** Whether [target] (split by [words]) starts at [start] in [words], its Hebrew first word with a prefix allowed. */
+    fun matchesAt(words: List<String>, start: Int, target: List<String>): Boolean {
+        if (target.isEmpty() || start < 0 || start + target.size > words.size) return false
+        if (!sameWord(words[start], target[0], prefixAllowed = true)) return false
+        return (1 until target.size).all { words[start + it] == target[it] }
     }
 
     private fun sameWord(word: String, keyword: String, prefixAllowed: Boolean): Boolean {

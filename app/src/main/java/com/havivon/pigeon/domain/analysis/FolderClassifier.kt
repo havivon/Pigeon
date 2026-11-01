@@ -21,8 +21,8 @@ import com.havivon.pigeon.domain.model.Folder
  *    is not personal (without the contacts permission only the people written to are).
  *
  * An ad is never a bank, an insurer or a delivery, even from a known institution: a message with an opt-out
- * line ("הסר", "להסרה", "STOP", "unsubscribe"), which Israeli law requires only in advertising, goes to
- * [Folder.All] (or to [Folder.Spam] when the scorer says so). A code with an opt-out line is still a code.
+ * line ("הסר", "להסרה", "STOP", "unsubscribe") or opening with the ad marker ("פרסומת", "Ad:"), both of which
+ * Israeli law requires only in advertising, goes to [Folder.All] (or to [Folder.Spam] when the scorer says so). A code with an opt-out line is still a code.
  *
  * The senders are recognised first (banks, then insurers, then couriers), then the shapes of the text in
  * the same order. Anything else (an advertiser, a service with an alphanumeric id, a stranger's number) stays
@@ -40,7 +40,7 @@ object FolderClassifier {
         if (CodeExtractor.extract(sms.body) != null) return Folder.Codes
         val known = sms.isContact || sms.userWrote
         val service = serviceFolder(sms)
-        if (service != null) return if (isAd(Text.words(sms.body))) Folder.All else service
+        if (service != null) return if (isAd(sms.body, Text.words(sms.body))) Folder.All else service
         return if (known) Folder.Personal else Folder.All
     }
 
@@ -78,8 +78,26 @@ object FolderClassifier {
         "הסר", "הסרה", "להסרה", "reply stop", "text stop", "send stop", "stop to opt out", "stop to end", "unsubscribe", "opt out",
     )
 
-    /** Whether the message's [words] carry an opt-out line: then it is an ad. */
-    internal fun isAd(words: List<String>): Boolean = OPT_OUT.any { Text.containsWords(words, it) }
+    /**
+     * Whether the message is an ad: its [words] carry an opt-out line, or its [body] opens with the ad marker
+     * ([hasAdMarker]). Both are what Israeli law (section 30A of the Communications Law) requires of advertising.
+     */
+    internal fun isAd(body: String, words: List<String>): Boolean = OPT_OUT.any { Text.containsWords(words, it) } || hasAdMarker(body)
+
+    /**
+     * "פרסומת" as one of the first three words ("פרסומת: מבצע...", "שופרסל - פרסומת"), or "פרסום" / "Ad" /
+     * "Advertisement" as the very first word followed by ":", "-", "|", ")" or "]" ("(פרסום)", "Ad: 20% off"). The
+     * law asks every ad to open with "פרסומת"; the shorter "פרסום" and "Ad" are everyday words, so they count only
+     * as such a label. Elsewhere in the text the word is just a word ("ראיתי פרסומת בטלוויזיה").
+     */
+    internal fun hasAdMarker(body: String): Boolean {
+        val normalized = Text.normalize(body)
+        return AD_MARKER.containsMatchIn(normalized) || AD_LABEL.containsMatchIn(normalized)
+    }
+
+    private val AD_MARKER = Regex("^[^\\p{L}\\p{N}]*(?:[\\p{L}\\p{N}'\"]+[^\\p{L}\\p{N}]+){0,2}פרסומת(?![\\p{L}\\p{N}])")
+
+    private val AD_LABEL = Regex("^[^\\p{L}\\p{N}]*(?:פרסום|ad|advert|advertisement)\\s*[:\\-|)\\]]")
 
     /** Keyword phrases, split into words once rather than for every message. */
     private fun phrases(vararg phrase: String): List<List<String>> = phrase.map { Text.words(it) }
@@ -145,6 +163,9 @@ object FolderClassifier {
 
     /** An amount of money, in the normalized text: "150 ש"ח", "₪3,200", "$45.00", "45.00 usd". */
     private val AMOUNT = Regex("(?<![\\p{L}])$CURRENCY\\s?-?\\s?$NUMBER|$NUMBER\\s?$CURRENCY(?![\\p{L}])")
+
+    /** Whether [body] names an amount of money ("150 ש"ח", "₪3,200", "$45", "20 NIS"). */
+    internal fun hasAmount(body: String): Boolean = AMOUNT.containsMatchIn(Text.normalize(body))
 
     /** "בכרטיס המסתיים ב-4821", "card ending in 4821", "x4821", "****4821". */
     private val CARD_ENDING = Regex(
