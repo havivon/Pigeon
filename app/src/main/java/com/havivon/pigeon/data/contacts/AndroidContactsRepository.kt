@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
-import android.net.Uri
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import com.havivon.pigeon.data.sms.changes
@@ -14,13 +13,15 @@ import com.havivon.pigeon.data.sms.string
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.model.Contact
 import com.havivon.pigeon.domain.repository.ContactsRepository
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** One row of the phone-numbers table: a contact has one row per number. */
@@ -41,28 +42,56 @@ fun filterContacts(contacts: List<Contact>, query: String): List<Contact> {
     return contacts.filter { c -> c.name.contains(q, ignoreCase = true) || c.numbers.any { PhoneNumbers.matchesQuery(it, q) } }
 }
 
-/** A cached "no contact for this address". */
-private const val NO_NAME = ""
+/**
+ * The name of each number in [rows], by [PhoneNumbers.lookupKey]. Where two contacts share a number the
+ * first one (the provider's order, by name) keeps it.
+ */
+fun nameIndex(rows: List<PhoneRow>): Map<String, String> {
+    val index = HashMap<String, String>(rows.size * 2)
+    for (row in rows) {
+        val key = PhoneNumbers.lookupKey(row.number) ?: continue
+        if (key !in index) index[key] = row.name
+    }
+    return index
+}
 
 /**
- * [ContactsRepository] over the phone's contacts. Names are cached per address, since the inbox
- * asks for every conversation on every change, and the cache empties whenever the contacts change.
+ * [ContactsRepository] over the phone's contacts. The inbox asks for the name of every conversation on
+ * every change, so the names come from one read of the phone-numbers table, kept as a map from number to
+ * name ([nameIndex]) until the contacts change; never a lookup per address.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AndroidContactsRepository(private val context: Context) : ContactsRepository {
 
     private val resolver = context.contentResolver
-    private val names = ConcurrentHashMap<String, String>()
+
+    @Volatile
+    private var index: Map<String, String>? = null
+
+    /** Counts the contact changes, so an index read while one happened is not kept. */
+    private val generation = AtomicInteger()
+    private val reading = Mutex()
+
+    @Volatile
+    private var observing = false
+
+    private val observer = object : ContentObserver(null) {
+        override fun onChange(selfChange: Boolean) {
+            generation.incrementAndGet()
+            index = null
+        }
+    }
 
     init {
+        observe()
+    }
+
+    /** Watches the contacts, so the index is read again after a change; tried again until the permission is there. */
+    private fun observe() {
+        if (observing) return
         try {
-            resolver.registerContentObserver(
-                ContactsContract.Contacts.CONTENT_URI,
-                true,
-                object : ContentObserver(null) {
-                    override fun onChange(selfChange: Boolean) = names.clear()
-                },
-            )
+            resolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, observer)
+            observing = true
         } catch (_: SecurityException) {
             // No contacts permission yet: nothing is cached either
         }
@@ -78,22 +107,36 @@ class AndroidContactsRepository(private val context: Context) : ContactsReposito
 
     override suspend fun displayName(address: String): String? {
         if (address.isBlank() || !allowed()) return null
-        names[address]?.let { return it.ifEmpty { null } }
-        val name = withContext(Dispatchers.IO) {
-            resolver.queryList(
-                Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(address)),
-                arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
-            ) { it.string(ContactsContract.PhoneLookup.DISPLAY_NAME).ifBlank { null } }.firstOrNull()
+        val key = PhoneNumbers.lookupKey(address) ?: return null
+        return names()[key]
+    }
+
+    override suspend fun displayNames(addresses: Collection<String>): Map<String, String?> {
+        if (!allowed()) return addresses.associateWith { null }
+        val index = names()
+        return addresses.associateWith { a -> PhoneNumbers.lookupKey(a)?.let { index[it] } }
+    }
+
+    private suspend fun names(): Map<String, String> {
+        index?.let { return it }
+        observe()
+        return reading.withLock {
+            index ?: run {
+                val before = generation.get()
+                val read = withContext(Dispatchers.IO) { nameIndex(readPhoneRows()) }
+                // The contacts changed while they were read: use this read now, read again next time
+                if (generation.get() == before) index = read
+                read
+            }
         }
-        names[address] = name ?: NO_NAME
-        return name
     }
 
     override suspend fun search(query: String): List<Contact> = filterContacts(contacts.first(), query)
 
-    private fun readContacts(): List<Contact> {
-        if (!allowed()) return emptyList()
-        val rows = resolver.queryList(
+    private fun readContacts(): List<Contact> = if (allowed()) groupContacts(readPhoneRows()) else emptyList()
+
+    private fun readPhoneRows(): List<PhoneRow> =
+        resolver.queryList(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             arrayOf(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -110,6 +153,4 @@ class AndroidContactsRepository(private val context: Context) : ContactsReposito
                 number = number,
             )
         }
-        return groupContacts(rows)
-    }
 }

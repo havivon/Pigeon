@@ -37,6 +37,7 @@ import com.havivon.pigeon.ui.compose.Recipient
 import com.havivon.pigeon.ui.compose.Suggestion
 import com.havivon.pigeon.ui.conversation.ConversationScreen
 import com.havivon.pigeon.ui.conversation.LinkDetails
+import com.havivon.pigeon.ui.conversation.placeholderConversation
 import com.havivon.pigeon.ui.inbox.ConversationActions
 import com.havivon.pigeon.ui.inbox.InboxEmpty
 import com.havivon.pigeon.ui.inbox.InboxScreen
@@ -157,6 +158,10 @@ class NewScreensSnapshots {
         shot("41_new_message_dark", dark = true) { NewMessageScreen(s.newMessage, autoFocus = false) }
         shot("66_inbox_unread_empty") {
             InboxScreen(emptyList(), s.sample.rules, s.sample.folderCounts - Folder.Unread, s.sample.dateLine, selectedFolder = Folder.Unread, emptyState = { InboxEmpty(Folder.Unread) })
+        }
+        shot("64_inbox_loading") { InboxScreen(emptyList(), s.sample.rules, emptyMap(), s.sample.dateLine, loading = true) }
+        shot("65_conversation_loading") {
+            ConversationScreen(placeholderConversation(2), emptyList(), rule = null, draft = "", onCall = null, loading = true)
         }
     }
 }

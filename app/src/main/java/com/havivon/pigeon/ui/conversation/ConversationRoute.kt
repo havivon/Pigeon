@@ -4,8 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Lock
@@ -25,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -37,11 +34,13 @@ import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.LinkInfo
+import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.SendStatus
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.app.LocalNotices
 import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
+import com.havivon.pigeon.ui.common.avatarColor
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.ltr
@@ -136,17 +135,14 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
         textSelectionId = null
     }
 
-    val conversation = state.conversation
-    if (conversation == null) {
-        // Not read yet (or gone): the background only, never a half-built screen
-        Box(Modifier.fillMaxSize())
-        return
-    }
-    val dialable = conversation.addresses.singleOrNull()?.takeIf { PhoneNumbers.isPhoneNumber(it) }
+    // Not read yet (or gone): the screen's frame at once, with an empty header, never a blank screen
+    val known = state.conversation
+    val conversation = known ?: remember(threadId) { placeholderConversation(threadId) }
+    val dialable = known?.addresses?.singleOrNull()?.takeIf { PhoneNumbers.isPhoneNumber(it) }
     val conversationDeleted = stringResource(R.string.inbox_conversation_deleted)
     val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
 
-    val menu = listOfNotNull(
+    val menu = if (known == null) emptyList() else listOfNotNull(
         ThreadMenuItem(stringResource(if (conversation.pinned) R.string.action_unpin else R.string.action_pin), Icons.Rounded.PushPin) { vm.togglePin() },
         ThreadMenuItem(
             stringResource(if (conversation.locked) R.string.action_unlock_chat else R.string.action_lock_chat),
@@ -178,7 +174,9 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
         draft = draft,
         textSelectionId = textSelectionId,
         selectedIds = selected,
-        subtitle = conversation.addresses.joinToString(", ") { ltr(it) }.takeIf { it != conversation.name },
+        subtitle = conversation.addresses.joinToString(", ") { ltr(it) }.takeIf { it.isNotEmpty() && it != conversation.name },
+        loading = !state.loaded,
+        onNearTop = vm::loadOlder,
         onBack = onBack,
         onMessageTap = { m ->
             when {
@@ -259,3 +257,6 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
         }
     }
 }
+
+/** The header of a conversation not read yet: no name, no number, no actions. */
+internal fun placeholderConversation(threadId: Long) = Conversation(threadId, name = "", snippet = "", time = "", avatarArgb = avatarColor(""))

@@ -90,4 +90,30 @@ class SpamOnReadTest {
         judge.judge(listOf(later), spam.verdicts.first())
         assertTrue(spam.verdictState.value.isEmpty())
     }
+
+    private class Remembered : JudgedMemory {
+        var stored: Map<Long, Long> = emptyMap()
+        override fun load() = stored
+        override fun save(judged: Map<Long, Long>) {
+            stored = judged
+        }
+    }
+
+    @Test
+    fun `what was judged is remembered across a restart, and deleted conversations are forgotten`() = runTest {
+        seed()
+        val memory = Remembered()
+        val clean = conversation(7, "0548880000", dateMillis = 3_000)
+        messages.allMessages.value += sms(70, 7, "See you at the meeting", 3_000, address = "0548880000")
+        SpamOnRead(hook, memory) { t -> messages.recentMessages(t, 50).lastOrNull { !it.type.outgoing } }.judge(listOf(clean, scam), spam.verdicts.first())
+        assertEquals(2, judgedCount)
+        assertEquals(mapOf(7L to 3_000L, 4L to 2_000L), memory.stored)
+        // A new start: nothing is judged again, and the list without the scam forgets it
+        val restarted = SpamOnRead(hook, memory) { t -> messages.recentMessages(t, 50).lastOrNull { !it.type.outgoing } }
+        val newer = conversation(8, "0547776666", dateMillis = 6_000)
+        messages.allMessages.value += sms(80, 8, "Hi", 6_000, address = "0547776666")
+        restarted.judge(listOf(newer, clean), spam.verdicts.first())
+        assertEquals(3, judgedCount)
+        assertEquals(mapOf(7L to 3_000L, 8L to 6_000L), memory.stored)
+    }
 }

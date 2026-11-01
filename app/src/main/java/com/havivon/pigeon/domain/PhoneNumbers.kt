@@ -6,8 +6,7 @@ package com.havivon.pigeon.domain
  *
  * Pure Kotlin on purpose. Android's `PhoneNumberUtils.normalizeNumber` turns letters into keypad
  * digits, which would make the sender ID "Leumi" the same key as the number 53864; and it cannot
- * run in a JVM test. Contact names are still looked up through the system's own matching
- * (`PhoneLookup`), so this is only for the app's own keys.
+ * run in a JVM test.
  */
 object PhoneNumbers {
 
@@ -45,6 +44,23 @@ object PhoneNumbers {
         val db = nb.removePrefix("+")
         if (da.length < MATCH_DIGITS || db.length < MATCH_DIGITS) return da == db
         return da.takeLast(MATCH_DIGITS) == db.takeLast(MATCH_DIGITS)
+    }
+
+    /**
+     * The key a contact's number and a sender's address meet on, so that every contact can be read in
+     * one query and looked up in a map: a number's last [MATCH_DIGITS] digits, with an Israeli +972 or
+     * 00972 written as the local 0 first ("+972 3-123-4567" and "03-1234567" are one key); a shorter
+     * number or short code as its digits; a sender ID in lower case. Null for a blank address.
+     */
+    fun lookupKey(raw: String): String? {
+        val n = normalize(raw)
+        if (n.isEmpty()) return null
+        if (!isPhoneNumber(n)) return n
+        var digits = n.removePrefix("+")
+        if (digits.startsWith("00")) digits = digits.drop(2)
+        val international = n.startsWith("+") || n.startsWith("00") || digits.length >= 11
+        if (international && digits.startsWith("972")) digits = "0" + digits.drop(3).removePrefix("0")
+        return if (digits.length > MATCH_DIGITS) digits.takeLast(MATCH_DIGITS) else digits
     }
 
     /** Whether [address] contains what the user typed: digits by digits ("0525" finds "+972 52-5..."), text by text. */

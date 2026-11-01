@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteException
 import android.net.Uri
 import android.provider.ContactsContract
 import android.provider.Telephony
+import android.util.Log
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.SearchResults
@@ -19,14 +20,20 @@ import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNDO_WINDOW_MILLIS
 import com.havivon.pigeon.domain.repository.PinsRepository
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
@@ -41,6 +48,9 @@ private const val BROWSE_LIMIT = 1_000
 
 /** Deleted in chunks below SQLite's limit of arguments per statement. */
 private const val DELETE_CHUNK = 500
+
+/** How long the conversations stay watched after the last screen stopped collecting them (a rotation, a quick switch). */
+private const val KEEP_READING_MILLIS = 5_000L
 
 private val MESSAGE_COLUMNS = arrayOf(
     Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE,
@@ -74,6 +84,8 @@ class TelephonyMessageRepository(
      * not, marking read and deleting are not even tried: the screens say why instead.
      */
     private val canWrite: () -> Boolean = { true },
+    /** Starts the conversations over when it emits (access changed: the default app, a permission). */
+    refresh: Flow<Any?> = flowOf(Unit),
 ) : MessageRepository {
 
     private val resolver = context.contentResolver
@@ -82,18 +94,44 @@ class TelephonyMessageRepository(
 
     private val hidden = MutableStateFlow(Hidden())
 
+    /**
+     * Read once for every screen and widget, and kept: a screen that opens gets the last list at once
+     * (and the fresh one when the provider changes), instead of a read of its own. A change in [refresh]
+     * starts over, watchers included: a permission just granted is not reported to content observers.
+     */
     override val conversations: Flow<List<SmsConversation>> =
-        resolver.changes(Telephony.MmsSms.CONTENT_CONVERSATIONS_URI, Telephony.Sms.CONTENT_URI, ContactsContract.Contacts.CONTENT_URI)
-            .mapLatest { readConversations() }
+        refresh.flatMapLatest {
+            resolver.changes(Telephony.MmsSms.CONTENT_CONVERSATIONS_URI, Telephony.Sms.CONTENT_URI, ContactsContract.Contacts.CONTENT_URI)
+                .mapNotNull { readConversationsOrKeep() }
+        }
             .combine(hidden) { list, h -> list.filter { it.threadId !in h.threads } }
             .flowOn(Dispatchers.IO)
+            .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
 
-    override fun messages(threadId: Long): Flow<List<SmsMessage>> =
+    override fun messages(threadId: Long, limit: Int): Flow<List<SmsMessage>> =
         resolver.changes(Telephony.Sms.CONTENT_URI)
-            .mapLatest { queryMessages("${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()), "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC") }
+            .map { readThread(threadId, limit) }
             .combine(hidden) { list, h -> if (threadId in h.threads) emptyList() else list.filter { it.id !in h.messages } }
             .combine(pendingSends.pending) { list, pending -> withPendingSends(list, pending.filter { it.threadId == threadId }) }
             .flowOn(Dispatchers.IO)
+
+    /** The conversation's newest [limit] messages, oldest first. */
+    private fun readThread(threadId: Long, limit: Int): List<SmsMessage> {
+        val args = arrayOf(threadId.toString())
+        val selection = "${Telephony.Sms.THREAD_ID} = ?"
+        if (limit == Int.MAX_VALUE) return queryMessages(selection, args, "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC")
+        return queryMessages(selection, args, "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC LIMIT ${limit.coerceAtLeast(1)}").asReversed()
+    }
+
+    /** The conversations, or null (the last list stays) when a maker's provider failed in a way it should not. */
+    private suspend fun readConversationsOrKeep(): List<SmsConversation>? = try {
+        readConversations()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: RuntimeException) {
+        Log.w("Pigeon", "Reading the conversations failed: ${e.javaClass.name}")
+        null
+    }
 
     override suspend fun message(id: Long): SmsMessage? = withContext(Dispatchers.IO) {
         queryMessages("${Telephony.Sms._ID} = ?", arrayOf(id.toString()), null).firstOrNull()
@@ -201,7 +239,7 @@ class TelephonyMessageRepository(
                 ids.map { it.toString() }.toTypedArray(),
             ) { it.long(Telephony.Sms._ID) to it.string(Telephony.Sms.BODY) }
         }.toMap()
-        val names = summaries.flatMap { it.addresses }.distinct().associateWith { contacts.displayName(it) }
+        val names = contacts.displayNames(summaries.flatMap { it.addresses }.distinct())
         return summaries.map { it.toConversation(snippets[it.latestId].orEmpty(), names) }
     }
 

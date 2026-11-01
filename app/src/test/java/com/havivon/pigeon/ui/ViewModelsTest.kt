@@ -33,6 +33,7 @@ import com.havivon.pigeon.ui.compose.NewMessageViewModel
 import com.havivon.pigeon.ui.compose.Suggestion
 import com.havivon.pigeon.ui.conversation.ConversationEvent
 import com.havivon.pigeon.ui.conversation.ConversationViewModel
+import com.havivon.pigeon.ui.conversation.FIRST_PAGE
 import com.havivon.pigeon.ui.inbox.InboxViewModel
 import com.havivon.pigeon.ui.search.DateRange
 import com.havivon.pigeon.ui.search.SearchFilters
@@ -194,6 +195,36 @@ class ViewModelsTest {
         assertEquals(ThreadItem.Day("Yesterday"), items.first())
         assertEquals(ThreadItem.Day("Today"), items[3])
         assertEquals("Danny", vm.state.value.conversation?.name)
+    }
+
+    @Test
+    fun `a long conversation opens on its newest page, and older pages come on scrolling up`() = runTest {
+        messages.threads.value = listOf(conversation(1, "Shop", snippet = "Sale 120", dateMillis = millis(2026, 11, 1, 11, 0)))
+        messages.allMessages.value = (1..120).map { i -> sms(i.toLong(), 1, "Sale $i", millis(2026, 10, 1, 8, 0) + i * 60_000L, address = "Shop") }
+        val vm = thread()
+        collect(vm.state)
+        val first = vm.state.value.messages
+        assertEquals(FIRST_PAGE, first.size)
+        assertEquals((71L..120L).toList(), first.map { it.id })
+        assertTrue(vm.state.value.hasOlder)
+        vm.loadOlder()
+        assertEquals(120, vm.state.value.messages.size)
+        assertFalse(vm.state.value.hasOlder)
+        // Oldest first, and nothing more to read
+        assertEquals(1L, vm.state.value.messages.first().id)
+        vm.loadOlder()
+        assertEquals(120, vm.state.value.messages.size)
+    }
+
+    @Test
+    fun `select all takes the messages not read yet too`() = runTest {
+        messages.threads.value = listOf(conversation(1, "Shop", snippet = "Sale 80", dateMillis = millis(2026, 11, 1, 11, 0)))
+        messages.allMessages.value = (1..80).map { i -> sms(i.toLong(), 1, "Sale $i", millis(2026, 10, 1, 8, 0) + i * 60_000L, address = "Shop") }
+        val vm = thread()
+        collect(vm.state)
+        vm.selectAll()
+        assertEquals((1L..80L).toSet(), vm.selected.value)
+        assertEquals(80, vm.state.value.messages.size)
     }
 
     @Test

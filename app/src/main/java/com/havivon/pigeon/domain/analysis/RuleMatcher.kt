@@ -11,6 +11,8 @@ object RuleMatcher {
      * the contact name or the address; a [RuleMatch.Keyword] rule matches the [body]. Null if none does.
      */
     fun firstMatch(rules: List<ColorRule>, contactName: String?, address: String, body: String): ColorRule? {
+        // Most people have no rules: then the text is not even split into words
+        if (rules.none { it.enabled }) return null
         val words = Text.words(body)
         return rules.firstOrNull { it.enabled && matches(it.match, contactName, address, words) }
     }

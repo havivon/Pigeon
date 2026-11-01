@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -132,11 +133,28 @@ class ViewerModeTest {
     fun `spam is judged on read only while Pigeon is not the default`() = runTest {
         seed()
         collect(inbox().state)
+        // After the list is on the screen, not with it
+        assertTrue(judged.isEmpty())
+        advanceUntilIdle()
         assertEquals(listOf(2), judged)
         judged.clear()
         canWrite = true
         collect(inbox().state)
+        advanceUntilIdle()
         assertTrue(judged.isEmpty())
+    }
+
+    @Test
+    fun `spam is judged once per new list, not again for the verdicts it stores`() = runTest {
+        seed()
+        collect(inbox().state)
+        advanceUntilIdle()
+        spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
+        advanceUntilIdle()
+        assertEquals(listOf(2), judged)
+        messages.threads.value = messages.threads.value + conversation(7, "+972557654321", snippet = "Hi", dateMillis = millis(2026, 11, 1, 9, 0))
+        advanceUntilIdle()
+        assertEquals(listOf(2, 3), judged)
     }
 
     @Test

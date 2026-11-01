@@ -16,8 +16,11 @@ interface MessageRepository {
     /** All conversations, newest first. */
     val conversations: Flow<List<SmsConversation>>
 
-    /** A conversation's messages, oldest first. */
-    fun messages(threadId: Long): Flow<List<SmsMessage>>
+    /**
+     * A conversation's newest [limit] messages, oldest first: a screen reads the page it shows, not a
+     * long conversation's every message. All of them by default.
+     */
+    fun messages(threadId: Long, limit: Int = Int.MAX_VALUE): Flow<List<SmsMessage>>
 
     suspend fun message(id: Long): SmsMessage?
 

@@ -5,10 +5,13 @@ import android.database.ContentObserver
 import android.database.Cursor
 import android.database.sqlite.SQLiteException
 import android.net.Uri
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.launch
 
 /*
  * Thin helpers over ContentResolver, shared by the SMS and contacts code. Providers differ between
@@ -16,11 +19,27 @@ import kotlinx.coroutines.flow.conflate
  * throwing: a screen without permission shows nothing rather than crashing.
  */
 
-/** Emits once at once, then on every change under any of [uris] (bursts collapse into one). */
-internal fun ContentResolver.changes(vararg uris: Uri): Flow<Unit> = callbackFlow {
+/** How long a change waits before it is reported: one SMS stored is several writes, which then come as one. */
+internal const val SETTLE_MILLIS = 300L
+
+/**
+ * Emits once at once, then after changes under any of [uris]. The changes of the next [settleMillis]
+ * after one (a message stored, marked seen, its thread updated) are reported together, so a burst is
+ * read once; and it never waits longer than that, however busy the provider is. While the collector
+ * is still busy with the last one, the next ones wait as one.
+ */
+internal fun ContentResolver.changes(vararg uris: Uri, settleMillis: Long = SETTLE_MILLIS): Flow<Unit> = callbackFlow {
+    val lock = Any()
+    var pending: Job? = null
     val observer = object : ContentObserver(null) {
         override fun onChange(selfChange: Boolean) {
-            trySend(Unit)
+            synchronized(lock) {
+                if (pending?.isActive == true) return
+                pending = launch {
+                    delay(settleMillis)
+                    trySend(Unit)
+                }
+            }
         }
     }
     for (uri in uris) {

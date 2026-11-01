@@ -1,5 +1,6 @@
 package com.havivon.pigeon.data.contacts
 
+import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.model.Contact
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -42,5 +43,26 @@ class ContactMatchingTest {
     @Test
     fun `an empty query lists everyone`() {
         assertEquals(3, filterContacts(contacts, "  ").size)
+    }
+
+    @Test
+    fun `one read of the contacts names every way a number is written`() {
+        val index = nameIndex(
+            listOf(
+                PhoneRow(1, "Dana", "052-555-0123"),
+                PhoneRow(2, "Avi", "+15555550100"),
+                PhoneRow(3, "Dana's twin", "+972 52 555 0123"),
+                PhoneRow(4, "Office", "03-555-0199"),
+                PhoneRow(5, "Bank", "Leumi"),
+            ),
+        )
+        fun name(address: String) = PhoneNumbers.lookupKey(address)?.let { index[it] }
+        assertEquals("Dana", name("+972525550123"))
+        assertEquals("Dana", name("0525550123"))
+        assertEquals("Avi", name("5555550100"))
+        assertEquals("Office", name("+972 3-555-0199"))
+        assertEquals("Bank", name("LEUMI"))
+        assertEquals(null, name("0525550124"))
+        assertEquals(null, name(""))
     }
 }

@@ -60,12 +60,14 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -149,6 +151,10 @@ fun ConversationScreen(
     onReminder: (Message) -> Unit = {},
     onLink: (LinkInfo) -> Unit = {},
     onNotSpam: () -> Unit = {},
+    /** The messages are still being read: a quiet loading sign where they will be. */
+    loading: Boolean = false,
+    /** The list was scrolled to its top: time to read older messages. */
+    onNearTop: () -> Unit = {},
 ) {
     val c = HebTheme.colors
     val selecting = selectedIds.isNotEmpty()
@@ -157,13 +163,24 @@ fun ConversationScreen(
     // The message whose text is being selected right now (framed in the accent colour)
     var activeSelectionId by remember { mutableStateOf(textSelectionId) }
     val listState = rememberLazyListState()
-    // Open at the newest message, and follow new ones while the user is at the bottom
+    // Open at the newest message, and follow new ones while the user is at the bottom. Older messages
+    // read in at the top keep the list where it is (the items are keyed)
     var shownCount by remember { mutableIntStateOf(0) }
-    LaunchedEffect(items.size) {
+    var shownNewest by remember { mutableStateOf<Any?>(null) }
+    val newest = items.lastOrNull()?.let(::itemKey)
+    LaunchedEffect(items.size, newest) {
         if (items.isEmpty()) return@LaunchedEffect
-        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        if (shownCount == 0 || lastVisible >= shownCount - 2) listState.scrollToItem(items.lastIndex)
+        if (newest != shownNewest) {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            if (shownCount == 0 || lastVisible >= shownCount - 2) listState.scrollToItem(items.lastIndex)
+            shownNewest = newest
+        }
         shownCount = items.size
+    }
+    val nearTop by remember { derivedStateOf { listState.firstVisibleItemIndex <= NEAR_TOP_ITEMS } }
+    val loadOlder by rememberUpdatedState(onNearTop)
+    LaunchedEffect(nearTop, items.size) {
+        if (nearTop && shownCount > 0) loadOlder()
     }
     Column(Modifier.fillMaxSize().background(c.background)) {
         if (selecting) {
@@ -177,7 +194,8 @@ fun ConversationScreen(
             state = listState,
             contentPadding = PaddingValues(vertical = 12.dp),
         ) {
-            items(items, key = { item -> if (item is ThreadItem.Msg) item.message.id else "day:" + (item as ThreadItem.Day).label }) { item ->
+            if (loading && items.isEmpty()) item { LoadingMessages() }
+            items(items, key = ::itemKey) { item ->
                 when (item) {
                     is ThreadItem.Day -> DayChip(item.label)
                     is ThreadItem.Msg -> MessageRow(
@@ -204,6 +222,19 @@ fun ConversationScreen(
         } else {
             Composer(draft, onDraft, onSend)
         }
+    }
+}
+
+/** How close to the top of the list the older messages start to be read. */
+private const val NEAR_TOP_ITEMS = 3
+
+private fun itemKey(item: ThreadItem): Any = if (item is ThreadItem.Msg) item.message.id else "day:" + (item as ThreadItem.Day).label
+
+/** Where the messages will be, while the first of them are read. */
+@Composable
+private fun LoadingMessages() {
+    Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(Modifier.size(28.dp), color = HebTheme.colors.accent, strokeWidth = 3.dp)
     }
 }
 

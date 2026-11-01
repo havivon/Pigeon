@@ -70,9 +70,9 @@ class FakeMessageRepository : MessageRepository {
     override val conversations: Flow<List<SmsConversation>> =
         combine(threads, hiddenThreads) { list, hidden -> list.filter { it.threadId !in hidden } }
 
-    override fun messages(threadId: Long): Flow<List<SmsMessage>> =
+    override fun messages(threadId: Long, limit: Int): Flow<List<SmsMessage>> =
         combine(allMessages, hiddenMessages, hiddenThreads) { list, hidden, ht ->
-            if (threadId in ht) emptyList() else list.filter { it.threadId == threadId && it.id !in hidden }.sortedBy { it.dateMillis }
+            if (threadId in ht) emptyList() else list.filter { it.threadId == threadId && it.id !in hidden }.sortedBy { it.dateMillis }.takeLast(limit)
         }
 
     override suspend fun message(id: Long): SmsMessage? = allMessages.value.firstOrNull { it.id == id }

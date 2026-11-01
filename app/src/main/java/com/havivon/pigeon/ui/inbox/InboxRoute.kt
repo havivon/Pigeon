@@ -94,6 +94,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
         onSearch = { navigate(Screen.Search) },
         onNewMessage = { navigate(Screen.NewMessage()) },
         emptyState = if (state.loaded) ({ InboxEmpty(state.folder) }) else null,
+        loading = !state.loaded,
         banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
 

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -78,6 +79,8 @@ fun InboxScreen(
     emptyState: (@Composable () -> Unit)? = null,
     /** A line under the header (the "viewing only" banner); null for none. */
     banner: (@Composable () -> Unit)? = null,
+    /** The conversations are still being read: a quiet loading sign where the list will be. */
+    loading: Boolean = false,
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
@@ -86,7 +89,9 @@ fun InboxScreen(
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
             item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) }
             if (banner != null) item { banner() }
-            if (conversations.isEmpty() && emptyState != null) {
+            if (conversations.isEmpty() && loading) {
+                item { LoadingConversations() }
+            } else if (conversations.isEmpty() && emptyState != null) {
                 item { emptyState() }
             }
             if (pinned.isNotEmpty()) {
@@ -109,6 +114,14 @@ fun InboxScreen(
             }
         }
         NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
+    }
+}
+
+/** Where the list will be, while the conversations are read for the first time. */
+@Composable
+private fun LoadingConversations() {
+    Box(Modifier.fillMaxWidth().padding(top = 72.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(Modifier.size(28.dp), color = HebTheme.colors.accent, strokeWidth = 3.dp)
     }
 }
 

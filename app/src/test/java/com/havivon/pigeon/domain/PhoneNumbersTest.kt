@@ -1,6 +1,7 @@
 package com.havivon.pigeon.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -74,5 +75,18 @@ class PhoneNumbersTest {
         assertTrue(PhoneNumbers.matchesQuery("Leumi", "leu"))
         assertFalse(PhoneNumbers.matchesQuery("Leumi", ""))
         assertFalse(PhoneNumbers.matchesQuery("0525550123", "--"))
+    }
+
+    @Test
+    fun `contact lookup keys meet across the ways a number is written`() {
+        val mobile = listOf("052-555-0123", "0525550123", "+972 52-555-0123", "00972525550123", "972525550123", "+9720525550123")
+        assertEquals(setOf("525550123"), mobile.map { PhoneNumbers.lookupKey(it) }.toSet())
+        val landline = listOf("03-1234567", "+972 3-123-4567", "0097231234567")
+        assertEquals(setOf("031234567"), landline.map { PhoneNumbers.lookupKey(it) }.toSet())
+        assertEquals(PhoneNumbers.lookupKey("+1 555-555-0100"), PhoneNumbers.lookupKey("5555550100"))
+        assertEquals("37133", PhoneNumbers.lookupKey("37133"))
+        assertEquals("leumi", PhoneNumbers.lookupKey(" Leumi "))
+        assertEquals(null, PhoneNumbers.lookupKey("  "))
+        assertNotEquals(PhoneNumbers.lookupKey("0525550123"), PhoneNumbers.lookupKey("0525550124"))
     }
 }

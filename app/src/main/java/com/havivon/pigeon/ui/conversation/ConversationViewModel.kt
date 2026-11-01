@@ -35,6 +35,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,21 +44,34 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** The longest text a reminder keeps of its message. */
 private const val REMINDER_TEXT_LENGTH = 200
 
+/** The newest messages read when a conversation opens: a screenful and more, however long it is. */
+const val FIRST_PAGE = 50
+
+/** How many older messages each scroll to the top adds. */
+const val OLDER_PAGE = 100
+
 data class ConversationUiState(
+    /** False until the first page of messages is read: the screen shows its frame and a quiet loading sign meanwhile. */
     val loaded: Boolean = false,
     /** Null until the conversation is known (it may not be in the list yet right after a first message). */
     val conversation: Conversation? = null,
     val items: List<ThreadItem> = emptyList(),
     /** The colour rule that frames the whole conversation (a sender rule). */
     val rule: ColorRule? = null,
+    /** Older messages exist that are not read yet (a scroll to the top reads them). */
+    val hasOlder: Boolean = false,
 ) {
     val messages: List<Message> get() = items.filterIsInstance<ThreadItem.Msg>().map { it.message }
 }
@@ -74,6 +88,7 @@ sealed interface ConversationEvent {
     data object NotSpam : ConversationEvent
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModel(
     val threadId: Long,
     private val messages: MessageRepository,
@@ -129,9 +144,17 @@ class ConversationViewModel(
     @Volatile
     private var latestConversation: SmsConversation? = null
 
-    private val threadMessages = messages.messages(threadId)
+    /** How many of the newest messages are read: [FIRST_PAGE], more as the user scrolls up. */
+    private val limit = MutableStateFlow(FIRST_PAGE)
 
-    private val header: Flow<Pair<SmsConversation?, Conversation?>> = combine(
+    /** "Select all" while older messages are not read yet: they are read, then selected. */
+    @Volatile
+    private var selectAllWhenRead = false
+
+    private val threadMessages: Flow<Pair<List<SmsMessage>, Int>> = limit.flatMapLatest { n -> messages.messages(threadId, n).map { it to n } }
+
+    /** Null until the conversations are read (the header waits; the messages do not). */
+    private val header: Flow<Pair<SmsConversation?, Conversation?>?> = combine(
         messages.conversations,
         pins.pinnedThreadIds,
         locks.lockedThreadIds,
@@ -140,7 +163,7 @@ class ConversationViewModel(
     ) { list, pinned, locked, verdicts, ruleList ->
         val c = list.firstOrNull { it.threadId == threadId }
         c to c?.let { mapper.map(it, now(), ruleList, pinned, locked, verdictFor(it, verdicts)) }
-    }
+    }.onStart<Pair<SmsConversation?, Conversation?>?> { emit(null) }
 
     val state: StateFlow<ConversationUiState> = combine(
         threadMessages,
@@ -148,17 +171,24 @@ class ConversationViewModel(
         rules.rules,
         favorites.favoriteMessageIds,
         reminders.pending,
-    ) { list, (sms, conv), ruleList, starred, pending ->
+    ) { (list, n), known, ruleList, starred, pending ->
+        val sms = known?.first
         latest = list
         latestConversation = sms
+        val hasOlder = n != Int.MAX_VALUE && list.size >= n
+        if (selectAllWhenRead && !hasOlder) {
+            selectAllWhenRead = false
+            _selected.value = list.map { it.id }.filter { it >= 0 }.toSet()
+        }
         if (visible && list.any { !it.type.outgoing && !it.read }) markRead()
         val withReminder = pending.mapNotNull { it.messageId }.toSet()
         val t = now()
         val contactName = sms?.contactName
-        val conversation = conv ?: fallbackConversation(list, t)
+        // While the conversations are being read the header waits, rather than show the number before the name
+        val conversation = if (known == null) null else known.second ?: fallbackConversation(list, t)
         val threadRule = ruleList.firstOrNull { it.id == conversation?.ruleId }?.takeIf { it.match is RuleMatch.Sender }
         val items = threadItems(list, labels, t) { m -> toMessage(m, t, contactName, ruleList, starred, withReminder) }
-        ConversationUiState(loaded = true, conversation = conversation, items = items, rule = threadRule)
+        ConversationUiState(loaded = true, conversation = conversation, items = items, rule = threadRule, hasOlder = hasOlder)
     }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
     init {
@@ -242,8 +272,19 @@ class ConversationViewModel(
         _selected.value = _selected.value + id
     }
 
+    /** Every message of the conversation, also those not read yet: they are read first, then selected. */
     fun selectAll() {
         _selected.value = latest.map { it.id }.filter { it >= 0 }.toSet()
+        if (state.value.hasOlder) {
+            selectAllWhenRead = true
+            limit.value = Int.MAX_VALUE
+        }
+    }
+
+    /** Reads the next older messages, when there are any (the list was scrolled to its top). */
+    fun loadOlder() {
+        if (!state.value.hasOlder) return
+        limit.update { if (it == Int.MAX_VALUE) it else it + OLDER_PAGE }
     }
 
     fun clearSelection() {

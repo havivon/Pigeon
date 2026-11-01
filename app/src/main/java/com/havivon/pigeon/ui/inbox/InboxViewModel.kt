@@ -17,8 +17,11 @@ import com.havivon.pigeon.domain.repository.RulesRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
 import com.havivon.pigeon.domain.seam.ReminderScheduler
 import com.havivon.pigeon.ui.common.ConversationMapper
+import com.havivon.pigeon.ui.common.JUDGE_AFTER_MILLIS
+import com.havivon.pigeon.ui.common.SpamJudging
 import com.havivon.pigeon.ui.common.folderCounts
 import com.havivon.pigeon.ui.common.inFolder
+import com.havivon.pigeon.ui.common.mapAll
 import com.havivon.pigeon.ui.common.verdictFor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -71,9 +75,14 @@ class InboxViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     /** Where the conversations are mapped (rules, folders, codes for each one): off the main thread. */
     work: CoroutineDispatcher = Dispatchers.Default,
+    /** How long after the list is read the spam-on-read starts. */
+    judgeDelayMillis: Long = JUDGE_AFTER_MILLIS,
 ) : ViewModel() {
 
     private val folder = MutableStateFlow(Folder.All)
+
+    // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
+    private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
 
     private val mapped: Flow<Pair<List<Conversation>, List<ColorRule>>> = combine(
         accessChanges.flatMapLatest { messages.conversations },
@@ -82,11 +91,10 @@ class InboxViewModel(
         locks.lockedThreadIds,
         spam.verdicts,
     ) { conversations, ruleList, pinned, locked, verdicts ->
-        // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
-        if (!canWrite()) viewModelScope.launch { judgeSpam(conversations, verdicts) }
+        if (!canWrite()) spamJudging.offer(conversations, verdicts)
         val t = now()
-        conversations.map { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) } to ruleList
-    }
+        mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) } to ruleList
+    }.conflate()
 
     val state: StateFlow<InboxUiState> = combine(mapped, folder) { (all, ruleList), f ->
         InboxUiState(loaded = true, all = all, folder = f, rules = ruleList, dateLine = dateLine())

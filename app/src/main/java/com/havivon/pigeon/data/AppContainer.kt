@@ -88,7 +88,7 @@ class AppContainer(
     /** Messages sent as a viewer, until Android has stored them. */
     val pendingSends = PendingSends()
 
-    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope, pendingSends, ::canWrite) }
+    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope, pendingSends, ::canWrite, refresh = accessChanges) }
     val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages, pendingSends, ::canWrite) }
     val notifier: MessageNotifier by lazy {
         MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })
@@ -108,7 +108,7 @@ class AppContainer(
 
     /** Spam for the messages a viewer reads (they never pass through [incomingSms]); the screens call it while Pigeon is not the default. */
     val spamOnRead: SpamOnRead by lazy {
-        SpamOnRead(hook) { threadId ->
+        SpamOnRead(hook, SpamOnReadMemory(app)) { threadId ->
             // Someone the user wrote to is never spam: no need to judge at all
             messages.recentMessages(threadId, SPAM_ON_READ_DEPTH).let { list -> if (list.any { it.type.outgoing }) null else list.lastOrNull() }
         }

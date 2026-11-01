@@ -18,29 +18,44 @@ import com.havivon.pigeon.domain.model.SpamVerdict as StoredVerdict
  * here" rule, the user's "not spam" senders and blocked words). A spam verdict is stored in
  * `SpamRepository` like any other, so it stays, shows in the Spam folder, and "Not spam" undoes it.
  *
- * What was judged is remembered (by conversation and its newest message's time), so a conversation
- * is judged again only when a new message comes in; contacts and groups are never judged.
+ * What was judged is remembered (by conversation and its newest message's time) in [memory], across
+ * restarts too, so a conversation is judged again only when a new message comes in: an inbox of hundreds
+ * of conversations is not read again, one query after another, on every start. Contacts and groups are
+ * never judged.
  */
 class SpamOnRead(
     private val hook: IncomingMessageHook,
+    private val memory: JudgedMemory = JudgedMemory.None,
     /** The conversation's newest incoming message, or null when it has none. */
     private val newestIncoming: suspend (threadId: Long) -> SmsMessage?,
 ) {
-    private val judged = HashMap<Long, Long>()
+    /** Read from [memory] at the first judging, which runs off the main thread. */
+    private var judged: HashMap<Long, Long>? = null
     private val mutex = Mutex()
 
     /** Judges every conversation in [conversations] that needs it; the stored [verdicts] are left alone. */
     suspend fun judge(conversations: List<SmsConversation>, verdicts: List<StoredVerdict>) = mutex.withLock {
-        for (c in conversations) {
-            if (judged[c.threadId] == c.dateMillis) continue
-            val address = c.addresses.singleOrNull()
-            val needed = address != null && c.contactName == null && verdicts.none { PhoneNumbers.same(it.address, address) }
-            if (needed) {
-                val ok = judgeOne(c.threadId, address!!)
-                // Unreadable right now (a provider that failed): tried again on the next read
-                if (!ok) continue
+        val judged = judged ?: HashMap(memory.load()).also { judged = it }
+        val present = conversations.mapTo(HashSet()) { it.threadId }
+        fun remember() = memory.save(judged.filterKeys { it in present })
+        var changed = 0
+        try {
+            for (c in conversations) {
+                if (judged[c.threadId] == c.dateMillis) continue
+                val address = c.addresses.singleOrNull()
+                val needed = address != null && c.contactName == null && verdicts.none { PhoneNumbers.same(it.address, address) }
+                if (needed) {
+                    val ok = judgeOne(c.threadId, address!!)
+                    // Unreadable right now (a provider that failed): tried again on the next read
+                    if (!ok) continue
+                }
+                judged[c.threadId] = c.dateMillis
+                // A first pass over a long inbox takes a while: kept as it goes, in case the app is closed meanwhile
+                if (++changed % SAVE_EVERY == 0) remember()
             }
-            judged[c.threadId] = c.dateMillis
+        } finally {
+            // Also when a newer list stopped this one: what was judged stays judged. Deleted conversations are forgotten.
+            if (changed % SAVE_EVERY != 0) remember()
         }
     }
 
@@ -52,5 +67,22 @@ class SpamOnRead(
         throw e
     } catch (_: Exception) {
         false
+    }
+}
+
+/** How many judged conversations [SpamOnRead] keeps in [JudgedMemory] at a time during a long pass. */
+private const val SAVE_EVERY = 50
+
+/** Where [SpamOnRead] keeps what it judged: conversation id to the time of its newest message. */
+interface JudgedMemory {
+    fun load(): Map<Long, Long>
+
+    fun save(judged: Map<Long, Long>)
+
+    /** Remembers nothing: everything is judged again after a restart. */
+    object None : JudgedMemory {
+        override fun load(): Map<Long, Long> = emptyMap()
+
+        override fun save(judged: Map<Long, Long>) = Unit
     }
 }

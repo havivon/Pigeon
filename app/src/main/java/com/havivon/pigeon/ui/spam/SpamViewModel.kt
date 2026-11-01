@@ -10,6 +10,8 @@ import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
 import com.havivon.pigeon.ui.common.ConversationMapper
+import com.havivon.pigeon.ui.common.JUDGE_AFTER_MILLIS
+import com.havivon.pigeon.ui.common.SpamJudging
 import com.havivon.pigeon.ui.common.verdictFor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -45,14 +47,18 @@ class SpamViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     /** Where the conversations are mapped: off the main thread. */
     work: CoroutineDispatcher = Dispatchers.Default,
+    /** How long after the list is read the spam-on-read starts. */
+    judgeDelayMillis: Long = JUDGE_AFTER_MILLIS,
 ) : ViewModel() {
+
+    private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
 
     val state: StateFlow<SpamUiState> = combine(
         accessChanges.flatMapLatest { messages.conversations },
         spam.verdicts,
         locks.lockedThreadIds,
     ) { conversations, verdicts, locked ->
-        if (!canWriteNow()) viewModelScope.launch { judgeSpam(conversations, verdicts) }
+        if (!canWriteNow()) spamJudging.offer(conversations, verdicts)
         val t = now()
         SpamUiState(
             loaded = true,

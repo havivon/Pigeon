@@ -19,6 +19,10 @@ import com.havivon.pigeon.domain.seam.FolderClassifier
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Turns the platform's records ([SmsConversation], [SmsMessage]) and the app's own data (rules,
@@ -31,6 +35,17 @@ class ConversationMapper(
     /** What a locked conversation shows instead of its last message. */
     private val lockedSnippet: String,
 ) {
+    /** The folder and code of a conversation's last message: the analysis, done again only when that message changes. */
+    private data class Analysis(val sender: String?, val address: String, val snippet: String, val folder: Folder, val code: String?)
+
+    /** By thread. The inbox maps every conversation on every change (a pin, a verdict), and most did not change. */
+    private val analyses = ConcurrentHashMap<Long, Analysis>()
+
+    private fun analysis(c: SmsConversation, address: String): Analysis {
+        analyses[c.threadId]?.takeIf { it.sender == c.contactName && it.address == address && it.snippet == c.snippet }?.let { return it }
+        return Analysis(c.contactName, address, c.snippet, folders.classify(c), codeFinder.find(c.snippet)).also { analyses[c.threadId] = it }
+    }
+
     fun map(
         c: SmsConversation,
         nowMillis: Long,
@@ -44,6 +59,7 @@ class ConversationMapper(
         // Nothing of a locked conversation's text: not its snippet, its code, nor a keyword rule's colour
         val body = if (isLocked) "" else c.snippet
         val spam = verdict != null
+        val analysis = analysis(c, address)
         return Conversation(
             id = c.threadId,
             name = title(c),
@@ -53,8 +69,8 @@ class ConversationMapper(
             unread = c.unreadCount,
             pinned = c.threadId in pinned,
             ruleId = if (spam) null else RuleMatcher.firstMatch(rules, c.contactName, address, body)?.id,
-            folder = if (spam) Folder.Spam else folders.classify(c),
-            code = if (isLocked || spam) null else codeFinder.find(body),
+            folder = if (spam) Folder.Spam else analysis.folder,
+            code = if (isLocked || spam) null else analysis.code,
             // A verdict always shows at least one reason, so the screens can tell it is spam
             spamReasons = verdict?.reasons?.ifEmpty { listOf(SpamReason.MarkedByUser) }.orEmpty(),
             addresses = c.addresses,
@@ -67,6 +83,21 @@ class ConversationMapper(
         fun title(c: SmsConversation): String = c.contactName ?: c.addresses.joinToString(", ") { ltr(it) }
     }
 }
+
+/** Above this many conversations, [mapAll] spreads the work over the cores. */
+private const val MAP_CHUNK = 100
+
+/**
+ * [items] mapped by [map], in order, on several threads of the caller's dispatcher when the list is long:
+ * the inbox maps hundreds of conversations (folders, codes, rules) on its first read. [map] must be safe
+ * to run in parallel.
+ */
+suspend fun <T, R> mapAll(items: List<T>, map: (T) -> R): List<R> =
+    if (items.size <= MAP_CHUNK) {
+        items.map(map)
+    } else {
+        coroutineScope { items.chunked(MAP_CHUNK).map { part -> async { part.map(map) } }.awaitAll().flatten() }
+    }
 
 /** The stored verdict on one of the conversation's senders, or null when it is not spam. */
 fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? =
@@ -139,3 +170,4 @@ fun formatForCopy(messages: List<SmsMessage>, labels: DateLabels, me: String, na
         "[${labels.stamp(m.dateMillis, spansDays)}] $who: ${m.body}"
     }
 }
+

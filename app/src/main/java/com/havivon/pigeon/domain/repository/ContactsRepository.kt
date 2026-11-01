@@ -12,6 +12,9 @@ interface ContactsRepository {
     /** The contact's name for an address (a number or a sender ID), or null when there is none. */
     suspend fun displayName(address: String): String?
 
+    /** The names of many addresses at once (the inbox asks for every conversation); null where there is none. */
+    suspend fun displayNames(addresses: Collection<String>): Map<String, String?> = addresses.associateWith { displayName(it) }
+
     /** Contacts whose name or number matches [query], for the new-message picker. */
     suspend fun search(query: String): List<Contact>
 }
