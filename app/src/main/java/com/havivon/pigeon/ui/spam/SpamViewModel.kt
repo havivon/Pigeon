@@ -18,19 +18,34 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SpamUiState(
     val loaded: Boolean = false,
     /** The spam conversations, newest first, each with its stored reasons. */
     val items: List<Conversation> = emptyList(),
+    /** The same conversations as one row per sender, the newest sender first. */
+    val groups: List<SpamGroup> = emptyList(),
+    /** The [SpamGroup.key]s of the rows opened to show their messages. */
+    val expanded: Set<String> = emptySet(),
+    /** The messages of each opened row, newest first, by [SpamGroup.key]. */
+    val messages: Map<String, List<SpamMessage>> = emptyMap(),
 )
+
+/** The newest messages read for each conversation of an opened row. */
+private const val OPENED_MESSAGES = 30
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SpamViewModel(
@@ -46,36 +61,88 @@ class SpamViewModel(
     private val judgeSpam: suspend (List<SmsConversation>, List<SpamVerdict>) -> Unit = { _, _ -> },
     private val now: () -> Long = System::currentTimeMillis,
     /** Where the conversations are mapped: off the main thread. */
-    work: CoroutineDispatcher = Dispatchers.Default,
+    private val work: CoroutineDispatcher = Dispatchers.Default,
     /** How long after the list is read the spam-on-read starts. */
     judgeDelayMillis: Long = JUDGE_AFTER_MILLIS,
 ) : ViewModel() {
 
     private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
 
-    val state: StateFlow<SpamUiState> = combine(
+    private class Listed(val items: List<Conversation>, val groups: List<SpamGroup>)
+
+    /** Read once for the list and for the opened rows. */
+    private val listed: Flow<Listed> = combine(
         accessChanges.flatMapLatest { messages.conversations },
         spam.verdicts,
         locks.lockedThreadIds,
     ) { conversations, verdicts, locked ->
         spamJudging.offer(conversations, verdicts)
         val t = now()
+        val items = conversations.mapNotNull { c -> verdictFor(c, verdicts)?.let { mapper.map(c, t, locked = locked, verdict = it) } }
+        Listed(items, groupSpam(items))
+    }.flowOn(work).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    /** Kept in the view model: an opened row stays open through a rotation and through every new list. */
+    private val expanded = MutableStateFlow<Set<String>>(emptySet())
+
+    /** The opened rows, as they are now (a new message, a conversation gone). */
+    private val opened: Flow<List<SpamGroup>> =
+        combine(listed, expanded) { l, keys -> l.groups.filter { it.key in keys } }.distinctUntilChanged()
+
+    private val openedMessages: Flow<Map<String, List<SpamMessage>>> = opened.flatMapLatest { groups ->
+        if (groups.isEmpty()) {
+            flowOf(emptyMap())
+        } else {
+            combine(groups.map { g -> messagesOf(g).map { g.key to it } }) { pairs -> pairs.toMap() }
+        }
+    }
+
+    private fun messagesOf(group: SpamGroup): Flow<List<SpamMessage>> {
+        val readable = group.conversations.filter { !it.locked }
+        val time = { millis: Long -> mapper.time(millis, now()) }
+        if (readable.isEmpty()) return flowOf(spamMessages(group, emptyList(), time))
+        return combine(readable.map { messages.messages(it.id, OPENED_MESSAGES) }) { pages -> spamMessages(group, pages.flatMap { it }, time) }
+            .flowOn(work)
+    }
+
+    val state: StateFlow<SpamUiState> = combine(listed, expanded, openedMessages) { l, keys, shown ->
+        val present = l.groups.mapTo(HashSet()) { it.key }
         SpamUiState(
             loaded = true,
-            items = conversations.mapNotNull { c -> verdictFor(c, verdicts)?.let { mapper.map(c, t, locked = locked, verdict = it) } },
+            items = l.items,
+            groups = l.groups,
+            expanded = keys.filterTo(LinkedHashSet()) { it in present },
+            messages = shown,
         )
-    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpamUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpamUiState())
 
-    /** Back to the inbox, and the filter leaves the sender alone from now on. */
-    fun notSpam(c: Conversation) {
-        appScope.launch { c.addresses.forEach { spam.markNotSpam(it) } }
+    /** Opens a row to show its sender's messages, or closes it. */
+    fun toggle(group: SpamGroup) {
+        expanded.update { if (group.key in it) it - group.key else it + group.key }
+    }
+
+    /**
+     * Back to the inbox: every conversation with this sender, and the filter leaves the sender alone from now
+     * on, under every way its number is written ("+972 52..." and "052..." are one sender to the allow-list).
+     */
+    fun notSpam(group: SpamGroup) {
+        expanded.update { it - group.key }
+        appScope.launch { group.addresses.forEach { spam.markNotSpam(it) } }
     }
 
     /** Deleting needs Pigeon to be the default SMS app; until then the screen says so instead. */
     val canWrite: Boolean get() = canWriteNow()
 
-    /** Null, and nothing is deleted, while Pigeon is not the default SMS app. */
-    fun delete(c: Conversation): PendingDeletion? = if (canWriteNow()) messages.deleteThreads(setOf(c.id)) else null
+    /**
+     * Every spam conversation of this sender, with one undo: the number deleted and the undo. Null, and
+     * nothing is deleted, while Pigeon is not the default SMS app.
+     */
+    fun delete(group: SpamGroup): Pair<Int, PendingDeletion>? {
+        if (!canWriteNow()) return null
+        val ids = group.threadIds
+        if (ids.isEmpty()) return null
+        return ids.size to messages.deleteThreads(ids)
+    }
 
     /** Every spam conversation, with one undo for all. Null when there is nothing to delete, or Pigeon may not delete. */
     fun deleteAll(): Pair<Int, PendingDeletion>? {

@@ -10,6 +10,7 @@ import com.havivon.pigeon.ui.conversation.ConversationScreen
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.rules.RulesScreen
 import com.havivon.pigeon.ui.spam.SpamScreen
+import com.havivon.pigeon.ui.spam.groupSpam
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import org.junit.Rule
 import org.junit.Test
@@ -56,7 +57,7 @@ class DesignSnapshots {
         shot("4_multi_select") {
             ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = PHONE)
         }
-        shot("5_spam") { SpamScreen(sample.spam) }
+        shot("5_spam") { SpamScreen(groupSpam(sample.spam)) }
         shot("6_color_rules") { RulesScreen(sample.rules) }
         shot("7_conversation_dark", dark = true) {
             ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", subtitle = PHONE)
@@ -88,7 +89,7 @@ class DesignSnapshotsEnglish {
                 textSelectionId = 5, previewSelection = highlight(sample.dannyThread, 5, "12 Maple Street, floor 3, apt 7"),
             )
         }
-        shot("10_en_spam") { SpamScreen(sample.spam) }
+        shot("10_en_spam") { SpamScreen(groupSpam(sample.spam)) }
         shot("11_en_color_rules") { RulesScreen(sample.rules) }
         shot("12_en_inbox_dark", dark = true) {
             InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine)

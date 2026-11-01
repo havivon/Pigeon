@@ -70,6 +70,8 @@ data class Conversation(
     val addresses: List<String> = emptyList(),
     /** Behind fingerprint or screen lock: the list shows no text of it. */
     val locked: Boolean = false,
+    /** How many messages came in (the Spam folder counts a sender's messages). */
+    val messageCount: Int = 0,
 ) {
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }

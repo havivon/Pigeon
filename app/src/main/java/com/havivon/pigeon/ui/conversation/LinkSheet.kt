@@ -66,7 +66,7 @@ internal fun LinkDetails(link: LinkInfo, onOpen: () -> Unit, onCopy: () -> Unit)
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(c.spamTint)
+                    .background(c.surfaceVariant)
                     .border(1.5.dp, c.spam, RoundedCornerShape(16.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,

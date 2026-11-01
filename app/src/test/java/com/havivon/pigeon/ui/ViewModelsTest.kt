@@ -44,6 +44,8 @@ import com.havivon.pigeon.ui.search.SearchViewModel
 import com.havivon.pigeon.ui.search.filterResults
 import com.havivon.pigeon.ui.search.senderOptions
 import com.havivon.pigeon.ui.spam.SpamViewModel
+import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.ui.spam.groupSpam
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -451,18 +453,119 @@ class ViewModelsTest {
 
     // Spam
 
-    @Test
-    fun `the spam screen lists spam with its reasons, not spam goes back`() = runTest {
-        seedInbox()
+    private fun TestScope.spamScreen() =
+        SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher)
+
+    /** One sender in two conversations (the system wrote its number two ways), and another sender. */
+    private fun seedSpam() {
+        messages.threads.value = listOf(
+            conversation(1, "0525550100", name = "Mom", snippet = "Bring bread", dateMillis = millis(2026, 11, 1, 11, 0)),
+            conversation(4, "+972551234567", snippet = "You won! bit.ly/x7Kq9", dateMillis = millis(2026, 11, 1, 10, 0)).copy(incomingCount = 2),
+            conversation(5, "Polls", snippet = "Quick poll: who will you vote for?", dateMillis = millis(2026, 11, 1, 9, 0)).copy(incomingCount = 1),
+            conversation(6, "055-123-4567", snippet = "Claim your prize now", dateMillis = millis(2026, 10, 30, 9, 0)).copy(incomingCount = 3),
+        )
+        messages.allMessages.value = listOf(
+            sms(40, 4, "You won a prize", millis(2026, 11, 1, 9, 30), address = "+972551234567"),
+            sms(41, 4, "You won! bit.ly/x7Kq9", millis(2026, 11, 1, 10, 0), address = "+972551234567"),
+            sms(50, 5, "Quick poll: who will you vote for?", millis(2026, 11, 1, 9, 0), address = "Polls"),
+            sms(60, 6, "Claim your prize now", millis(2026, 10, 30, 9, 0), address = "0551234567"),
+            sms(61, 6, "Stop it", millis(2026, 10, 30, 9, 5), address = "0551234567", type = SmsType.Sent),
+        )
+    }
+
+    private suspend fun markSeededSpam() {
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink, SpamReason.Keyword("won")))
-        val vm = SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher)
+        spam.markSpam("Polls", 5, listOf(SpamReason.UnknownSender, SpamReason.Poll))
+    }
+
+    @Test
+    fun `the spam screen groups by sender, newest sender first, with counts and every reason once`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        // A second verdict on the same number written another way: still the same sender
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender, SpamReason.ShortLink))
+        val vm = spamScreen()
         collect(vm.state)
-        val item = vm.state.value.items.single()
-        assertEquals(4L, item.id)
-        assertEquals(listOf(SpamReason.ShortLink, SpamReason.Keyword("won")), item.spamReasons)
-        vm.notSpam(item)
-        assertTrue(vm.state.value.items.isEmpty())
+        val groups = vm.state.value.groups
+        assertEquals(2, groups.size)
+        val number = groups[0]
+        assertEquals(listOf(4L, 6L), number.conversations.map { it.id })
+        assertEquals(5, number.messageCount)
+        // One verdict per sender: the conversations of one number share its reasons
+        assertEquals(listOf(SpamReason.ShortLink, SpamReason.Keyword("won")), number.reasons)
+        assertEquals(number.reasons.size, number.reasons.distinct().size)
+        assertEquals(listOf(5L), groups[1].conversations.map { it.id })
+        assertEquals(1, groups[1].messageCount)
+        assertEquals(3, vm.state.value.items.size)
+    }
+
+    @Test
+    fun `an opened row shows the sender's incoming messages, newest first, and stays open`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender))
+        val vm = spamScreen()
+        collect(vm.state)
+        val number = vm.state.value.groups.first()
+        vm.toggle(number)
+        assertEquals(setOf(number.key), vm.state.value.expanded)
+        val shown = vm.state.value.messages.getValue(number.key)
+        assertEquals(listOf(41L, 40L, 60L), shown.map { it.id })
+        assertEquals("bit.ly", shown.first().links.single().host)
+        // A new message: the row stays open and shows it
+        messages.allMessages.value += sms(42, 4, "Last chance", millis(2026, 11, 1, 10, 30), address = "+972551234567")
+        messages.threads.value = messages.threads.value.map { if (it.threadId == 4L) it.copy(dateMillis = millis(2026, 11, 1, 10, 30)) else it }
+        assertEquals(setOf(number.key), vm.state.value.expanded)
+        assertEquals(42L, vm.state.value.messages.getValue(number.key).first().id)
+        vm.toggle(vm.state.value.groups.first())
+        assertTrue(vm.state.value.expanded.isEmpty())
+        assertTrue(vm.state.value.messages.isEmpty())
+    }
+
+    @Test
+    fun `a locked conversation's messages are never read into an opened row`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        locks.lock(4)
+        val vm = spamScreen()
+        collect(vm.state)
+        val number = vm.state.value.groups.first()
+        vm.toggle(number)
+        val shown = vm.state.value.messages.getValue(number.key)
+        // The other conversation of the number is read; of the locked one, only the "locked chat" line
+        assertEquals(listOf(60L), shown.filter { !it.locked }.map { it.id })
+        assertEquals(1, shown.count { it.locked })
+        assertTrue(shown.none { it.text.contains("won") })
+    }
+
+    @Test
+    fun `not spam brings back every conversation of the sender, under every way its number is written`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender))
+        val vm = spamScreen()
+        collect(vm.state)
+        vm.notSpam(vm.state.value.groups.first())
+        assertEquals(listOf(5L), vm.state.value.items.map { it.id })
         assertTrue(spam.isNotSpam("0551234567"))
+        assertTrue(spam.isNotSpam("+972 55-123-4567"))
+        // The filter leaves the sender alone from now on
+        assertFalse(spam.markSpam("055-1234567", 6, listOf(SpamReason.ShortLink)))
+    }
+
+    @Test
+    fun `delete removes all of a sender's spam with one undo, and the other senders stay`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender))
+        val vm = spamScreen()
+        collect(vm.state)
+        val (count, deletion) = vm.delete(vm.state.value.groups.first())!!
+        assertEquals(2, count)
+        assertEquals(listOf(5L), vm.state.value.items.map { it.id })
+        assertEquals(1, vm.state.value.groups.size)
+        assertTrue(deletion.undo())
+        assertEquals(listOf(4L, 5L, 6L), vm.state.value.items.map { it.id })
     }
 
     @Test
@@ -470,13 +573,26 @@ class ViewModelsTest {
         seedInbox()
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
         spam.markSpam("Leumi", 2, listOf(SpamReason.BrandSender))
-        val vm = SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher)
+        val vm = spamScreen()
         collect(vm.state)
         val (count, deletion) = vm.deleteAll()!!
         assertEquals(2, count)
         assertTrue(vm.state.value.items.isEmpty())
         deletion.undo()
         assertEquals(2, vm.state.value.items.size)
+    }
+
+    @Test
+    fun `spam is grouped by the normalised sender`() {
+        val a = Conversation(1, "+972 55-123-4567", "", "", 0, addresses = listOf("+972551234567"), messageCount = 2)
+        val b = Conversation(2, "055-123-4567", "", "", 0, addresses = listOf("0551234567"))
+        val c = Conversation(3, "Polls", "", "", 0, addresses = listOf("POLLS"), messageCount = 4)
+        val d = Conversation(4, "polls", "", "", 0, addresses = listOf("polls"), messageCount = 1)
+        val groups = groupSpam(listOf(a, c, b, d))
+        assertEquals(listOf(listOf(1L, 2L), listOf(3L, 4L)), groups.map { g -> g.conversations.map { it.id } })
+        // A conversation never counted still holds its last message
+        assertEquals(listOf(3, 5), groups.map { it.messageCount })
+        assertEquals("+972 55-123-4567", groups[0].name)
     }
 
     // Search

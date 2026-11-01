@@ -35,6 +35,7 @@ object SampleData {
                 101, "+972 55-123-4567", "זכית בפרס! לחץ כאן לקבלת המתנה שלך: bit.ly/x7Kq9", "13:02", 0xFFE53935,
                 folder = Folder.Spam,
                 spamReasons = listOf(SpamReason.UnknownSender, SpamReason.ShortLink, SpamReason.Keyword("זכית")),
+                messageCount = 2,
             ),
             Conversation(
                 102, "Delivery", "חבילה ממתינה לך. יש לשלם 3.90 ₪ דמי משלוח: isr-post.co/pay", "07:44", 0xFFE53935,
@@ -42,9 +43,10 @@ object SampleData {
                 spamReasons = listOf(SpamReason.LookalikeDomain, SpamReason.Keyword("חבילה ממתינה")),
             ),
             Conversation(
-                103, "054-000-1111", "הלוואה מיידית בלי בדיקות! להסרה השב הסר", "אתמול", 0xFFE53935,
+                103, "054-000-1111", "סקר קצר: לאיזו מפלגה תצביעו בבחירות? השיבו 1 או 2. להסרה השב הסר", "אתמול", 0xFFE53935,
                 folder = Folder.Spam,
-                spamReasons = listOf(SpamReason.UnknownSender, SpamReason.Keyword("הסר")),
+                spamReasons = listOf(SpamReason.UnknownSender, SpamReason.Poll, SpamReason.Keyword("הסר")),
+                messageCount = 3,
             ),
         )
         SampleSet(
@@ -94,6 +96,7 @@ object SampleData {
                 101, "+1 555-123-4567", "You won a prize! Tap here to claim your gift: bit.ly/x7Kq9", "1:02 PM", 0xFFE53935,
                 folder = Folder.Spam,
                 spamReasons = listOf(SpamReason.UnknownSender, SpamReason.ShortLink, SpamReason.Keyword("won")),
+                messageCount = 2,
             ),
             Conversation(
                 102, "Delivery", "A package is waiting for you. Pay a $3.90 delivery fee: usps-track.co/pay", "7:44 AM", 0xFFE53935,
@@ -101,9 +104,10 @@ object SampleData {
                 spamReasons = listOf(SpamReason.LookalikeDomain, SpamReason.Keyword("package waiting")),
             ),
             Conversation(
-                103, "555-000-1111", "Instant loan, no credit check! To opt out, reply STOP", "Yesterday", 0xFFE53935,
+                103, "555-000-1111", "Quick poll: who will you vote for in the election? Reply 1 or 2. Reply STOP to opt out", "Yesterday", 0xFFE53935,
                 folder = Folder.Spam,
-                spamReasons = listOf(SpamReason.UnknownSender, SpamReason.Keyword("STOP")),
+                spamReasons = listOf(SpamReason.UnknownSender, SpamReason.Poll, SpamReason.Keyword("STOP")),
+                messageCount = 3,
             ),
         )
         SampleSet(

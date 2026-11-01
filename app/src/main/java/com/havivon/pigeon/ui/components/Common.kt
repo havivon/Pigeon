@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +68,31 @@ fun GradientHeader(modifier: Modifier = Modifier, content: @Composable ColumnSco
     )
 }
 
+/**
+ * A screen whose [header] (a [GradientHeader]) stays at the top while the list of [content] scrolls under it,
+ * into the header's rounded corners. [content] gets the header's height to put before its first item (as the
+ * list's top content padding), so at rest the screen looks as if the header were the list's first item.
+ * Measured in one pass: the first frame is already right.
+ */
+@Composable
+fun FixedHeaderLayout(modifier: Modifier = Modifier, header: @Composable () -> Unit, content: @Composable (top: Dp) -> Unit) {
+    SubcomposeLayout(modifier) { constraints ->
+        val free = constraints.copy(minWidth = 0, minHeight = 0)
+        val headers = subcompose(FixedHeaderSlot.Header, header).map { it.measure(free) }
+        val top = headers.maxOfOrNull { it.height } ?: 0
+        val contents = subcompose(FixedHeaderSlot.Content) { content(top.toDp()) }.map { it.measure(constraints) }
+        val width = maxOf(constraints.minWidth, contents.maxOfOrNull { it.width } ?: 0, headers.maxOfOrNull { it.width } ?: 0)
+        val height = maxOf(constraints.minHeight, contents.maxOfOrNull { it.height } ?: 0, top)
+        layout(width, height) {
+            contents.forEach { it.placeRelative(0, 0) }
+            // Drawn last: the list scrolls under it
+            headers.forEach { it.placeRelative(0, 0) }
+        }
+    }
+}
+
+private enum class FixedHeaderSlot { Header, Content }
+
 @Composable
 fun HeaderIcon(icon: ImageVector, description: String, onClick: () -> Unit = {}) {
     IconButton(onClick = onClick) {
@@ -94,19 +120,21 @@ fun Avatar(name: String, argb: Long, size: Dp = 48.dp) {
     }
 }
 
-/** Avatar used for suspected spam: a red circle with a warning sign. */
+/**
+ * Avatar used for suspected spam: the red warning sign in a plain circle. Red is kept for the frame, the
+ * buttons and this sign; everything else of spam is drawn in the ordinary colours.
+ */
 @Composable
 fun SpamAvatar(size: Dp = 48.dp) {
-    val spam = HebTheme.colors.spam
+    val c = HebTheme.colors
     Box(
         Modifier
             .size(size)
             .clip(CircleShape)
-            .background(spam.copy(alpha = 0.14f))
-            .border(2.dp, spam, CircleShape),
+            .background(c.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.Warning, contentDescription = stringResource(R.string.common_suspected_spam), tint = spam, modifier = Modifier.size(size * 0.5f))
+        Icon(Icons.Rounded.Warning, contentDescription = stringResource(R.string.common_suspected_spam), tint = c.spam, modifier = Modifier.size(size * 0.5f))
     }
 }
 

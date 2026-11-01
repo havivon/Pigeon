@@ -77,8 +77,12 @@ class ConversationMapper(
             spamReasons = verdict?.reasons?.ifEmpty { listOf(SpamReason.MarkedByUser) }.orEmpty(),
             addresses = c.addresses,
             locked = isLocked,
+            messageCount = c.incomingCount,
         )
     }
+
+    /** A message's time as the lists show it: the time today, otherwise the day or the date. */
+    fun time(millis: Long, nowMillis: Long): String = labels.listTime(millis, nowMillis)
 
     /** The code in an unread message's text, by message id ("" for none): a text never changes, the list is mapped again on every change. */
     private val unreadCodes = ConcurrentHashMap<Long, String>()

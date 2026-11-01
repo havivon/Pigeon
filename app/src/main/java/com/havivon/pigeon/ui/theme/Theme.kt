@@ -35,7 +35,6 @@ data class HebColors(
     val outgoing: Brush,
     val incoming: Color,
     val spam: Color,
-    val spamTint: Color,
     val divider: Color,
 )
 
@@ -55,7 +54,6 @@ val LightHebColors = HebColors(
     outgoing = Brush.linearGradient(listOf(Color(0xFF6A4BE6), Color(0xFFB4479A))),
     incoming = Color.White,
     spam = Color(0xFFE53935),
-    spamTint = Color(0xFFFFF0F0),
     divider = Color(0xFFE6DFF0),
 )
 
@@ -71,7 +69,6 @@ val DarkHebColors = HebColors(
     outgoing = Brush.linearGradient(listOf(Color(0xFF5B3FD9), Color(0xFF9C3A86))),
     incoming = Color(0xFF241D3B),
     spam = Color(0xFFFF5A52),
-    spamTint = Color(0xFF3A1A24),
     divider = Color(0xFF2D2548),
 )
 

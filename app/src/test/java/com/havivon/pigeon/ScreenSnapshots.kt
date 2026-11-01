@@ -48,7 +48,9 @@ import com.havivon.pigeon.ui.search.SearchFilters
 import com.havivon.pigeon.ui.search.SearchHit
 import com.havivon.pigeon.ui.search.SearchScreen
 import com.havivon.pigeon.ui.search.SearchUiState
+import com.havivon.pigeon.ui.spam.SpamMessage
 import com.havivon.pigeon.ui.spam.SpamScreen
+import com.havivon.pigeon.ui.spam.groupSpam
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import com.havivon.pigeon.ui.theme.HebTheme
 import org.junit.Rule
@@ -139,6 +141,19 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
     )
 
     val lookalike = LinkAnalyzer.findLinks(if (hebrew) "isr-post.co/pay" else "usps-track.co/pay").first()
+
+    /** The Spam folder by sender, the first sender opened to show its two messages. */
+    val spamGroups = groupSpam(sample.spam)
+    val spamOpened: Map<String, List<SpamMessage>> = run {
+        val newest = sample.spam.first().snippet
+        val older = if (hebrew) "עוד לא מאוחר! הפרס שלך מחכה, פרטים בהודעה הבאה" else "It's not too late! Your prize is waiting, details in the next message"
+        mapOf(
+            spamGroups.first().key to listOf(
+                SpamMessage(1012, 101, newest, if (hebrew) "13:02" else "1:02 PM", LinkAnalyzer.findLinks(newest)),
+                SpamMessage(1011, 101, older, if (hebrew) "אתמול" else "Yesterday"),
+            ),
+        )
+    }
 }
 
 /** The screens and states added with the real data, in Hebrew, right to left. */
@@ -180,6 +195,8 @@ class NewScreensSnapshots {
                 EmptyState(Icons.Rounded.Shield, stringResource(R.string.spam_empty_title), stringResource(R.string.spam_empty_body))
             })
         }
+        shot("70_spam_expanded") { SpamScreen(s.spamGroups, expanded = s.spamOpened.keys, messages = s.spamOpened) }
+        shot("72_spam_dark", dark = true) { SpamScreen(s.spamGroups) }
         shot("37_permissions") {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
             Scrim { PermissionsCard(askNotifications = true, askContacts = true, onContinue = {}, onNotNow = {}, modifier = Modifier.fillMaxWidth()) }
@@ -229,6 +246,7 @@ class NewScreensSnapshotsEnglish {
         shot("45_en_conversation_states") {
             ConversationScreen(s.danny, s.states, rule = null, draft = "", subtitle = "555-0123")
         }
+        shot("71_en_spam_expanded") { SpamScreen(s.spamGroups, expanded = s.spamOpened.keys, messages = s.spamOpened) }
         shot("69_en_inbox_unread") { InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread) }
     }
 }

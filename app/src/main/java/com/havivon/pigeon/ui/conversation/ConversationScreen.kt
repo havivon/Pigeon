@@ -317,7 +317,7 @@ private fun SpamBanner(onNotSpam: () -> Unit) {
             .padding(top = 10.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(c.spamTint)
+            .background(c.surface)
             .border(1.5.dp, c.spam, RoundedCornerShape(16.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -326,7 +326,7 @@ private fun SpamBanner(onNotSpam: () -> Unit) {
         Spacer(Modifier.width(10.dp))
         Text(stringResource(R.string.thread_spam_banner), color = c.onSurface, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
-        PillButton(stringResource(R.string.spam_not_spam), onClick = onNotSpam)
+        PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = onNotSpam)
     }
 }
 

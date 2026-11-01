@@ -164,12 +164,13 @@ class ViewerModeTest {
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
         val vm = spamScreen()
         collect(vm.state)
-        val item = vm.state.value.items.single()
+        val group = vm.state.value.groups.single()
         assertFalse(vm.canWrite)
-        assertNull(vm.delete(item))
+        // Nothing deleted: the screen shows "only when Pigeon is your messaging app" instead
+        assertNull(vm.delete(group))
         assertNull(vm.deleteAll())
         assertEquals(1, vm.state.value.items.size)
-        vm.notSpam(item)
+        vm.notSpam(group)
         assertTrue(vm.state.value.items.isEmpty())
     }
 
