@@ -267,7 +267,7 @@ object DateTimeExtractor {
             4 -> yearText.toInt().takeIf { it in 2000..2100 } ?: return null
             else -> return null
         }
-        if (day !in 1..31 || month !in 1..12) return null
+        if (month !in 1..12 || day !in 1..java.time.Month.of(month).maxLength()) return null // "31.11" is no date, in any year
         if (year != null && !validDate(year, month, day)) return null
         return Day.Absolute(day, month, year)
     }
@@ -445,12 +445,17 @@ object DateTimeExtractor {
         }
     }
 
-    /** [day] of [month] in [year], or in the next year where it exists (29 February). */
+    /**
+     * [day] of [month] in [year], or in the next year where it exists (29 February: within a leap cycle).
+     * [absolute] lets no day through that no year has, and the search is bounded all the same.
+     */
     private fun nextValid(year: Int, month: Int, day: Int): LocalDate {
-        var y = year
-        while (!validDate(y, month, day)) y++
-        return LocalDate.of(y, month, day)
+        val y = (year until year + LEAP_CYCLE).firstOrNull { validDate(it, month, day) } ?: year
+        return LocalDate.of(y, month, minOf(day, java.time.YearMonth.of(y, month).lengthOfMonth()))
     }
+
+    /** No day of the year is missing for longer than this many years in a row (29 February across 2100). */
+    private const val LEAP_CYCLE = 9
 
     private fun build(text: String, start: Int, end: Int, at: LocalDateTime, hasTime: Boolean, now: LocalDateTime): DateTimeMatch {
         val phrase = text.substring(start, end)

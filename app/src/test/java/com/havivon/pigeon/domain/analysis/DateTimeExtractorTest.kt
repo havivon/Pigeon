@@ -255,4 +255,18 @@ class DateTimeExtractorTest {
         check("Dinner at 8pm?", at(11, 1, 20), "Today 20:00")
         check("Let's meet on 20/11 at 7", at(11, 20, 7), "20 Nov 07:00")
     }
+
+    @Test(timeout = 5_000)
+    fun daysNoMonthHasAreNoDates() {
+        // These once searched the years forever for a 31 November: the conversation never opened
+        for (text in listOf("המבצע בתוקף עד ה-31.11", "until 31/11", "ב-30.2", "on 31/4/2027", "ב-31 בספטמבר", "Jun 31", "31st of April")) {
+            assertEquals(text, emptyList<DateTimeMatch>(), DateTimeExtractor.extract(text, now))
+        }
+    }
+
+    @Test(timeout = 5_000)
+    fun theTwentyNinthOfFebruaryIsTheNextLeapYears() {
+        check("ב-29.2", at(2, 29, year = 2028), "29.2.2028", hasTime = false)
+        assertEquals(emptyList<DateTimeMatch>(), DateTimeExtractor.extract("ב-29.2.2027", now))
+    }
 }
