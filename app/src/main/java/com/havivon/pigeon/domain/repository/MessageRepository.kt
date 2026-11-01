@@ -24,6 +24,9 @@ interface MessageRepository {
     /** The conversation's newest messages (any direction), oldest first; for notifications. */
     suspend fun recentMessages(threadId: Long, limit: Int): List<SmsMessage>
 
+    /** The newest incoming messages from every conversation, newest first (the code widget looks for the latest code in them). */
+    suspend fun recentIncoming(limit: Int): List<SmsMessage>
+
     /** The conversation's unread incoming messages, oldest first. */
     suspend fun unreadMessages(threadId: Long): List<SmsMessage>
 

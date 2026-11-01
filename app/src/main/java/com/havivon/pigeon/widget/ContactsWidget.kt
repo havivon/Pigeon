@@ -10,7 +10,6 @@ import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.provideContent
@@ -31,9 +30,6 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
-import com.havivon.pigeon.data.sample.SampleSet
-import com.havivon.pigeon.domain.model.Conversation
-import com.havivon.pigeon.domain.model.Folder
 
 private val CellWidth = 52.dp
 private const val MaxContacts = 5
@@ -44,18 +40,18 @@ class ContactsWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sample = sampleFor(context)
-        provideContent { ContactsWidgetContent(sample) }
+        val data = WidgetSource(context).contacts()
+        provideContent { ContactsWidgetContent(data) }
     }
 }
 
-class ContactsWidgetReceiver : GlanceAppWidgetReceiver() {
+class ContactsWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ContactsWidget()
 }
 
 @Composable
-fun ContactsWidgetContent(sample: SampleSet) {
-    val contacts = sample.inbox.filter { it.pinned } + sample.inbox.filter { !it.pinned && it.folder == Folder.Personal }
+fun ContactsWidgetContent(data: ContactsWidgetData) {
+    val contacts = data.contacts
     // The "+" takes one cell, the rest go to the contacts
     val fitting = ((LocalSize.current.width - 24.dp) / CellWidth).toInt() - 1
     Row(
@@ -68,7 +64,7 @@ fun ContactsWidgetContent(sample: SampleSet) {
     ) {
         contacts.take(minOf(MaxContacts, fitting)).forEach { ContactCell(it) }
         Column(
-            modifier = GlanceModifier.defaultWeight().clickable(openApp()),
+            modifier = GlanceModifier.defaultWeight().clickable(openNewMessage()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
@@ -88,16 +84,15 @@ fun ContactsWidgetContent(sample: SampleSet) {
 }
 
 @Composable
-private fun RowScope.ContactCell(conversation: Conversation) {
+private fun RowScope.ContactCell(contact: WidgetContact) {
     Column(
-        // Later: a deep link to this conversation (conversation.id) instead of just opening the app
-        modifier = GlanceModifier.defaultWeight().clickable(openApp()),
+        modifier = GlanceModifier.defaultWeight().clickable(openThread(contact.threadId)),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        WidgetAvatar(conversation.name, conversation.avatarArgb, 40.dp, textSize = 17.sp)
+        WidgetAvatar(contact.name, contact.avatarArgb, 40.dp, textSize = 17.sp)
         Spacer(GlanceModifier.height(4.dp))
         Text(
-            text = conversation.name.substringBefore(' '),
+            text = contact.name.substringBefore(' '),
             style = TextStyle(color = WidgetColors.text, fontSize = 11.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
             maxLines = 1,
             modifier = GlanceModifier.fillMaxWidth(),

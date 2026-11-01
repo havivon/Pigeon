@@ -18,6 +18,8 @@ import com.havivon.pigeon.data.settings.DataStoreSettingsRepository
 import com.havivon.pigeon.data.sms.IncomingSmsHandler
 import com.havivon.pigeon.data.sms.TelephonyMessageRepository
 import com.havivon.pigeon.data.sms.TelephonySmsSender
+import com.havivon.pigeon.widget.WidgetRefresher
+import com.havivon.pigeon.widget.refreshSignals
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.FavoritesRepository
@@ -81,6 +83,13 @@ class AppContainer(
     val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages) }
     val notifier: MessageNotifier by lazy {
         MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })
+    }
+    /** Keeps the home-screen widgets current: redraws them when anything they show changes. */
+    val widgets: WidgetRefresher by lazy {
+        WidgetRefresher(
+            app, appScope,
+            refreshSignals(messages.conversations, favorites.favorites, pins.pinnedThreadIds, locks.lockedThreadIds, settings.settings, rules.rules, spam.verdicts),
+        )
     }
     val reminderNotifier: ReminderNotifier by lazy {
         ReminderNotifier(app, reminders, messages, contacts, locks, settings, reminderScheduler)

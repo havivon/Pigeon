@@ -13,7 +13,6 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
@@ -36,11 +35,6 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.SensitiveClipboard
-import com.havivon.pigeon.data.sample.SampleSet
-import com.havivon.pigeon.domain.model.Conversation
-
-/** How long ago the sample code arrived; a real time-ago comes with the SMS data. */
-private const val SampleMinutesAgo = 2
 
 private val CodeKey = ActionParameters.Key<String>("code")
 
@@ -49,12 +43,14 @@ class CodeWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sample = sampleFor(context)
-        provideContent { CodeWidgetContent(sample) }
+        val source = WidgetSource(context)
+        val data = source.code()
+        val showContent = source.showText()
+        provideContent { CodeWidgetContent(data, showContent) }
     }
 }
 
-class CodeWidgetReceiver : GlanceAppWidgetReceiver() {
+class CodeWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CodeWidget()
 }
 
@@ -72,13 +68,12 @@ private fun spaced(code: String): String {
     return "$leftToRightIsolate${code.toList().joinToString(" ")}$popIsolate"
 }
 
+/** [showContent] false (counts only) draws the code as bullets; Copy still copies the real one. */
 @Composable
-fun CodeWidgetContent(sample: SampleSet) {
-    val conversation = sample.inbox.firstOrNull { it.code != null }
-    val code = conversation?.code
+fun CodeWidgetContent(data: CodeWidgetData?, showContent: Boolean = true) {
     val compact = LocalSize.current.height < 110.dp
     val modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(R.drawable.widget_bg_gradient))
-    if (conversation == null || code == null) {
+    if (data == null) {
         Box(modifier = modifier.clickable(openApp()), contentAlignment = Alignment.Center) {
             Text(
                 text = widgetString(R.string.widget_code_none),
@@ -87,35 +82,34 @@ fun CodeWidgetContent(sample: SampleSet) {
         }
     } else if (compact) {
         Row(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Later: a deep link to the conversation the code came from
-            Column(modifier = GlanceModifier.defaultWeight().clickable(openApp())) {
-                CodeCaption(conversation)
-                CodeDigits(code, 24.sp)
+            Column(modifier = GlanceModifier.defaultWeight().clickable(openThread(data.threadId))) {
+                CodeCaption(data)
+                CodeDigits(displayCode(data.code, showContent), 24.sp)
             }
             Spacer(GlanceModifier.width(8.dp))
-            CopyPill(code)
+            CopyPill(data.code)
         }
     } else {
         Column(modifier = modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = GlanceModifier.fillMaxWidth().clickable(openApp())) {
-                CodeCaption(conversation)
+            Column(modifier = GlanceModifier.fillMaxWidth().clickable(openThread(data.threadId))) {
+                CodeCaption(data)
                 Spacer(GlanceModifier.height(6.dp))
-                CodeDigits(code, 28.sp)
+                CodeDigits(displayCode(data.code, showContent), 28.sp)
             }
             Spacer(GlanceModifier.height(12.dp))
-            Box(modifier = GlanceModifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CopyPill(code) }
+            Box(modifier = GlanceModifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CopyPill(data.code) }
         }
     }
 }
 
 @Composable
-private fun CodeCaption(conversation: Conversation) {
+private fun CodeCaption(data: CodeWidgetData) {
     Text(
         text = widgetString(
             R.string.widget_code_subtitle,
             widgetString(R.string.widget_code_kind),
-            conversation.name,
-            widgetPlural(R.plurals.widget_ago_minutes, SampleMinutesAgo),
+            data.sender,
+            widgetAgo(data.ageMinutes),
         ),
         style = TextStyle(color = WidgetColors.onGradientSoft, fontSize = 11.sp),
         maxLines = 2,

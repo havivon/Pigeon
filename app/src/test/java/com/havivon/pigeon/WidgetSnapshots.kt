@@ -14,6 +14,16 @@ import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams
 import com.android.resources.NightMode
 import com.havivon.pigeon.data.sample.SampleData
+import com.havivon.pigeon.data.sample.SampleSet
+import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.widget.CodeWidgetData
+import com.havivon.pigeon.widget.ContactsWidgetData
+import com.havivon.pigeon.widget.CounterWidgetData
+import com.havivon.pigeon.widget.FavoritesWidgetData
+import com.havivon.pigeon.widget.UnreadWidgetData
+import com.havivon.pigeon.widget.WidgetContact
+import com.havivon.pigeon.widget.WidgetFavorite
+import com.havivon.pigeon.widget.WidgetUnreadRow
 import com.havivon.pigeon.widget.CodeWidgetContent
 import com.havivon.pigeon.widget.ContactsWidgetContent
 import com.havivon.pigeon.widget.CounterWidgetContent
@@ -60,6 +70,29 @@ private fun Paparazzi.widgetShot(
     snapshot(host, name)
 }
 
+// The sample content as the widgets' data: what the widgets draw from the real repositories, drawn from made-up ones
+
+/** How long ago the sample code arrived. */
+private const val SAMPLE_CODE_AGE_MINUTES = 2L
+
+private fun SampleSet.unreadData(): UnreadWidgetData {
+    val unread = inbox.filter { it.unread > 0 }
+    val rows = unread.map { c ->
+        WidgetUnreadRow(c.id, c.name, c.snippet, c.unread, c.time, c.avatarArgb, rules.firstOrNull { it.enabled && it.id == c.ruleId }?.argb)
+    }
+    return UnreadWidgetData(rows, unread.sumOf { it.unread })
+}
+
+private fun SampleSet.codeData(): CodeWidgetData? =
+    inbox.firstOrNull { it.code != null }?.let { CodeWidgetData(it.code!!, it.name, it.id, SAMPLE_CODE_AGE_MINUTES) }
+
+private fun SampleSet.contactsData(): ContactsWidgetData =
+    ContactsWidgetData((inbox.filter { it.pinned } + inbox.filter { !it.pinned && it.folder == Folder.Personal }).map { WidgetContact(it.id, it.name, it.avatarArgb) })
+
+private fun SampleSet.counterData() = CounterWidgetData(unread = inbox.sumOf { it.unread }, spam = spam.size)
+
+private fun SampleSet.favoritesData() = FavoritesWidgetData(favorites.map { WidgetFavorite(it.id.toLong(), it.sender, it.text, it.date, it.avatarArgb) })
+
 private fun config(locale: String, dark: Boolean) =
     DeviceConfig.PIXEL_6.copy(locale = locale, nightMode = if (dark) NightMode.NIGHT else NightMode.NOTNIGHT)
 
@@ -80,12 +113,12 @@ class WidgetSnapshots {
 
     @Test
     fun widgets() {
-        shot("13_widget_unread", W4, H2) { UnreadWidgetContent(sample) }
-        shot("14_widget_unread_counts_only", W4, H2) { UnreadWidgetContent(sample, showContent = false) }
-        shot("15_widget_code", W2, H2) { CodeWidgetContent(sample) }
-        shot("16_widget_contacts", W4, H1) { ContactsWidgetContent(sample) }
-        shot("17_widget_counter", W2, H1) { CounterWidgetContent(sample) }
-        shot("18_widget_favorites", W4, H2) { FavoritesWidgetContent(sample) }
+        shot("13_widget_unread", W4, H2) { UnreadWidgetContent(sample.unreadData()) }
+        shot("14_widget_unread_counts_only", W4, H2) { UnreadWidgetContent(sample.unreadData(), showContent = false) }
+        shot("15_widget_code", W2, H2) { CodeWidgetContent(sample.codeData()) }
+        shot("16_widget_contacts", W4, H1) { ContactsWidgetContent(sample.contactsData()) }
+        shot("17_widget_counter", W2, H1) { CounterWidgetContent(sample.counterData()) }
+        shot("18_widget_favorites", W4, H2) { FavoritesWidgetContent(sample.favoritesData()) }
     }
 }
 
@@ -106,8 +139,8 @@ class WidgetSnapshotsDark {
 
     @Test
     fun widgets() {
-        shot("19_widget_unread_dark", W4, H2) { UnreadWidgetContent(sample) }
-        shot("20_widget_code_dark", W2, H2) { CodeWidgetContent(sample) }
+        shot("19_widget_unread_dark", W4, H2) { UnreadWidgetContent(sample.unreadData()) }
+        shot("20_widget_code_dark", W2, H2) { CodeWidgetContent(sample.codeData()) }
     }
 }
 
@@ -128,7 +161,7 @@ class WidgetSnapshotsEnglish {
 
     @Test
     fun widgets() {
-        shot("21_en_widget_unread", W4, H2) { UnreadWidgetContent(sample) }
-        shot("22_en_widget_code", W2, H2) { CodeWidgetContent(sample) }
+        shot("21_en_widget_unread", W4, H2) { UnreadWidgetContent(sample.unreadData()) }
+        shot("22_en_widget_code", W2, H2) { CodeWidgetContent(sample.codeData()) }
     }
 }

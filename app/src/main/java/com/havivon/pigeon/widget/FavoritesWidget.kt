@@ -10,7 +10,6 @@ import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.provideContent
@@ -29,8 +28,6 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
-import com.havivon.pigeon.data.sample.SampleSet
-import com.havivon.pigeon.domain.model.FavoriteMessage
 
 private val RowHeight = 56.dp
 
@@ -40,18 +37,19 @@ class FavoritesWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sample = sampleFor(context)
-        val showContent = WidgetSettings.showContent(context)
-        provideContent { FavoritesWidgetContent(sample, showContent) }
+        val source = WidgetSource(context)
+        val data = source.favorites()
+        val showContent = source.showText()
+        provideContent { FavoritesWidgetContent(data, showContent) }
     }
 }
 
-class FavoritesWidgetReceiver : GlanceAppWidgetReceiver() {
+class FavoritesWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = FavoritesWidget()
 }
 
 @Composable
-fun FavoritesWidgetContent(sample: SampleSet, showContent: Boolean = true) {
+fun FavoritesWidgetContent(data: FavoritesWidgetData, showContent: Boolean = true) {
     val fitting = ((LocalSize.current.height - HeaderHeight) / RowHeight).toInt()
     Column(
         modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(R.drawable.widget_bg_surface)),
@@ -64,7 +62,7 @@ fun FavoritesWidgetContent(sample: SampleSet, showContent: Boolean = true) {
                 style = TextStyle(color = WidgetColors.onGradient, fontSize = 16.sp, fontWeight = FontWeight.Bold),
             )
         }
-        if (sample.favorites.isEmpty()) {
+        if (data.rows.isEmpty()) {
             Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = widgetString(R.string.widget_favorites_empty),
@@ -73,17 +71,16 @@ fun FavoritesWidgetContent(sample: SampleSet, showContent: Boolean = true) {
             }
         } else {
             Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)) {
-                sample.favorites.take(fitting).forEach { FavoriteRow(it, showContent) }
+                data.rows.take(fitting).forEach { FavoriteRow(it, showContent) }
             }
         }
     }
 }
 
 @Composable
-private fun FavoriteRow(favorite: FavoriteMessage, showContent: Boolean) {
+private fun FavoriteRow(favorite: WidgetFavorite, showContent: Boolean) {
     Row(
-        // Later: a deep link to this message in its conversation (favorite.id) instead of just opening the app
-        modifier = GlanceModifier.fillMaxWidth().height(RowHeight).clickable(openApp()),
+        modifier = GlanceModifier.fillMaxWidth().height(RowHeight).clickable(openThread(favorite.threadId)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         WidgetAvatar(favorite.sender, favorite.avatarArgb, 32.dp)
@@ -100,7 +97,7 @@ private fun FavoriteRow(favorite: FavoriteMessage, showContent: Boolean) {
                 Text(text = favorite.date, style = TextStyle(color = WidgetColors.muted, fontSize = 11.sp), maxLines = 1)
             }
             // With "counts only" the starred text stays hidden
-            if (showContent) {
+            if (showContent && favorite.text.isNotEmpty()) {
                 Text(
                     text = favorite.text,
                     style = TextStyle(color = WidgetColors.muted, fontSize = 12.sp),

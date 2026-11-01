@@ -38,8 +38,12 @@ class SmsDeliverReceiver : BroadcastReceiver() {
         }
         if (parts.isEmpty()) return
         val subId = intent.getIntExtra(EXTRA_SUBSCRIPTION_INDEX, intent.getIntExtra(EXTRA_SUBSCRIPTION_LEGACY, -1)).takeIf { it >= 0 }
-        val handler = AppContainer.from(context).incomingSms
-        runAsync("SmsDeliver") { handler.handle(parts, subId) }
+        val app = AppContainer.from(context)
+        runAsync("SmsDeliver") {
+            app.incomingSms.handle(parts, subId)
+            // The process may not live long enough for the usual quiet-time refresh
+            app.widgets.updateNow()
+        }
     }
 }
 

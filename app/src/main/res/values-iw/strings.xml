@@ -202,6 +202,16 @@
         <item quantity="two">לפני שתי דקות</item>
         <item quantity="other">לפני %1$d דקות</item>
     </plurals>
+    <plurals name="widget_ago_hours">
+        <item quantity="one">לפני שעה</item>
+        <item quantity="two">לפני שעתיים</item>
+        <item quantity="other">לפני %1$d שעות</item>
+    </plurals>
+    <plurals name="widget_ago_days">
+        <item quantity="one">לפני יום</item>
+        <item quantity="two">לפני יומיים</item>
+        <item quantity="other">לפני %1$d ימים</item>
+    </plurals>
     <string name="widget_contacts_label">אנשי קשר מהירים</string>
     <string name="widget_contacts_description">הודעה לאנשי הקשר הקבועים, בנגיעה אחת</string>
     <string name="widget_contacts_new">חדשה</string>

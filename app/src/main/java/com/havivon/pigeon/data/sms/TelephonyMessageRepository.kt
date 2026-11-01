@@ -98,6 +98,12 @@ class TelephonyMessageRepository(
         queryMessages("${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()), "${Telephony.Sms.DATE} DESC LIMIT $limit").reversed()
     }
 
+    override suspend fun recentIncoming(limit: Int): List<SmsMessage> = withContext(Dispatchers.IO) {
+        val hiddenNow = hidden.value
+        queryMessages("${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue}", emptyArray(), "${Telephony.Sms.DATE} DESC LIMIT $limit")
+            .filter { it.id !in hiddenNow.messages && it.threadId !in hiddenNow.threads }
+    }
+
     override suspend fun unreadMessages(threadId: Long): List<SmsMessage> = withContext(Dispatchers.IO) {
         queryMessages(
             "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue} AND ${Telephony.Sms.READ} = 0",

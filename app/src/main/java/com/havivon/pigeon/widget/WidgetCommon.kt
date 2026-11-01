@@ -2,6 +2,8 @@ package com.havivon.pigeon.widget
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
@@ -19,6 +21,7 @@ import androidx.glance.LocalContext
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.action.actionStartActivity
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
@@ -34,8 +37,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.havivon.pigeon.R
-import com.havivon.pigeon.data.sample.SampleData
-import com.havivon.pigeon.data.sample.SampleSet
+import com.havivon.pigeon.data.LaunchRequests
 import com.havivon.pigeon.ui.theme.DarkHebColors
 import com.havivon.pigeon.ui.theme.LightHebColors
 
@@ -52,8 +54,31 @@ internal object WidgetColors {
 
 internal val HeaderHeight = 44.dp
 
-/** Every tap target opens the app for now. Later each one gets a deep link to its conversation (or message). */
+/** The header and counters just open the app. */
 internal fun openApp(): Action = actionStartActivity(ComponentName(MainActivityName.PACKAGE, MainActivityName.MAIN_ACTIVITY))
+
+/**
+ * Opens a conversation (a row, a contact, a code, a favourite). The intent is MainActivity's, with
+ * the thread id the app already understands from notification taps ([LaunchRequests.EXTRA_THREAD_ID]);
+ * the data makes each thread's intent distinct, since PendingIntents are told apart by data and not by extras.
+ */
+internal fun openThread(threadId: Long): Action = actionStartActivity(
+    mainActivityIntent()
+        .setData(Uri.parse("pigeon://thread/$threadId"))
+        .putExtra(LaunchRequests.EXTRA_THREAD_ID, threadId),
+)
+
+/** The "+" button: the new-message screen. */
+internal fun openNewMessage(): Action = actionStartActivity(
+    mainActivityIntent()
+        .setData(Uri.parse("pigeon://compose"))
+        .putExtra(LaunchRequests.EXTRA_NEW_MESSAGE, true),
+)
+
+private fun mainActivityIntent(): Intent =
+    Intent()
+        .setComponent(ComponentName(MainActivityName.PACKAGE, MainActivityName.MAIN_ACTIVITY))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
 /**
  * MainActivity by name, not by class: it is an AppCompatActivity, and AppCompat is kept off the
@@ -63,10 +88,6 @@ internal object MainActivityName {
     const val PACKAGE = "com.havivon.pigeon"
     const val MAIN_ACTIVITY = "com.havivon.pigeon.MainActivity"
 }
-
-/** The widgets show sample content until SMS access exists. */
-internal fun sampleFor(context: Context): SampleSet =
-    SampleData.forLanguage(context.resources.configuration.locales[0].language)
 
 @Composable
 internal fun widgetString(@StringRes id: Int, vararg args: Any): String = LocalContext.current.getString(id, *args)
@@ -127,4 +148,15 @@ internal fun WidgetHeaderBar(action: Action, content: @Composable RowScope.() ->
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
+}
+
+/** "2 min ago", "3 hours ago", "2 days ago": the age of a code in the largest whole unit. */
+@Composable
+internal fun widgetAgo(minutes: Long): String {
+    val m = minutes.coerceAtLeast(1)
+    return when {
+        m < 60 -> widgetPlural(R.plurals.widget_ago_minutes, m.toInt())
+        m < 24 * 60 -> widgetPlural(R.plurals.widget_ago_hours, (m / 60).toInt())
+        else -> widgetPlural(R.plurals.widget_ago_days, (m / (24 * 60)).toInt())
+    }
 }

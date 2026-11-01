@@ -7,6 +7,7 @@ import com.havivon.pigeon.data.reminders.AlarmReminderScheduler
 import com.havivon.pigeon.data.work.CodeCleanupWorker
 import com.havivon.pigeon.domain.analysis.AnalysisSeams
 import com.havivon.pigeon.domain.analysis.SpamFilterHook
+import kotlinx.coroutines.launch
 
 class PigeonApp : Application() {
 
@@ -25,5 +26,7 @@ class PigeonApp : Application() {
         super.onCreate()
         NotificationChannels.create(this)
         CodeCleanupWorker.schedule(this)
+        // Off the main thread: the widgets only need keeping current if one is placed
+        container.appScope.launch { container.widgets.ensureRunning() }
     }
 }

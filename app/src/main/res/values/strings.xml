@@ -194,6 +194,14 @@
         <item quantity="one">%1$d min ago</item>
         <item quantity="other">%1$d min ago</item>
     </plurals>
+    <plurals name="widget_ago_hours">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="widget_ago_days">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
     <string name="widget_contacts_label">Quick contacts</string>
     <string name="widget_contacts_description">A message to the people you write to most, one tap away</string>
     <string name="widget_contacts_new">New</string>

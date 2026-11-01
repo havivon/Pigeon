@@ -77,6 +77,8 @@ class FakeMessageRepository : MessageRepository {
 
     override suspend fun message(id: Long): SmsMessage? = allMessages.value.firstOrNull { it.id == id }
     override suspend fun recentMessages(threadId: Long, limit: Int) = allMessages.value.filter { it.threadId == threadId }.takeLast(limit)
+    override suspend fun recentIncoming(limit: Int) =
+        allMessages.value.filter { !it.type.outgoing }.sortedByDescending { it.dateMillis }.take(limit)
     override suspend fun unreadMessages(threadId: Long) = allMessages.value.filter { it.threadId == threadId && !it.read }
     override suspend fun threadIdFor(addresses: List<String>): Long =
         threads.value.firstOrNull { c -> c.addresses.size == addresses.size && c.addresses.all { a -> addresses.any { PhoneNumbers.same(a, it) } } }?.threadId

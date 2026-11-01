@@ -31,10 +31,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 }
                 // Always re-post: until the notification is updated, the system keeps a spinner on the reply field
                 app.notifier.showReplied(threadId)
+                app.widgets.updateNow()
             }
             ACTION_MARK_READ -> runAsync(TAG) {
                 app.notifier.cancel(threadId)
                 app.messages.markThreadRead(threadId)
+                app.widgets.updateNow()
             }
             ACTION_COPY_CODE -> {
                 val code = intent.getStringExtra(EXTRA_CODE)?.take(MAX_CODE_LENGTH)

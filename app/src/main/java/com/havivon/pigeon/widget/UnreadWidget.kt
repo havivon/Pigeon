@@ -11,7 +11,6 @@ import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.provideContent
@@ -32,8 +31,6 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.havivon.pigeon.R
-import com.havivon.pigeon.data.sample.SampleSet
-import com.havivon.pigeon.domain.model.Conversation
 
 private val RowHeight = 40.dp
 
@@ -43,19 +40,19 @@ class UnreadWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sample = sampleFor(context)
-        val showContent = WidgetSettings.showContent(context)
-        provideContent { UnreadWidgetContent(sample, showContent) }
+        val source = WidgetSource(context)
+        val data = source.unread()
+        val showContent = source.showText()
+        provideContent { UnreadWidgetContent(data, showContent) }
     }
 }
 
-class UnreadWidgetReceiver : GlanceAppWidgetReceiver() {
+class UnreadWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = UnreadWidget()
 }
 
 @Composable
-fun UnreadWidgetContent(sample: SampleSet, showContent: Boolean = true) {
-    val unread = sample.inbox.filter { it.unread > 0 }
+fun UnreadWidgetContent(data: UnreadWidgetData, showContent: Boolean = true) {
     val fitting = ((LocalSize.current.height - HeaderHeight) / RowHeight).toInt()
     Column(
         modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(R.drawable.widget_bg_surface)),
@@ -66,17 +63,17 @@ fun UnreadWidgetContent(sample: SampleSet, showContent: Boolean = true) {
                 style = TextStyle(color = WidgetColors.onGradient, fontSize = 16.sp, fontWeight = FontWeight.Bold),
             )
             Spacer(GlanceModifier.width(8.dp))
-            WidgetPill(unread.sumOf { it.unread }.toString(), R.drawable.widget_pill_glass)
+            WidgetPill(data.totalUnread.toString(), R.drawable.widget_pill_glass)
             Spacer(GlanceModifier.defaultWeight())
-            // The new-message button; it will open the compose screen once there is one
+            // The new-message button
             Box(
-                modifier = GlanceModifier.size(30.dp).background(ImageProvider(R.drawable.widget_circle_glass)).clickable(openApp()),
+                modifier = GlanceModifier.size(30.dp).background(ImageProvider(R.drawable.widget_circle_glass)).clickable(openNewMessage()),
                 contentAlignment = Alignment.Center,
             ) {
                 WidgetIcon(R.drawable.ic_widget_edit, 16.dp, widgetString(R.string.inbox_new_message))
             }
         }
-        if (unread.isEmpty()) {
+        if (data.rows.isEmpty()) {
             Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = widgetString(R.string.widget_unread_empty),
@@ -85,44 +82,40 @@ fun UnreadWidgetContent(sample: SampleSet, showContent: Boolean = true) {
             }
         } else {
             Column(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)) {
-                unread.take(fitting).forEach { conversation ->
-                    val rule = sample.rules.firstOrNull { it.enabled && it.id == conversation.ruleId }
-                    UnreadRow(conversation, rule?.argb, showContent)
-                }
+                data.rows.take(fitting).forEach { UnreadRow(it, showContent) }
             }
         }
     }
 }
 
 @Composable
-private fun UnreadRow(conversation: Conversation, ruleArgb: Long?, showContent: Boolean) {
+private fun UnreadRow(row: WidgetUnreadRow, showContent: Boolean) {
     Row(
-        // Later: a deep link to this conversation (conversation.id) instead of just opening the app
-        modifier = GlanceModifier.fillMaxWidth().height(RowHeight).clickable(openApp()),
+        modifier = GlanceModifier.fillMaxWidth().height(RowHeight).clickable(openThread(row.threadId)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The colour rule's strip sits on the start edge; rows without a rule keep the space
-        if (ruleArgb != null) {
-            Box(modifier = GlanceModifier.width(4.dp).height(26.dp).background(ColorProvider(Color(ruleArgb)))) {}
+        if (row.ruleArgb != null) {
+            Box(modifier = GlanceModifier.width(4.dp).height(26.dp).background(ColorProvider(Color(row.ruleArgb)))) {}
         } else {
             Spacer(GlanceModifier.width(4.dp))
         }
         Spacer(GlanceModifier.width(8.dp))
-        WidgetAvatar(conversation.name, conversation.avatarArgb, 30.dp)
+        WidgetAvatar(row.name, row.avatarArgb, 30.dp)
         Spacer(GlanceModifier.width(10.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
-                text = conversation.name,
+                text = row.name,
                 style = TextStyle(color = WidgetColors.text, fontSize = 14.sp, fontWeight = FontWeight.Bold),
                 maxLines = 1,
             )
             Text(
-                text = if (showContent) conversation.snippet else widgetPlural(R.plurals.widget_unread_new_messages, conversation.unread),
+                text = if (showContent && row.snippet.isNotEmpty()) row.snippet else widgetPlural(R.plurals.widget_unread_new_messages, row.unread),
                 style = TextStyle(color = WidgetColors.muted, fontSize = 12.sp),
                 maxLines = 1,
             )
         }
         Spacer(GlanceModifier.width(8.dp))
-        Text(text = conversation.time, style = TextStyle(color = WidgetColors.muted, fontSize = 11.sp), maxLines = 1)
+        Text(text = row.time, style = TextStyle(color = WidgetColors.muted, fontSize = 11.sp), maxLines = 1)
     }
 }

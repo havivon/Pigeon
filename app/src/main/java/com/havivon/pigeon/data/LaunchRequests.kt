@@ -56,6 +56,9 @@ object LaunchRequests {
     /** The thread to open, as put on MainActivity's intent by a notification tap. */
     const val EXTRA_THREAD_ID = "com.havivon.pigeon.extra.THREAD_ID"
 
+    /** Set on MainActivity's intent by the widgets' "+" button: open an empty new message. */
+    const val EXTRA_NEW_MESSAGE = "com.havivon.pigeon.extra.NEW_MESSAGE"
+
     /** The extra other apps use for the draft text in an `sms:` intent (not a public constant). */
     private const val EXTRA_SMS_BODY = "sms_body"
 
@@ -86,7 +89,10 @@ object LaunchRequests {
                         extraText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
                     )?.let { _compose.value = it }
                 }
-                else -> intent.getLongExtra(EXTRA_THREAD_ID, 0L).takeIf { it > 0 }?.let { _openThread.value = it }
+                else -> {
+                    intent.getLongExtra(EXTRA_THREAD_ID, 0L).takeIf { it > 0 }?.let { _openThread.value = it }
+                    if (intent.getBooleanExtra(EXTRA_NEW_MESSAGE, false)) _compose.value = ComposeRequest(recipients = emptyList(), body = "")
+                }
             }
         } catch (_: RuntimeException) {
             // A malformed intent from another app (bad parcel, wrong extra types): ignore it

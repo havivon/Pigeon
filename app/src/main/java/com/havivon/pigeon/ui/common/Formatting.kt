@@ -81,6 +81,9 @@ class DateLabels(
         return if (withTime) "$day ${time(millis)}" else day
     }
 
+    /** A short numeric date, "20.10.26" or "10/20/26", for the favourites widget. */
+    fun shortDate(millis: Long): String = numericDate.format(date(millis))
+
     /** The stamp of a copied or shared message: the time, with the date when the messages span days. */
     fun stamp(millis: Long, withDate: Boolean): String =
         if (withDate) "${numericDate.format(date(millis))} ${time(millis)}" else time(millis)

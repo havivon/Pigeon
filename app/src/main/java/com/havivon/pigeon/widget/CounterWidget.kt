@@ -9,7 +9,6 @@ import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.provideContent
@@ -28,26 +27,25 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
-import com.havivon.pigeon.data.sample.SampleSet
 
 /** A small tile with the number of unread messages, and a red pill when spam is waiting. */
 class CounterWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val sample = sampleFor(context)
-        provideContent { CounterWidgetContent(sample) }
+        val data = WidgetSource(context).counter()
+        provideContent { CounterWidgetContent(data) }
     }
 }
 
-class CounterWidgetReceiver : GlanceAppWidgetReceiver() {
+class CounterWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CounterWidget()
 }
 
 @Composable
-fun CounterWidgetContent(sample: SampleSet) {
-    val unread = sample.inbox.sumOf { it.unread }
-    val spam = sample.spam.size
+fun CounterWidgetContent(data: CounterWidgetData) {
+    val unread = data.unread
+    val spam = data.spam
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
