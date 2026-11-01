@@ -159,15 +159,15 @@ private fun BenefitRow(icon: ImageVector, text: String) {
  * The three steps to allow it, and a way there.
  */
 @Composable
-fun RestrictedSettingsHelp(onOpenAppInfo: () -> Unit, onClose: () -> Unit) {
+fun RestrictedSettingsHelp(onOpenAppInfo: () -> Unit, onRetry: () -> Unit, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose) {
-        RestrictedSettingsHelpCard(onOpenAppInfo, onClose, Modifier.fillMaxWidth())
+        RestrictedSettingsHelpCard(onOpenAppInfo, onRetry, onClose, Modifier.fillMaxWidth())
     }
 }
 
 /** The help's card itself, apart from its window, so the design snapshots can draw it. */
 @Composable
-internal fun RestrictedSettingsHelpCard(onOpenAppInfo: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RestrictedSettingsHelpCard(onOpenAppInfo: () -> Unit, onRetry: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val c = HebTheme.colors
     Surface(modifier, shape = RoundedCornerShape(28.dp), color = c.surface, shadowElevation = 8.dp) {
         Column(
@@ -200,6 +200,13 @@ internal fun RestrictedSettingsHelpCard(onOpenAppInfo: () -> Unit, onClose: () -
                 Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 filled = true,
                 onClick = onOpenAppInfo,
+            )
+            Spacer(Modifier.height(10.dp))
+            // Some Android versions won't tell the app whether it is allowed now: the user says so
+            PillButton(
+                stringResource(R.string.onboarding_restricted_retry),
+                Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                onClick = onRetry,
             )
             Spacer(Modifier.height(4.dp))
             Box(

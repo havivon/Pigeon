@@ -16,8 +16,9 @@
     <string name="onboarding_restricted_body">Android does not let an app installed from a file become your messaging app, or read your messages, until you allow it. It takes half a minute:</string>
     <string name="onboarding_restricted_step1">Tap \"Open app info\" below.</string>
     <string name="onboarding_restricted_step2">Tap ⋮ at the top, then \"Allow restricted settings\", and confirm with your fingerprint or screen lock.</string>
-    <string name="onboarding_restricted_step3">Come back here: Pigeon asks again by itself.</string>
+    <string name="onboarding_restricted_step3">Come back here and tap \"I allowed it, try again\".</string>
     <string name="onboarding_restricted_open">Open app info</string>
+    <string name="onboarding_restricted_retry">I allowed it, try again</string>
     <string name="onboarding_restricted_close">Close</string>
     <string name="onboarding_reminder_title">Pigeon isn\'t your messaging app yet</string>
     <string name="onboarding_reminder_body">Make it your messaging app to receive messages here, or just view them while your current app keeps receiving them.</string>

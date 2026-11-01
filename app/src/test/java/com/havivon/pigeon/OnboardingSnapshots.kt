@@ -50,7 +50,7 @@ class OnboardingSnapshots {
         paparazzi.snapshot("59_restricted_help") {
             HebSmsTheme {
                 DefaultAppWelcome({}, {}, {})
-                OverScrim { RestrictedSettingsHelpCard({}, {}, Modifier.fillMaxWidth()) }
+                OverScrim { RestrictedSettingsHelpCard({}, {}, {}, Modifier.fillMaxWidth()) }
             }
         }
         paparazzi.snapshot("61_viewer_banner") {
@@ -81,7 +81,7 @@ class OnboardingSnapshotsEnglish {
         paparazzi.snapshot("60_en_restricted_help") {
             HebSmsTheme {
                 DefaultAppWelcome({}, {}, {})
-                OverScrim { RestrictedSettingsHelpCard({}, {}, Modifier.fillMaxWidth()) }
+                OverScrim { RestrictedSettingsHelpCard({}, {}, {}, Modifier.fillMaxWidth()) }
             }
         }
         val sample = SampleData.english

@@ -278,7 +278,8 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
                 hidden = false
                 container.refreshAccess()
                 val blocked = restricted
-                if (blocked != null && !DefaultSmsRole.isRestrictedByAndroid(context)) {
+                // Only when the system says it is allowed now; when it won't say, the help stays with its retry
+                if (blocked != null && DefaultSmsRole.isKnownAllowed(context)) {
                     restricted = null
                     restrictionLifted = blocked
                 }
@@ -389,7 +390,14 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         // Still needed: the role while Pigeon is not the default, reading while it sees nothing
         val blocked = restricted
         if (blocked != null && (if (blocked == Blocked.Role) mode != SmsAccess.Default else mode == SmsAccess.None)) {
-            RestrictedSettingsHelp(onOpenAppInfo = { openAppInfo(context) }, onClose = { restricted = null })
+            RestrictedSettingsHelp(
+                onOpenAppInfo = { openAppInfo(context) },
+                onRetry = {
+                    restricted = null
+                    restrictionLifted = blocked
+                },
+                onClose = { restricted = null },
+            )
         }
     }
 

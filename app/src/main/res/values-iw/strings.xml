@@ -16,8 +16,9 @@
     <string name="onboarding_restricted_body">אנדרואיד לא נותן לאפליקציה שהותקנה מקובץ להפוך לאפליקציית ההודעות או לקרוא את ההודעות שלך, עד שמאשרים אותה. זה לוקח חצי דקה:</string>
     <string name="onboarding_restricted_step1">הקש למטה על \"פתח את פרטי האפליקציה\".</string>
     <string name="onboarding_restricted_step2">הקש על ⋮ למעלה, ואז על \"הגדרות מוגבלות\" (Allow restricted settings), ואשר בטביעת אצבע או בנעילת המסך.</string>
-    <string name="onboarding_restricted_step3">חזור לכאן: Pigeon תבקש שוב לבד.</string>
+    <string name="onboarding_restricted_step3">חזור לכאן והקש \"אישרתי, נסה שוב\".</string>
     <string name="onboarding_restricted_open">פתח את פרטי האפליקציה</string>
+    <string name="onboarding_restricted_retry">אישרתי, נסה שוב</string>
     <string name="onboarding_restricted_close">סגור</string>
     <string name="onboarding_reminder_title">Pigeon עדיין לא אפליקציית ההודעות שלך</string>
     <string name="onboarding_reminder_body">הפוך אותה לאפליקציית ההודעות כדי לקבל כאן הודעות, או רק הצג בה את ההודעות בזמן שהאפליקציה הנוכחית ממשיכה לקבל אותן.</string>
