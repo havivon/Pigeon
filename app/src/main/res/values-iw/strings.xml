@@ -10,6 +10,13 @@
     <string name="onboarding_benefit_offline">בלי אינטרנט, כך שההודעות לא יוצאות מהטלפון לעולם</string>
     <string name="onboarding_make_default">הפוך את Pigeon לאפליקציית ההודעות שלי</string>
     <string name="onboarding_not_now">לא עכשיו</string>
+    <string name="onboarding_restricted_title">צריך לאשר את Pigeon פעם אחת</string>
+    <string name="onboarding_restricted_body">אנדרואיד לא נותן לאפליקציה שהותקנה מקובץ להפוך לאפליקציית ההודעות, עד שמאשרים אותה. זה לוקח חצי דקה:</string>
+    <string name="onboarding_restricted_step1">הקש למטה על \"פתח את פרטי האפליקציה\".</string>
+    <string name="onboarding_restricted_step2">הקש על ⋮ למעלה, ואז על \"הגדרות מוגבלות\" (Allow restricted settings), ואשר בטביעת אצבע או בנעילת המסך.</string>
+    <string name="onboarding_restricted_step3">חזור לכאן: Pigeon תבקש שוב לבד.</string>
+    <string name="onboarding_restricted_open">פתח את פרטי האפליקציה</string>
+    <string name="onboarding_restricted_close">סגור</string>
     <string name="onboarding_reminder_title">Pigeon עדיין לא אפליקציית ההודעות שלך</string>
     <string name="onboarding_reminder_body">כל עוד היא לא אפליקציית ההודעות שלך, הודעות חדשות לא יגיעו אליה.</string>
 

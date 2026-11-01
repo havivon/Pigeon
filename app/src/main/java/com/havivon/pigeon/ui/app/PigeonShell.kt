@@ -55,6 +55,7 @@ import com.havivon.pigeon.ui.navigation.Navigator
 import com.havivon.pigeon.ui.navigation.Screen
 import com.havivon.pigeon.ui.navigation.ScreenHost
 import com.havivon.pigeon.ui.onboarding.DefaultAppReminder
+import com.havivon.pigeon.ui.onboarding.RestrictedSettingsHelp
 import com.havivon.pigeon.ui.onboarding.DefaultAppWelcome
 import com.havivon.pigeon.ui.onboarding.PermissionsExplainer
 import com.havivon.pigeon.ui.rules.RulesRoute
@@ -255,6 +256,10 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
     var requestedAt by remember { mutableLongStateOf(0L) }
     var access by remember { mutableStateOf(accessOf(context)) }
     var explainerHidden by remember { mutableStateOf(false) }
+    // Android's restricted settings block the request (installed from a file): the help is open,
+    // and once the user has allowed it in app info, the request runs again by itself
+    var restrictedHelp by remember { mutableStateOf(false) }
+    var restrictionLifted by remember { mutableStateOf(false) }
 
     fun refreshAccess() {
         isDefault = DefaultSmsRole.isDefault(context)
@@ -271,6 +276,10 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
             if (event == Lifecycle.Event.ON_START) {
                 hidden = false
                 refreshAccess()
+                if (restrictedHelp && !DefaultSmsRole.isRestrictedByAndroid(context)) {
+                    restrictedHelp = false
+                    restrictionLifted = true
+                }
             }
         }
         lifecycle.addObserver(observer)
@@ -292,6 +301,7 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         refreshAccess()
         when {
             isDefault -> Unit
+            DefaultSmsRole.isRestrictedByAndroid(context) -> restrictedHelp = true
             SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openDefaultAppSettings(context)
             else -> hidden = true
         }
@@ -300,6 +310,11 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
     fun makeDefault() {
         // The flag is saved now, but the screen only changes once the system's answer is back
         saveWelcomeDone()
+        if (DefaultSmsRole.isRestrictedByAndroid(context)) {
+            // The system would only answer "denied": explain how to allow it instead
+            restrictedHelp = true
+            return
+        }
         requestedAt = SystemClock.elapsedRealtime()
         try {
             launcher.launch(DefaultSmsRole.requestIntent(context) ?: DefaultSmsRole.settingsIntent())
@@ -313,6 +328,13 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         refreshAccess()
     }
 
+    LaunchedEffect(restrictionLifted) {
+        if (restrictionLifted) {
+            restrictionLifted = false
+            makeDefault()
+        }
+    }
+
     val notDefault = DefaultSmsRole.SMS_HANDLING_READY && !isDefault
     val showPrompt = notDefault && !hidden
     CompositionLocalProvider(LocalDefaultApp provides DefaultAppAccess(isDefault = !notDefault, makeDefault = ::makeDefault)) {
@@ -322,7 +344,19 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
             DefaultAppWelcome(onMakeDefault = ::makeDefault, onNotNow = ::notNow)
         } else {
             content()
-            if (showPrompt) DefaultAppReminder(onMakeDefault = ::makeDefault, onNotNow = ::notNow)
+            if (showPrompt && !restrictedHelp) DefaultAppReminder(onMakeDefault = ::makeDefault, onNotNow = ::notNow)
+        }
+        if (restrictedHelp && notDefault) {
+            RestrictedSettingsHelp(
+                onOpenAppInfo = {
+                    try {
+                        context.startActivity(DefaultSmsRole.appInfoIntent(context))
+                    } catch (_: ActivityNotFoundException) {
+                        openDefaultAppSettings(context)
+                    }
+                },
+                onClose = { restrictedHelp = false },
+            )
         }
     }
 

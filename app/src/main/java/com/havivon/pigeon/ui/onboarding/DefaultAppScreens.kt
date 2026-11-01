@@ -137,6 +137,83 @@ private fun BenefitRow(icon: ImageVector, text: String) {
     }
 }
 
+/**
+ * Shown instead of the system's "denied" dialog when Android's restricted settings block the
+ * request (the app was installed from a file): the three steps to allow it, and a way there.
+ */
+@Composable
+fun RestrictedSettingsHelp(onOpenAppInfo: () -> Unit, onClose: () -> Unit) {
+    Dialog(onDismissRequest = onClose) {
+        RestrictedSettingsHelpCard(onOpenAppInfo, onClose, Modifier.fillMaxWidth())
+    }
+}
+
+/** The help's card itself, apart from its window, so the design snapshots can draw it. */
+@Composable
+internal fun RestrictedSettingsHelpCard(onOpenAppInfo: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val c = HebTheme.colors
+    Surface(modifier, shape = RoundedCornerShape(28.dp), color = c.surface, shadowElevation = 8.dp) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            LauncherIcon(R.drawable.ic_launcher_foreground, 64.dp, RoundedCornerShape(30))
+            Spacer(Modifier.height(18.dp))
+            Text(
+                stringResource(R.string.onboarding_restricted_title),
+                color = c.onSurface,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.onboarding_restricted_body),
+                color = c.onSurfaceMuted,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(18.dp))
+            listOf(R.string.onboarding_restricted_step1, R.string.onboarding_restricted_step2, R.string.onboarding_restricted_step3)
+                .forEachIndexed { i, step -> RestrictedStep(i + 1, stringResource(step)) }
+            Spacer(Modifier.height(20.dp))
+            PillButton(
+                stringResource(R.string.onboarding_restricted_open),
+                Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                filled = true,
+                onClick = onOpenAppInfo,
+            )
+            Spacer(Modifier.height(4.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .clickable(onClick = onClose)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.onboarding_restricted_close), color = c.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RestrictedStep(number: Int, text: String) {
+    val c = HebTheme.colors
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier.size(26.dp).clip(CircleShape).background(c.header),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("$number", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.size(12.dp))
+        Text(text, color = c.onSurface, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.weight(1f).padding(top = 3.dp))
+    }
+}
+
 /** Every later open while Pigeon is still not the default: a card over the app, easy to dismiss. */
 @Composable
 fun DefaultAppReminder(onMakeDefault: () -> Unit, onNotNow: () -> Unit) {

@@ -10,6 +10,13 @@
     <string name="onboarding_benefit_offline">No internet, so your messages never leave the phone</string>
     <string name="onboarding_make_default">Make Pigeon my messaging app</string>
     <string name="onboarding_not_now">Not now</string>
+    <string name="onboarding_restricted_title">One approval for Pigeon</string>
+    <string name="onboarding_restricted_body">Android does not let an app installed from a file become your messaging app until you allow it. It takes half a minute:</string>
+    <string name="onboarding_restricted_step1">Tap \"Open app info\" below.</string>
+    <string name="onboarding_restricted_step2">Tap ⋮ at the top, then \"Allow restricted settings\", and confirm with your fingerprint or screen lock.</string>
+    <string name="onboarding_restricted_step3">Come back here: Pigeon asks again by itself.</string>
+    <string name="onboarding_restricted_open">Open app info</string>
+    <string name="onboarding_restricted_close">Close</string>
     <string name="onboarding_reminder_title">Pigeon isn\'t your messaging app yet</string>
     <string name="onboarding_reminder_body">Until you make it your messaging app, new messages will not reach it.</string>
 

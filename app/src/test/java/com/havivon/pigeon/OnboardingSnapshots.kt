@@ -15,6 +15,7 @@ import app.cash.paparazzi.Paparazzi
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.onboarding.DefaultAppReminderCard
+import com.havivon.pigeon.ui.onboarding.RestrictedSettingsHelpCard
 import com.havivon.pigeon.ui.onboarding.DefaultAppWelcome
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import org.junit.Rule
@@ -45,6 +46,12 @@ class OnboardingSnapshots {
             }
         }
         paparazzi.snapshot("29_welcome_dark") { HebSmsTheme(darkTheme = true) { DefaultAppWelcome({}, {}) } }
+        paparazzi.snapshot("59_restricted_help") {
+            HebSmsTheme {
+                DefaultAppWelcome({}, {})
+                OverScrim { RestrictedSettingsHelpCard({}, {}, Modifier.fillMaxWidth()) }
+            }
+        }
     }
 }
 
@@ -60,12 +67,22 @@ class OnboardingSnapshotsEnglish {
     @Test
     fun onboarding() {
         paparazzi.snapshot("28_en_welcome") { HebSmsTheme { DefaultAppWelcome({}, {}) } }
+        paparazzi.snapshot("60_en_restricted_help") {
+            HebSmsTheme {
+                DefaultAppWelcome({}, {})
+                OverScrim { RestrictedSettingsHelpCard({}, {}, Modifier.fillMaxWidth()) }
+            }
+        }
     }
 }
 
 @Composable
-private fun ReminderOverScrim() {
+private fun ReminderOverScrim() = OverScrim { DefaultAppReminderCard({}, {}, Modifier.fillMaxWidth()) }
+
+/** A dialog's card drawn in the same composition, over a dimmed screen (a Dialog window does not render here). */
+@Composable
+private fun OverScrim(card: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
-        DefaultAppReminderCard({}, {}, Modifier.fillMaxWidth())
+        card()
     }
 }
