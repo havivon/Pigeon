@@ -39,7 +39,8 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <!--
           Exported for the launcher aliases and for sms:/smsto: links from other apps (the default SMS
-          app must handle SENDTO). Such a link only opens a draft; sending always takes the user's tap.
+          app must handle SENDTO; a tapped sms: link in a browser comes as VIEW). Such a link only
+          opens a draft; sending always takes the user's tap.
         -->
         <activity
             android:name=".MainActivity"
@@ -49,6 +50,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SENDTO" />
+                <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="sms" />
@@ -157,8 +159,9 @@
 
         <!--
           Puts the reminder alarms back after a reboot, an app update, a clock or time-zone change.
-          Exported because the system sends these broadcasts from outside the app; it only accepts
-          those actions and reads nothing from the intent (the reminders come from the app's own database).
+          Not exported: the system still delivers these broadcasts to it, and other apps cannot reach
+          it. It only accepts those actions and reads nothing from the intent (the reminders come
+          from the app's own database).
         -->
         <receiver
             android:name=".data.reminders.ReminderBootReceiver"

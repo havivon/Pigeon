@@ -100,6 +100,14 @@ fun PigeonShell(navigator: Navigator, authenticator: BiometricAuthenticator) {
         onDispose { }
     }
 
+    // With app lock on, the recent-apps preview must not show what the lock covers. Android 13+
+    // can hide just the preview, so screenshots inside the app still work.
+    val appLock = settings?.appLock == true
+    DisposableEffect(appLock) {
+        if (Build.VERSION.SDK_INT >= 33) (context as? Activity)?.setRecentsScreenshotEnabled(!appLock)
+        onDispose { }
+    }
+
     CompositionLocalProvider(LocalNotices provides notices, LocalAuthenticator provides authenticator) {
         Box(Modifier.fillMaxSize()) {
             DefaultAppGate(settings) {

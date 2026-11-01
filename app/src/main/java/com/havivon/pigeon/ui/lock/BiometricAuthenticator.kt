@@ -21,6 +21,12 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Authentic
 
     private var lastSuccess = 0L
 
+    /**
+     * Everyone waiting for the prompt that is up: the app-lock cover and a locked chat can ask at
+     * the same moment (a notification tap on a locked app), and both must hear the one answer.
+     */
+    private val waiting = mutableListOf<(Boolean) -> Unit>()
+
     /** True while the prompt is up: the activity may stop and start under it (the PIN screen is its own activity). */
     var prompting = false
         private set
@@ -38,6 +44,7 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Authentic
             onResult(true)
             return
         }
+        waiting += onResult
         if (prompting) return
         prompting = true
         val prompt = BiometricPrompt(
@@ -45,14 +52,12 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Authentic
             ContextCompat.getMainExecutor(activity),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    prompting = false
                     lastSuccess = SystemClock.elapsedRealtime()
-                    onResult(true)
+                    answer(true)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    prompting = false
-                    onResult(false)
+                    answer(false)
                 }
                 // onAuthenticationFailed (one wrong finger) keeps the prompt open: nothing to do
             },
@@ -66,9 +71,15 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Authentic
             prompt.authenticate(info)
         } catch (_: RuntimeException) {
             // The activity is going away: the prompt cannot show, so nothing opens
-            prompting = false
-            onResult(false)
+            answer(false)
         }
+    }
+
+    private fun answer(ok: Boolean) {
+        prompting = false
+        val callbacks = waiting.toList()
+        waiting.clear()
+        callbacks.forEach { it(ok) }
     }
 
     /** Forgets the last success: after the app was away, it asks again. */

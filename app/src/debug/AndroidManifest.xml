@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!--
+          Compose's tooling brings an exported activity into debug builds (Android Studio runs
+          previews through it). Any app could start it, and the user installs debug builds too,
+          so it is taken out: only the components the SMS role needs stay exported.
+        -->
+        <activity
+            android:name="androidx.compose.ui.tooling.PreviewActivity"
+            tools:node="remove" />
+    </application>
+</manifest>

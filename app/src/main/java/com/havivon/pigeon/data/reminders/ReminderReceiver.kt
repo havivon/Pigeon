@@ -50,10 +50,9 @@ class ReminderReceiver : BroadcastReceiver() {
 
 /**
  * Puts the alarms back after something cleared them: a reboot, an app update, a change of the
- * clock or time zone, or the exact-alarm permission being granted. Exported, because the system
- * sends those broadcasts from outside the app, so it accepts only those actions and uses nothing
- * from the intent: what to schedule comes from the app's own database, which makes the work
- * harmless to repeat even if another app sends one of these actions.
+ * clock or time zone, or the exact-alarm permission being granted. Not exported: the system still
+ * delivers those broadcasts, other apps cannot. It accepts only those actions and uses nothing
+ * from the intent: what to schedule comes from the app's own database, so the work is harmless to repeat.
  */
 class ReminderBootReceiver : BroadcastReceiver() {
 

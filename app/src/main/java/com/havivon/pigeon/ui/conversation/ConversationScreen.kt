@@ -95,6 +95,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.ColorUtils
 import com.havivon.pigeon.R
+import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.analysis.LinkAnalyzer
 import com.havivon.pigeon.domain.analysis.LinkInfo
 import com.havivon.pigeon.domain.model.ColorRule
@@ -514,7 +515,18 @@ private fun SelectableMessageText(
                         return true
                     }
                     override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
-                    override fun onActionItemClicked(mode: ActionMode, item: MenuItem) = false
+
+                    // Copy from inside the bubble is flagged sensitive, as the app's own copy buttons are
+                    override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+                        if (item.itemId != android.R.id.copy) return false
+                        val shown = this@apply.text
+                        val from = minOf(selectionStart, selectionEnd).coerceAtLeast(0)
+                        val to = maxOf(selectionStart, selectionEnd).coerceAtMost(shown.length)
+                        if (from >= to) return false
+                        SensitiveClipboard.copy(context, context.getString(R.string.app_name), shown.substring(from, to), R.string.thread_copied)
+                        mode.finish()
+                        return true
+                    }
                     override fun onDestroyActionMode(mode: ActionMode) = selectionActive(false)
                 }
             }

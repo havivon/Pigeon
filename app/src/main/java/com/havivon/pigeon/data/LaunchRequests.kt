@@ -80,7 +80,8 @@ object LaunchRequests {
         if (intent == null) return
         try {
             when (intent.action) {
-                Intent.ACTION_SEND, Intent.ACTION_SENDTO -> {
+                // VIEW is what a browser sends for a tapped sms: link; any other VIEW is not a draft
+                Intent.ACTION_SEND, Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> {
                     val data = intent.data ?: return
                     composeRequestOf(
                         scheme = data.scheme,
