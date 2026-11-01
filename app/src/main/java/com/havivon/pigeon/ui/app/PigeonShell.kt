@@ -298,7 +298,7 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         val now = container.refreshAccess()
         when {
             now.sms == SmsAccess.Default -> Unit
-            DefaultSmsRole.isRestrictedByAndroid(context) -> restricted = Blocked.Role
+            DefaultSmsRole.mayBeRestrictedByAndroid(context) -> restricted = Blocked.Role
             SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openDefaultAppSettings(context)
             else -> hidden = true
         }
@@ -327,7 +327,7 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         val now = container.refreshAccess()
         when {
             now.sms != SmsAccess.None -> Unit
-            DefaultSmsRole.isRestrictedByAndroid(context) -> restricted = Blocked.Viewer
+            DefaultSmsRole.mayBeRestrictedByAndroid(context) -> restricted = Blocked.Viewer
             // Refused for good earlier: the system no longer asks, only the app's info screen can allow it
             SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openAppInfo(context)
             else -> hidden = true

@@ -4,6 +4,8 @@ import android.app.AppOpsManager
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -46,19 +48,42 @@ object DefaultSmsRole {
      */
     fun settingsIntent(): Intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
 
+    /** Whether Android's restricted settings block the SMS role and SMS permissions for this app. */
+    enum class Restriction { Blocked, Allowed, Unknown }
+
     /**
      * Android 13+ blocks an app installed from a downloaded file (not a store) from becoming the
-     * SMS app until the user taps "Allow restricted settings" in its app info. The system keeps
-     * that choice in the `access_restricted_settings` app-op: ignored or errored means still blocked.
+     * SMS app, and from SMS permissions, until the user taps "Allow restricted settings" in its app
+     * info. The system keeps that choice in the `access_restricted_settings` app-op (ignored or
+     * errored means blocked), but newer versions refuse to let an app read it (SecurityException):
+     * then the answer is Unknown for an app installed from a file, Allowed for any other.
      */
-    fun isRestrictedByAndroid(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < 33) return false
+    fun restriction(context: Context): Restriction {
+        if (Build.VERSION.SDK_INT < 33) return Restriction.Allowed
         return try {
             val appOps = context.getSystemService(AppOpsManager::class.java)
             val mode = appOps.unsafeCheckOpNoThrow(OP_ACCESS_RESTRICTED_SETTINGS, context.applicationInfo.uid, context.packageName)
-            mode == AppOpsManager.MODE_IGNORED || mode == AppOpsManager.MODE_ERRORED
+            if (mode == AppOpsManager.MODE_IGNORED || mode == AppOpsManager.MODE_ERRORED) Restriction.Blocked else Restriction.Allowed
+        } catch (_: SecurityException) {
+            if (installedFromFile(context)) Restriction.Unknown else Restriction.Allowed
         } catch (_: IllegalArgumentException) {
             // A phone that does not know the op has no such restriction
+            Restriction.Allowed
+        }
+    }
+
+    /** Known to be blocked: the request would only get the system's "denied" dialog. */
+    fun isRestrictedByAndroid(context: Context): Boolean = restriction(context) == Restriction.Blocked
+
+    /** Blocked, or could be (installed from a file and the system won't say): worth showing the help after a refusal. */
+    fun mayBeRestrictedByAndroid(context: Context): Boolean = restriction(context) != Restriction.Allowed
+
+    private fun installedFromFile(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return false
+        return try {
+            val source = context.packageManager.getInstallSourceInfo(context.packageName).packageSource
+            source == PackageInstaller.PACKAGE_SOURCE_LOCAL_FILE || source == PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE
+        } catch (_: PackageManager.NameNotFoundException) {
             false
         }
     }
