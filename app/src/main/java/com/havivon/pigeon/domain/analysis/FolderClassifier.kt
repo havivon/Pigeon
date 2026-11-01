@@ -10,7 +10,8 @@ import com.havivon.pigeon.domain.model.Folder
  * 3. [Folder.Banks]: the sender is a known bank, card company or payment app, or the text is shaped like a
  *    transaction: an amount of money together with a card ending, money that moved (charged, withdrawn,
  *    deposited), or the balance of an account.
- * 4. [Folder.Insurance]: the sender is a known insurer (or has "ביטוח" / "insurance" in its name), or the text
+ * 4. [Folder.Insurance]: the sender is a known insurer (by its name in the list, never for a word such as "ביטוח"
+ *    or "insurance" in an unknown sender: "BituaCheck" and "Bituach4U" are advertisers), or the text
  *    is shaped like the user's own policy: a policy or claim number, or a kind of insurance ("ביטוח רכב",
  *    "הפוליסה", "health insurance") together with what happened to it (renewed, expires, approved, received).
  *    Never an ad: a text with an opt-out line or with offer words ("הצעת מחיר", "השוו", "quote") is not.
@@ -18,6 +19,10 @@ import com.havivon.pigeon.domain.model.Folder
  *    tracking number, or the user's package or order together with what happened to it.
  * 6. [Folder.Personal]: the sender is a saved contact, or someone the user wrote to. An unknown phone number
  *    is not personal (without the contacts permission only the people written to are).
+ *
+ * An ad is never a bank, an insurer or a delivery, even from a known institution: a message with an opt-out
+ * line ("הסר", "להסרה", "STOP", "unsubscribe"), which Israeli law requires only in advertising, goes to
+ * [Folder.All] (or to [Folder.Spam] when the scorer says so). A code with an opt-out line is still a code.
  *
  * The senders are recognised first (banks, then insurers, then couriers), then the shapes of the text in
  * the same order. Anything else (an advertiser, a service with an alphanumeric id, a stranger's number) stays
@@ -33,22 +38,48 @@ object FolderClassifier {
     fun classify(sms: IncomingSms, spam: SpamVerdict = SpamScorer.score(sms)): Folder {
         if (spam.isSpam) return Folder.Spam
         if (CodeExtractor.extract(sms.body) != null) return Folder.Codes
+        val known = sms.isContact || sms.userWrote
+        val service = serviceFolder(sms)
+        if (service != null) return if (isAd(Text.words(sms.body))) Folder.All else service
+        return if (known) Folder.Personal else Folder.All
+    }
+
+    /**
+     * The service folder [sms] is shaped for, whether or not it is an ad: [Folder.Banks], [Folder.Insurance] or
+     * [Folder.Deliveries] by its sender or the shape of its text, or null. [SpamScorer] asks it so that a real
+     * institution's notice with an opt-out line is not taken for a stranger's ad.
+     */
+    internal fun serviceFolder(sms: IncomingSms): Folder? {
         val name = sms.senderName?.let { Text.words(it) }.orEmpty()
         val address = Text.words(sms.address)
         // A contact named "Max" is a person: the names that are also everyday words count only for a sender id
         if (isBank(address, plainNames = true) || isBank(name, plainNames = !sms.isContact)) return Folder.Banks
         if (isInsurer(address, plainNames = true) || isInsurer(name, plainNames = !sms.isContact)) return Folder.Insurance
         if (isCourier(address) || isCourier(name)) return Folder.Deliveries
-        val known = sms.isContact || sms.userWrote
-        if (!known) {
-            val normalized = Text.normalize(sms.body)
-            val words = Text.words(sms.body)
-            if (isTransaction(normalized, words)) return Folder.Banks
-            if (isInsuranceNotice(normalized, words)) return Folder.Insurance
-            if (isShipmentUpdate(sms.body, normalized, words)) return Folder.Deliveries
-        }
-        return if (known) Folder.Personal else Folder.All
+        if (sms.isContact || sms.userWrote) return null
+        val normalized = Text.normalize(sms.body)
+        val words = Text.words(sms.body)
+        if (isTransaction(normalized, words)) return Folder.Banks
+        if (isInsuranceNotice(normalized, words)) return Folder.Insurance
+        if (isShipmentUpdate(sms.body, normalized, words)) return Folder.Deliveries
+        return null
     }
+
+    /** Whether the sender id (or a saved contact's name) is one of the known banks, insurers or couriers. */
+    internal fun isInstitution(sms: IncomingSms): Boolean {
+        val address = Text.words(sms.address)
+        val name = sms.senderName?.let { Text.words(it) }.orEmpty()
+        return isBank(address, plainNames = true) || isInsurer(address, plainNames = true) || isCourier(address) ||
+            isBank(name, plainNames = false) || isInsurer(name, plainNames = false) || isCourier(name)
+    }
+
+    /** The opt-out line, which Israeli law requires only in advertising. */
+    private val OPT_OUT = phrases(
+        "הסר", "הסרה", "להסרה", "reply stop", "text stop", "send stop", "stop to opt out", "stop to end", "unsubscribe", "opt out",
+    )
+
+    /** Whether the message's [words] carry an opt-out line: then it is an ad. */
+    internal fun isAd(words: List<String>): Boolean = OPT_OUT.any { Text.containsWords(words, it) }
 
     /** Keyword phrases, split into words once rather than for every message. */
     private fun phrases(vararg phrase: String): List<List<String>> = phrase.map { Text.words(it) }
@@ -62,8 +93,9 @@ object FolderClassifier {
      * - card companies: Isracard, Max (formerly Leumi Card), Cal (Visa Cal), American Express, Diners,
      *   Mastercard, Visa;
      * - payment apps that move the user's money: bit, PayBox, PayPal;
-     * - international banks: Chase, Citi, HSBC, Barclays, Wells Fargo, Revolut; and any sender with the
-     *   word "bank" or "בנק" of its own.
+     * - international banks: Chase, Citi, HSBC, Barclays, Wells Fargo, Revolut.
+     * Only these names: a sender with the word "bank" or "בנק" and no known name ("BankCheck", "Bank Deals") is
+     * not a bank.
      */
 
     /**
@@ -90,15 +122,13 @@ object FolderClassifier {
         "לאומי", "דיסקונט", "מזרחי", "יהב", "ירושלים", "מסד", "פפר", "מקס", "כאל", "ויזה", "ביט",
     )
 
-    private val BANK_AFFIXES = setOf("card", "cards", "il", "it", "isr", "israel", "visa", "cal", "כרטיסי", "אשראי", "ויזה", "כאל")
-
-    /** A word of its own that makes the sender a bank: "Bank of X", "בנק X". */
-    private val BANK_WORDS = setOf("bank", "בנק", "הבנק")
+    private val BANK_AFFIXES = setOf(
+        "card", "cards", "il", "it", "isr", "israel", "visa", "cal", "bank", "בנק", "כרטיסי", "אשראי", "ויזה", "כאל",
+    )
 
     /** Whether the sender's words name a bank; [plainNames] lets the names in [BANK_NAMES] count too. */
     private fun isBank(senderWords: List<String>, plainNames: Boolean): Boolean {
         if (senderWords.isEmpty()) return false
-        if (senderWords.any { it in BANK_WORDS }) return true
         val compact = senderWords.joinToString("")
         if (BANK_MARKS.any { compact.contains(it) }) return true
         if (!plainNames) return false
@@ -160,15 +190,20 @@ object FolderClassifier {
      * - Israeli insurers: Harel, Migdal, Clal, the Phoenix (FNX), Menora Mivtachim, Ayalon, Bituach Yashir
      *   (Direct Insurance), AIG, Shomera, Hachshara, Libra, Wesure, 9 Million (9000000), Shirbit, Dikla;
      * - National Insurance (ביטוח לאומי, BTL), the state's: its messages are about the user's own benefits;
-     * - international: Allianz, AXA, Generali, Zurich, Lemonade; and any sender with "ביטוח", "bituach",
-     *   "mivtachim" or "insurance" in its name.
+     * - international: Allianz, AXA, Generali, Zurich, Lemonade.
+     * Only these names: "ביטוח", "bituach" or "insurance" in an unknown sender ("BituaCheck", "Bituach4U",
+     * "Insure-Now") is an advertiser's id, not an insurer's.
      */
 
-    /** Distinctive names, found anywhere in the sender written as one run ("HarelIns", "BituachYashir", "הראל ביטוח"). */
+    /**
+     * Distinctive names, found anywhere in the sender written as one run ("HarelIns", "BituachYashir", "הראל ביטוח").
+     * Each is a whole insurer's name, never a word an advertiser uses alone ("ביטוח", "bituach", "insurance").
+     */
     private val INSURER_MARKS = listOf(
-        "insurance", "bituach", "mivtachim", "harelins", "migdalins", "clalins", "clalbit", "phoenixins", "fnxins",
-        "ayalonins", "hachsharains", "shirbit", "wesure", "9000000", "9million", "allianz", "generali",
-        "ביטוח", "מבטחים", "שירביט", "הפניקס",
+        "harelins", "migdalins", "clalins", "clalbit", "phoenixins", "fnxins", "ayalonins", "hachsharains", "shirbit",
+        "wesure", "9000000", "9million", "allianz", "generali", "bituachyashir", "menoramivtachim", "bituachleumi",
+        "ביטוחישיר", "מנורהמבטחים", "ביטוחלאומי", "הראלביטוח", "מגדלביטוח", "כללביטוח", "איילוןביטוח", "הכשרהביטוח",
+        "שומרהביטוח", "שירביט", "הפניקס",
     )
 
     /**
@@ -182,7 +217,7 @@ object FolderClassifier {
         "הראל", "מגדל", "כלל", "פניקס", "מנורה", "איילון", "שומרה", "הכשרה", "ליברה", "דקלה",
     )
 
-    private val INSURER_AFFIXES = setOf("ins", "il", "israel", "health", "group", "בריאות", "קבוצת")
+    private val INSURER_AFFIXES = setOf("ins", "insurance", "il", "israel", "health", "group", "ביטוח", "בריאות", "קבוצת")
 
     /** Whether the sender's words name an insurer; [plainNames] lets the names in [INSURER_NAMES] count too. */
     private fun isInsurer(senderWords: List<String>, plainNames: Boolean): Boolean {
@@ -241,8 +276,11 @@ object FolderClassifier {
     /** Courier names found anywhere in the sender written as one run ("IsraelPost", "DHL-Express"). */
     private val COURIER_MARKS = listOf("israelpost", "cheetah", "fedex", "aramex", "dhl", "usps", "boxit", "דוארישראל", "צ'יטה", "ארמקס")
 
-    /** Courier names that count as a word of their own: "UPS" but not "Groups", "וולט" but not "וולטר". */
-    private val COURIER_WORDS = setOf("ups", "wolt", "hfd", "courier", "postal", "דואר", "וולט", "בלדר", "בלדרות", "שליח", "שליחויות")
+    /**
+     * Courier names that count as a word of their own: "UPS" but not "Groups", "וולט" but not "וולטר". Only names:
+     * a sender called "Courier" or "שליחויות" is not known to be one (its update is still found by its text).
+     */
+    private val COURIER_WORDS = setOf("ups", "wolt", "hfd", "וולט")
 
     private fun isCourier(senderWords: List<String>): Boolean {
         if (senderWords.isEmpty()) return false

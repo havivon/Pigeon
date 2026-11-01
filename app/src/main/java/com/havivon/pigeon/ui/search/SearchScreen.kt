@@ -69,6 +69,7 @@ import com.havivon.pigeon.ui.components.HeaderChip
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.SpamAvatar
+import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /** Search with filter chips: sender, has a link, has a code, the last 7 or 30 days. */
@@ -91,7 +92,7 @@ fun SearchScreen(
         Modifier.fillMaxSize().background(c.background).imePadding(),
         header = { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus) },
     ) { top ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = 24.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
             when {
                 state.query.isBlank() && !state.filters.any -> item {
                     EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))

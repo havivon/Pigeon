@@ -8,7 +8,6 @@ import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.SmsConversation
-import com.havivon.pigeon.domain.model.SmsMessage
 import com.havivon.pigeon.domain.model.SpamVerdict
 import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.domain.repository.LocksRepository
@@ -36,9 +35,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
 /** The longest text a reminder keeps of its message. */
@@ -116,24 +114,46 @@ class InboxViewModel(
     }.conflate()
 
     /** The unread incoming messages as the system has them; null until the first read. */
-    private val unreadMessages: Flow<List<SmsMessage>?> =
-        accessChanges.flatMapLatest { messages.unreadInbox }.map<List<SmsMessage>, List<SmsMessage>?> { it }.onStart { emit(null) }
+    /** The folder and the rows of the Unread list last shown, or null while it is off. */
+    @Volatile
+    private var shown: Pair<Folder, List<UnreadMessage>>? = null
 
-    val state: StateFlow<InboxUiState> = combine(mapped, unreadMessages, folder, unreadOnly) { m, unread, f, only ->
-        InboxUiState(
-            loaded = true,
-            all = m.all,
-            folder = f,
-            unreadOnly = only,
-            rules = m.rules,
-            dateLine = dateLine(),
-            // Mapped only while shown: the rows of hundreds of messages are not made for a toggle nobody turned on
-            unread = if (!only) emptyList() else unread?.let { mapUnread(it, m, f) },
-        )
-    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
+    /**
+     * The inbox as shown. The Unread list is read from the very conversations the count is made of (their
+     * [SmsConversation.unreadIds]), never from a query of its own: a folder's number and its list always agree.
+     * It is read only while shown, and while it is read again after a change the previous list stays.
+     */
+    val state: StateFlow<InboxUiState> = combine(mapped, folder, unreadOnly) { m, f, only -> Triple(m, f, only) }
+        .transformLatest { (m, f, only) ->
+            fun state(unread: List<UnreadMessage>?) = InboxUiState(
+                loaded = true,
+                all = m.all,
+                folder = f,
+                unreadOnly = only,
+                rules = m.rules,
+                dateLine = dateLine(),
+                unread = unread,
+            )
+            if (!only) {
+                shown = null
+                emit(state(emptyList()))
+                return@transformLatest
+            }
+            // A quiet loading sign only when the list itself changes (turned on, another folder), not on every change
+            val same = shown?.takeIf { it.first == f }?.second
+            if (same == null) emit(state(null))
+            val rows = mapUnread(m, f)
+            shown = f to rows
+            emit(state(rows))
+        }
+        .flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
 
-    private fun mapUnread(unread: List<SmsMessage>, m: Mapped, folder: Folder): List<UnreadMessage> =
-        mapper.mapUnread(unread, m.all.associateBy { it.id }, m.sources.associateBy { it.threadId }, now(), m.rules, m.locked, folder)
+    private suspend fun mapUnread(m: Mapped, folder: Folder): List<UnreadMessage> {
+        val sources = m.sources.associateBy { it.threadId }
+        val ids = inFolder(m.all, folder).flatMap { sources[it.id]?.unreadIds.orEmpty() }
+        val unread = if (ids.isEmpty()) emptyList() else messages.messagesById(ids)
+        return mapper.mapUnread(unread, m.all.associateBy { it.id }, sources, now(), m.rules, m.locked, folder)
+    }
 
     /** Spam opens its own screen, so it is never the chosen chip. */
     fun selectFolder(value: Folder) {

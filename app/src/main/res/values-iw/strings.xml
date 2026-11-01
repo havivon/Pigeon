@@ -176,6 +176,7 @@
     <string name="spam_reason_brand_sender">מתחזה לחברה מוכרת</string>
     <string name="spam_reason_marked_by_user">סימנת כספאם</string>
     <string name="spam_reason_poll">סקר או בחירות</string>
+    <string name="spam_reason_money_bait">מבטיח כסף או בדיקה חינם</string>
     <string name="spam_back_to_inbox">הוחזר לתיבה. הסינון לא יחסום יותר את השולח הזה.</string>
     <string name="spam_empty_title">אין ספאם</string>
     <string name="spam_empty_body">הודעות חשודות יועברו לכאן, בלי התראות.</string>
@@ -387,4 +388,63 @@
     <string name="settings_version">גרסה %1$s</string>
     <string name="settings_no_internet_title">בלי גישה לאינטרנט</string>
     <string name="settings_no_internet">ל-Pigeon אין הרשאת אינטרנט, ולכן ההודעות שלך לא יוצאות מהטלפון לעולם.</string>
+
+    <!-- common_ (selection, search) -->
+    <plurals name="common_selected_count">
+        <item quantity="one">%1$d נבחר</item>
+        <item quantity="two">%1$d נבחרו</item>
+        <item quantity="other">%1$d נבחרו</item>
+    </plurals>
+    <string name="common_select">בחירה</string>
+    <string name="common_unselect">ביטול הבחירה</string>
+    <string name="common_close_search">סגירת החיפוש</string>
+
+    <!-- spam_ search -->
+    <string name="spam_search">חיפוש בספאם</string>
+    <string name="spam_search_hint">חיפוש שולחים והודעות</string>
+    <string name="spam_search_empty_title">לא נמצא דבר</string>
+    <string name="spam_search_empty_body">נסו מילה אחרת או חלק ממספר.</string>
+
+    <!-- bin_ (the recycle bin) -->
+    <string name="settings_recycle_bin">סל המחזור</string>
+    <string name="settings_recycle_bin_note">הודעות שנמחקו נשמרות כאן 30 יום</string>
+    <string name="bin_title">סל המחזור</string>
+    <plurals name="bin_subtitle">
+        <item quantity="one">שיחה אחת · נשמרת 30 יום</item>
+        <item quantity="two">%1$d שיחות · נשמרות 30 יום</item>
+        <item quantity="other">%1$d שיחות · נשמרות 30 יום</item>
+    </plurals>
+    <string name="bin_info">הודעות שנמחקו ממתינות כאן 30 יום, ואז נמחקות לצמיתות. סל המחזור נשאר בטלפון הזה: הוא לא נכלל בגיבוי.</string>
+    <string name="bin_empty_title">סל המחזור ריק</string>
+    <string name="bin_empty_body">הודעות ושיחות שתמחקו יישמרו כאן 30 יום.</string>
+    <string name="bin_deleted_on">נמחק %1$s</string>
+    <plurals name="bin_days_left">
+        <item quantity="one">נותר יום אחד</item>
+        <item quantity="two">נותרו יומיים</item>
+        <item quantity="other">נותרו %1$d ימים</item>
+    </plurals>
+    <plurals name="bin_messages">
+        <item quantity="one">הודעה אחת</item>
+        <item quantity="two">%1$d הודעות</item>
+        <item quantity="other">%1$d הודעות</item>
+    </plurals>
+    <string name="bin_locked">צ\'אט נעול. הקישו כדי להציג.</string>
+    <string name="bin_restore">שחזור</string>
+    <string name="bin_delete_forever">מחיקה לצמיתות</string>
+    <string name="bin_empty">ריקון סל המחזור</string>
+    <plurals name="bin_delete_forever_title">
+        <item quantity="one">למחוק שיחה אחת לצמיתות?</item>
+        <item quantity="two">למחוק %1$d שיחות לצמיתות?</item>
+        <item quantity="other">למחוק %1$d שיחות לצמיתות?</item>
+    </plurals>
+    <string name="bin_delete_forever_body">אי אפשר לבטל את זה.</string>
+    <string name="bin_empty_confirm_title">לרוקן את סל המחזור?</string>
+    <string name="bin_empty_confirm_body">כל מה שבו יימחק לצמיתות. אי אפשר לבטל את זה.</string>
+    <plurals name="bin_restored">
+        <item quantity="one">הודעה אחת שוחזרה</item>
+        <item quantity="two">%1$d הודעות שוחזרו</item>
+        <item quantity="other">%1$d הודעות שוחזרו</item>
+    </plurals>
+    <string name="bin_restore_failed">לא ניתן היה לשחזר את ההודעות. נסו שוב.</string>
+    <string name="bin_deleted_forever">נמחק לצמיתות</string>
 </resources>

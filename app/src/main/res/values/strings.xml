@@ -171,6 +171,7 @@
     <string name="spam_reason_brand_sender">Pretends to be a known company</string>
     <string name="spam_reason_marked_by_user">Marked by you</string>
     <string name="spam_reason_poll">Poll or election</string>
+    <string name="spam_reason_money_bait">Promises money or a free check</string>
     <string name="spam_back_to_inbox">Back in the inbox. The filter will leave this sender alone.</string>
     <string name="spam_empty_title">No spam</string>
     <string name="spam_empty_body">Suspicious messages will be moved here, without notifications.</string>
@@ -373,4 +374,57 @@
     <string name="settings_version">Version %1$s</string>
     <string name="settings_no_internet_title">No internet access</string>
     <string name="settings_no_internet">Pigeon has no internet permission, so your messages never leave your phone.</string>
+
+    <!-- common_ (selection, search) -->
+    <plurals name="common_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="common_select">Select</string>
+    <string name="common_unselect">Unselect</string>
+    <string name="common_close_search">Close the search</string>
+
+    <!-- spam_ search -->
+    <string name="spam_search">Search spam</string>
+    <string name="spam_search_hint">Search senders and messages</string>
+    <string name="spam_search_empty_title">Nothing found</string>
+    <string name="spam_search_empty_body">Try another word or part of a number.</string>
+
+    <!-- bin_ (the recycle bin) -->
+    <string name="settings_recycle_bin">Recycle bin</string>
+    <string name="settings_recycle_bin_note">Deleted messages stay here for 30 days</string>
+    <string name="bin_title">Recycle bin</string>
+    <plurals name="bin_subtitle">
+        <item quantity="one">%1$d conversation · kept for 30 days</item>
+        <item quantity="other">%1$d conversations · kept for 30 days</item>
+    </plurals>
+    <string name="bin_info">Deleted messages wait here for 30 days, then they are deleted for good. The recycle bin stays on this phone: it is not in backups.</string>
+    <string name="bin_empty_title">The recycle bin is empty</string>
+    <string name="bin_empty_body">Messages and conversations you delete stay here for 30 days.</string>
+    <string name="bin_deleted_on">Deleted %1$s</string>
+    <plurals name="bin_days_left">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <plurals name="bin_messages">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <string name="bin_locked">Locked chat. Tap to show it.</string>
+    <string name="bin_restore">Restore</string>
+    <string name="bin_delete_forever">Delete forever</string>
+    <string name="bin_empty">Empty the recycle bin</string>
+    <plurals name="bin_delete_forever_title">
+        <item quantity="one">Delete %1$d conversation forever?</item>
+        <item quantity="other">Delete %1$d conversations forever?</item>
+    </plurals>
+    <string name="bin_delete_forever_body">This cannot be undone.</string>
+    <string name="bin_empty_confirm_title">Empty the recycle bin?</string>
+    <string name="bin_empty_confirm_body">Everything in it will be deleted for good. This cannot be undone.</string>
+    <plurals name="bin_restored">
+        <item quantity="one">%1$d message restored</item>
+        <item quantity="other">%1$d messages restored</item>
+    </plurals>
+    <string name="bin_restore_failed">The messages could not be restored. Try again.</string>
+    <string name="bin_deleted_forever">Deleted for good</string>
 </resources>

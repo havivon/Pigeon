@@ -345,6 +345,84 @@ class SpamScorerTest {
 
     @Test
     fun theRulesHaveAVersion() {
-        assertTrue(SpamScorer.VERSION >= 2)
+        assertTrue(SpamScorer.VERSION >= 3)
+    }
+
+    // --- money bait and home-made short links (version 3, all made up) ---
+
+    @Test
+    fun theInsuranceRefundAdFromAnUnknownSenderIdIsSpam() {
+        val v = verdict(BITUA_CHECK, "BituaCheck")
+        assertTrue("${v.score} ${v.reasons}", v.isSpam)
+        assertTrue(SpamReason.MoneyBait in v.reasons)
+        assertTrue(SpamReason.ShortLink in v.reasons)
+    }
+
+    @Test
+    fun moneyBaitAdsAreSpam() {
+        val cases = listOf(
+            "בדיקת קרן פנסיה חינם! ייתכן שמגיע לך החזר של אלפי שקלים. לבדיקה: https://pn4.me/aB3dE להסרה השב הסר" to "PensiaCheck",
+            "החזר מס לשכירים! בדקו בחינם אם מגיע לכם כסף: https://tx9.ly/Qw7rT להסרה https://rm2.me/x8K2p" to "TaxBack",
+            "You may be owed up to \$2,000 from your insurer. Free check: https://cl3.cc/zX9pQ Reply STOP to opt out" to "+15550007777",
+            "הלוואה עד 50,000 ₪ ללא בדיקות! לבדיקה חינם: bit.ly/loan50 להסרה הסר" to "0533334444",
+            "ביטוח רכב? ייתכן שמגיע לכם החזר כספי! לבדיקה: https://kx2.link/abc12 להסרה" to "Bituach4U",
+            "שילמתם יותר מדי על ביטוח החיים? בדיקה חינם תוך דקה: https://www.bdika-online.co.il/l?id=88 להסרה השב הסר" to "BdikaNow",
+            "Claim your refund now! Free check of your policy: https://rf4.click/9xKq unsubscribe" to "RefundsUS",
+            "בדיקת קרן פנסיה: גלו כמה דמי ניהול אתם משלמים מיותר. ממוצע חיסכון של ₪12,000! https://pns.to/k3Jd9 להסרה" to "Pensia-IL",
+            "החזר מס עד 8,000 ₪ לשכירים! השאירו פרטים: https://mas-back.co.il/r להסרה השב הסר" to "0541239876",
+            "ייתכן שמגיע לך החזר עמלות מהבנק! לבדיקה חינם: https://bk2.me/Zz8Yq להסרה" to "BankCheck",
+            "מגיע לכם כסף מביטוח לאומי? בדיקת זכאות בחינם: https://bt7.me/Ab9Cd להסרה" to "Zchuyot",
+            "Pre-approved loan up to \$10,000, free check: https://ln5.ly/Xy7z reply STOP" to "+15550001212",
+            "הנחה מגיעה לכם בביטוח הדירה! לבדיקה: lp3.me/kw8Tq להסרה שלחו הסר" to "DiraSave",
+        )
+        for ((body, address) in cases) {
+            val v = verdict(body, address)
+            assertTrue("$address: $body -> ${v.score} ${v.reasons}", v.isSpam)
+        }
+    }
+
+    @Test
+    fun legitimateNoticesAndKnownBrandPromosStayBelow() {
+        val cases = listOf(
+            "פוליסת ביטוח הרכב שלך מס' 5512345 חודשה בהצלחה. לפרטים: https://www.harel-group.co.il" to "Harel",
+            "תביעה מספר 445566 אושרה. הכסף יועבר לחשבונך תוך 3 ימי עסקים" to "Migdal",
+            "ביטוח הדירה שלך יחודש ב-01/12. לפרטים https://www.clalbit.co.il" to "Clal",
+            "חיוב בסך 120 ₪ בכרטיס המסתיים ב-4821" to "Leumi",
+            "הופקדו 1,000 ₪ לחשבונך" to "Hapoalim",
+            "החבילה שלך יצאה למשלוח, מעקב: https://israelpost.co.il/t/RR123456789IL" to "IsraelPost",
+            "מבצע סוף עונה! 20% הנחה בכל החנות: https://www.super-pharm.co.il להסרה השב הסר" to "SuperPharm",
+            "מבצעי השבוע באתר https://www.shufersal.co.il להסרה השב הסר" to "Shufersal",
+            "הראל: הצטרפו לביטוח נסיעות ב-20% הנחה! https://www.harel-group.co.il להסרה השב הסר" to "Harel",
+            "קוד האימות שלך הוא 482913" to "Harel",
+            "תזכורת: התור שלך מחר ב-10:00. לביטול השב 2" to "Maccabi",
+            "עיריית חיפה: הפסקת מים מחר 08:00-12:00 ברחוב הרצל. להסרה השב הסר" to "Haifa",
+            "החזר מס בסך 1,250 ₪ הועבר לחשבונך" to "Leumi",
+            "שלחתי לך את הקישור לקבוצה: https://wa.me/972541234567" to "0541234567",
+            "Your refund of \$40 was issued to your card ending 4821" to "Amazon",
+        )
+        for ((body, address) in cases) {
+            val v = verdict(body, address)
+            assertFalse("$address: $body -> ${v.score} ${v.reasons}", v.isSpam)
+        }
+    }
+
+    @Test
+    fun contactsPeopleWrittenToAndAllowedSendersStayAtZeroWhateverTheBait() {
+        assertEquals(0, SpamScorer.score(sms(BITUA_CHECK, address = "BituaCheck", contact = true)).score)
+        assertEquals(0, SpamScorer.score(IncomingSms("BituaCheck", null, BITUA_CHECK, userWrote = true)).score)
+        assertEquals(0, SpamScorer.score(sms(BITUA_CHECK, address = "BituaCheck", allowed = listOf("bituacheck"))).score)
+    }
+
+    @Test
+    fun anUnknownSenderIdNeedsALinkAndAdWordingForTheOptOutBonus() {
+        // An unknown id with an opt-out line, but no link: its own ad, below the threshold
+        assertFalse(verdict("מבצע! ביטוח נסיעות לחו\"ל ב-20% הנחה. להסרה השב הסר", "TravelCo").isSpam)
+        // The same with a link: an unknown advertiser, now spam
+        assertTrue(verdict("מבצע! ביטוח נסיעות לחו\"ל ב-20% הנחה: https://travel-co.example.com להסרה השב הסר", "TravelCo").isSpam)
+        // A known brand with the same: its ordinary advertising
+        assertFalse(verdict("מבצע! 20% הנחה: https://www.fox.co.il להסרה השב הסר", "Fox").isSpam)
     }
 }
+
+private const val BITUA_CHECK = "יש לך ביטוח בריאות/חיים? ייתכן שמגיע לכם כסף! בעקבות המצב כעת ניתן לבדוק בחינם כמה הנחה " +
+    "מגיעה לכם - ממוצע חיסכון של ₪2,300 לכל אזרח! לבדיקה חינם: https://lp6.me/nejcz  להסרה https://l5k.me/iihzE_BP5Az"

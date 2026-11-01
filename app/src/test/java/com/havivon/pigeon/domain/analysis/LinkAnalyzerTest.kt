@@ -216,4 +216,14 @@ class LinkAnalyzerTest {
         for (link in LinkAnalyzer.findLinks(text)) assertEquals(link.text, text.substring(link.range))
         assertEquals(2, LinkAnalyzer.findLinks(text).size)
     }
+
+    @Test
+    fun homeMadeShortLinksLookShortened() {
+        for (url in listOf("https://lp6.me/nejcz", "https://l5k.me/iihzE_BP5Az", "pn4.me/aB3dE", "https://tx9.ly/Qw7rT", "kx2.link/abc12", "rf4.click/9xKq")) {
+            assertTrue(url, LinkAnalyzer.findLinks("ראה $url").single().isShortener)
+        }
+        for (url in listOf("https://wa.me/972541234567", "https://t.me/channel1", "amzn.to/3xYz", "paypal.me/dan1", "lp6.me/sale", "https://www.harel-group.co.il/a1", "abcde.me/x7Kq", "news.lp6.me/x7Kq", "https://lp6.me")) {
+            assertTrue(url, LinkAnalyzer.findLinks("ראה $url").none { it.isShortener })
+        }
+    }
 }

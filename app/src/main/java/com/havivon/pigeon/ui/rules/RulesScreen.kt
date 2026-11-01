@@ -62,6 +62,7 @@ import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.SectionLabel
+import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 val RuleSwatches = listOf(
@@ -113,7 +114,7 @@ fun RulesScreen(
         LazyColumn(
             Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(top = top, bottom = 24.dp),
+            contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp)),
         ) {
             item(key = "yours") { SectionLabel(stringResource(R.string.rules_section_yours)) }
             if (order.isEmpty()) item(key = "none") { NoRules() }

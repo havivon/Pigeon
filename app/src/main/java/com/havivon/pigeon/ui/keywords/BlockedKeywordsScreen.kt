@@ -44,6 +44,7 @@ import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.LabeledTextField
 import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.SectionLabel
+import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /** The blocked words: type one and add it; each word on the list has a remove button. */
@@ -74,7 +75,7 @@ fun BlockedKeywordsScreen(
     ) { top ->
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = top, bottom = 24.dp),
+            contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp)),
         ) {
             item { AddWordCard(draft, duplicate, onDraft, onAdd) }
             item {

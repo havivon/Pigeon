@@ -37,8 +37,9 @@ object SpamScorer {
      * conversations are judged again with the new rules. Raise it with every change of the rules. The
      * user's own "Not spam" and "Mark as spam" are never judged over.
      * 1: the first rules. 2: polls and political campaigns, and the opt-out line together with an ad.
+     * 3: money bait, home-made short links, and the opt-out line from an unknown sender id with a link.
      */
-    const val VERSION = 2
+    const val VERSION = 3
 
     /**
      * The score from which a message goes to the spam folder. Every message from an unknown sender starts
@@ -79,12 +80,52 @@ object SpamScorer {
 
     /**
      * The opt-out line together with what makes it an ad, added once: with the opt-out itself and the unknown
-     * sender, enough for the threshold. It counts for a stranger's phone number with a link or ad wording, and
-     * for any sender with a poll. A business's sender id ("SuperPharm") with "מבצע ... להסרה" stays below: that
+     * sender, enough for the threshold. It counts for a stranger's phone number with a link or ad wording, for an
+     * unknown sender id ("BituaCheck") with a link and ad or bait wording, and for any sender with a poll. A known
+     * brand's sender id ([KNOWN_BRANDS], the banks, insurers and couriers) with "מבצע ... להסרה" stays below: that
      * is its ordinary advertising, which the law requires to say "הסר". Never for a service notice: a code, a
      * bank, an insurer, a delivery, an appointment or the municipality.
      */
     private const val OPT_OUT_AD = 20
+
+    /**
+     * Money bait: "ייתכן שמגיע לכם כסף", "החזר מס", "בדיקה חינם", "חיסכון של ₪2,300", "you may be owed". The
+     * hook of the insurance, pension, tax-refund and loan ads; with a link and an opt-out line from a stranger,
+     * well over the threshold. A real refund notice from the bank or the tax authority comes without the opt-out
+     * line and the home-made short link, so it stays below.
+     */
+    private const val MONEY_BAIT = 25
+
+    private val MONEY_BAIT_WORDS = words(
+        "מגיע לך כסף", "מגיע לכם כסף", "ייתכן שמגיע", "יתכן שמגיע", "ייתכן ומגיע", "יתכן ומגיע", "אולי מגיע",
+        "החזר מס", "החזרי מס", "החזר כספי", "החזרים כספיים", "בדיקה חינם", "בדיקה בחינם", "בדיקה ללא עלות",
+        "בדיקת זכאות", "בדיקת קרן פנסיה", "בדיקת ביטוחים", "הנחה מגיעה", "כסף שמגיע", "הכסף שמגיע", "הכסף שלכם מחכה",
+        "you may be owed", "you could be owed", "you are owed", "money you are owed", "claim your refund",
+        "claim your money", "free check", "free review", "free assessment", "check your eligibility",
+    )
+
+    /** "חיסכון של ₪2,300", "חסכו 2,300 ₪", "save $500": a saving promised as a sum. In the normalized text. */
+    private val SAVING_SUM = Regex(
+        "(?:חיסכון|חסכון|חסכו|תחסכו|לחסוך|save|saving|savings)\\s+(?:של\\s+|of\\s+|up to\\s+|עד\\s+)?(?:₪|\\$|€)?\\s?\\d",
+    )
+
+    /**
+     * Well-known Israeli and international brands whose sender id sends ordinary advertising with the opt-out
+     * line. Compared as the whole sender, without spaces, dots and hyphens ("Super-Pharm" is "superpharm"). The
+     * banks, insurers and couriers of [FolderClassifier] count as known too.
+     */
+    private val KNOWN_BRANDS = setOf(
+        "superpharm", "סופרפארם", "shufersal", "שופרסל", "ramilevy", "רמילוי", "yochananof", "יוחננוף", "victory", "ויקטורי",
+        "osherad", "אושרעד", "tivtaam", "טיבטעם", "carrefour", "קרפור", "goodpharm", "גודפארם", "bepharm", "fox", "פוקס",
+        "castro", "קסטרו", "renuar", "רנואר", "golf", "גולף", "zara", "hm", "ikea", "איקאה", "acehardware", "ace", "אייס",
+        "homecenter", "הוםסנטר", "officedepot", "maxstock", "מקססטוק", "terminalx", "ksp", "bug", "באג", "ivory", "איבורי",
+        "cellcom", "סלקום", "partner", "פרטנר", "pelephone", "פלאפון", "hotmobile", "hot", "הוט", "yes", "bezeq", "בזק",
+        "golan", "גולן", "019", "012", "013", "dominos", "דומינוס", "pizzahut", "mcdonalds", "מקדונלדס", "aroma",
+        "ארומה", "cofix", "קופיקס", "burgeranch", "wolt", "10bis", "תןביס", "gett", "yango", "uber", "elal", "אלעל",
+        "israir", "ישראייר", "arkia", "ארקיע", "maccabi", "מכבי", "clalit", "כללית", "meuhedet", "מאוחדת", "leumit",
+        "לאומית", "netflix", "spotify", "google", "apple", "microsoft", "amazon", "aliexpress", "shein", "temu", "ebay",
+        "paypal", "booking", "airbnb", "ravkav", "רבקו", "pango", "פנגו", "cellopark", "סלופארק",
+    )
 
     /**
      * A bait or pressure phrase. [label] is what the UI shows; [variants] are the spellings looked for,
@@ -177,6 +218,7 @@ object SpamScorer {
         reasons += SpamReason.UnknownSender
 
         val links = LinkAnalyzer.findLinks(sms.body)
+        // A known shortener, or a home-made one such as "lp6.me/nejcz" (LinkAnalyzer.looksShortened)
         if (links.any { it.isShortener }) {
             score += SHORT_LINK
             reasons += SpamReason.ShortLink
@@ -213,9 +255,18 @@ object SpamScorer {
         }
         score += minOf(phrasePoints, PHRASE_CAP)
 
+        val bait = MONEY_BAIT_WORDS.any { Text.containsWords(words, it) } || SAVING_SUM.containsMatchIn(Text.normalize(sms.body))
+        if (bait) {
+            score += MONEY_BAIT
+            reasons += SpamReason.MoneyBait
+        }
+
         if (optOut) {
             val stranger = Text.phoneKey(sms.address) != null
-            val advertises = poll > 0 || (stranger && (links.isNotEmpty() || adWording))
+            val unknownId = Text.isAlphanumericSender(sms.address) && !isKnownBrand(sms)
+            val advertises = poll > 0 ||
+                (stranger && (links.isNotEmpty() || adWording || bait)) ||
+                (unknownId && links.isNotEmpty() && (adWording || bait))
             if (advertises && !isServiceNotice(sms, words)) score += OPT_OUT_AD
         }
 
@@ -250,9 +301,21 @@ object SpamScorer {
         return false
     }
 
-    /** A code, a bank, an insurer, a delivery or an appointment: an opt-out line there does not make it an ad. */
+    /**
+     * A code, a bank, an insurer, a delivery or an appointment: an opt-out line there does not make it an ad. The
+     * shape is judged as if there were no opt-out line ([FolderClassifier.serviceFolder]): the classifier files every
+     * ad in All, which would make every notice with "להסרה" look like an ad here.
+     */
     private fun isServiceNotice(sms: IncomingSms, words: List<String>): Boolean =
-        SERVICE_WORDS.any { Text.containsWords(words, it) } || FolderClassifier.classify(sms, NOT_SPAM) in SERVICE_FOLDERS
+        SERVICE_WORDS.any { Text.containsWords(words, it) } ||
+            CodeExtractor.extract(sms.body) != null ||
+            FolderClassifier.serviceFolder(sms) in SERVICE_FOLDERS
+
+    /** A well-known brand's sender id ([KNOWN_BRANDS]) or a known bank, insurer or courier. */
+    private fun isKnownBrand(sms: IncomingSms): Boolean {
+        val compact = Text.words(sms.address.replace('-', ' ').replace('.', ' ')).joinToString("")
+        return compact in KNOWN_BRANDS || FolderClassifier.isInstitution(sms) || LinkAnalyzer.brandNamed(sms.address) != null
+    }
 
     /** An alphanumeric sender named like a known company, whose message links somewhere that company does not live. */
     private fun impersonatesBrand(sms: IncomingSms, links: List<LinkInfo>): Boolean {

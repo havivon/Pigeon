@@ -3,7 +3,9 @@ package com.havivon.pigeon.ui.spam
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,10 +26,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -37,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -50,11 +56,16 @@ import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.analysis.LinkInfo
 import com.havivon.pigeon.domain.model.SpamReason
+import com.havivon.pigeon.ui.components.EmptyState
 import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
+import com.havivon.pigeon.ui.components.HeaderChip
 import com.havivon.pigeon.ui.components.HeaderIcon
+import com.havivon.pigeon.ui.components.HeaderSearchField
 import com.havivon.pigeon.ui.components.PillButton
+import com.havivon.pigeon.ui.components.SelectionMark
 import com.havivon.pigeon.ui.components.SpamAvatar
+import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /**
@@ -80,36 +91,76 @@ fun SpamScreen(
     onDeleteAll: (() -> Unit)? = {},
     /** Shown under the info card when there is no spam; null shows nothing. */
     emptyState: (@Composable () -> Unit)? = null,
+    /** The search field is open: [groups] are the senders matching [query]. */
+    searching: Boolean = false,
+    query: String = "",
+    onSearch: () -> Unit = {},
+    onQuery: (String) -> Unit = {},
+    onCloseSearch: () -> Unit = {},
+    /** False in the design snapshots, where there is no keyboard to open. */
+    autoFocus: Boolean = true,
+    /** The senders chosen in selection mode, by [SpamGroup.key]; empty when not selecting. */
+    selected: Set<String> = emptySet(),
+    /** A long press on a sender: selection mode starts with it. */
+    onSelect: (SpamGroup) -> Unit = {},
+    /** A tap on a sender while selecting. */
+    onToggleSelected: (SpamGroup) -> Unit = {},
+    onClearSelection: () -> Unit = {},
+    onDeleteSelected: () -> Unit = {},
+    onNotSpamSelected: () -> Unit = {},
 ) {
     val c = HebTheme.colors
+    val selecting = selected.isNotEmpty()
     FixedHeaderLayout(
         Modifier.fillMaxSize().background(c.background),
         header = {
             GradientHeader {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.spam_title), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            pluralStringResource(R.plurals.spam_subtitle, groups.size, groups.size),
-                            color = Color.White.copy(alpha = 0.82f),
-                            fontSize = 13.sp,
-                        )
+                if (selecting) {
+                    SpamSelectionBar(selected.size, onClearSelection, onNotSpamSelected, onDeleteSelected)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.spam_title), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                pluralStringResource(R.plurals.spam_subtitle, groups.size, groups.size),
+                                color = Color.White.copy(alpha = 0.82f),
+                                fontSize = 13.sp,
+                            )
+                        }
+                        if (!searching) HeaderIcon(Icons.Rounded.Search, stringResource(R.string.spam_search), onSearch)
+                        if (onDeleteAll != null) HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all), onDeleteAll)
                     }
-                    if (onDeleteAll != null) HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all), onDeleteAll)
+                    if (searching) {
+                        Spacer(Modifier.height(10.dp))
+                        HeaderSearchField(query, stringResource(R.string.spam_search_hint), onQuery, onCloseSearch, autoFocus)
+                    }
                 }
             }
         },
     ) { top ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = 24.dp)) {
-            item(key = "info") { InfoCard() }
-            if (groups.isEmpty() && emptyState != null) item(key = "empty") { emptyState() }
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
+            if (searching) {
+                item(key = "top-space") { Spacer(Modifier.height(8.dp)) }
+            } else {
+                item(key = "info") { InfoCard() }
+            }
+            if (groups.isEmpty() && searching && query.isNotBlank()) {
+                item(key = "no-results") {
+                    EmptyState(Icons.Rounded.SearchOff, stringResource(R.string.spam_search_empty_title), stringResource(R.string.spam_search_empty_body))
+                }
+            } else if (groups.isEmpty() && emptyState != null && !searching) {
+                item(key = "empty") { emptyState() }
+            }
             items(groups, key = { it.key }) { group ->
                 SpamGroupCard(
                     group,
                     expanded = group.key in expanded,
                     messages = messages[group.key].orEmpty(),
-                    onToggle = onToggle,
+                    onToggle = if (selecting) onToggleSelected else onToggle,
+                    onLongPress = onSelect,
+                    selecting = selecting,
+                    selected = group.key in selected,
                     onNotSpam = onNotSpam,
                     onDelete = onDelete,
                     onOpen = onOpen,
@@ -117,6 +168,26 @@ fun SpamScreen(
                 )
             }
         }
+    }
+}
+
+/** The header in selection mode: X to leave it, the number chosen, and the actions on all of them. */
+@Composable
+private fun SpamSelectionBar(count: Int, onClose: () -> Unit, onNotSpam: () -> Unit, onDelete: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        HeaderIcon(Icons.Rounded.Close, stringResource(R.string.thread_clear_selection), onClose)
+        Text(
+            pluralStringResource(R.plurals.common_selected_count, count, count),
+            color = Color.White,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        HeaderChip(stringResource(R.string.spam_not_spam), selected = false, onClick = onNotSpam)
+        Spacer(Modifier.width(4.dp))
+        HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete), onDelete)
     }
 }
 
@@ -138,13 +209,16 @@ private fun InfoCard() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun SpamGroupCard(
     group: SpamGroup,
     expanded: Boolean,
     messages: List<SpamMessage>,
     onToggle: (SpamGroup) -> Unit,
+    onLongPress: (SpamGroup) -> Unit,
+    selecting: Boolean,
+    selected: Boolean,
     onNotSpam: (SpamGroup) -> Unit,
     onDelete: (SpamGroup) -> Unit,
     onOpen: (Long, Long?) -> Unit,
@@ -157,19 +231,28 @@ private fun SpamGroupCard(
             .padding(horizontal = 12.dp, vertical = 5.dp)
             .fillMaxWidth()
             .clip(shape)
-            .background(c.surface)
-            .border(2.dp, c.spam, shape)
+            .background(if (selected) c.accent.copy(alpha = 0.12f).compositeOver(c.surface) else c.surface)
+            .border(if (selected) 3.dp else 2.dp, if (selected) c.accent else c.spam, shape)
             .animateContentSize(),
     ) {
-        val toggleLabel = stringResource(if (expanded) R.string.spam_hide_messages else R.string.spam_show_messages)
+        val toggleLabel = when {
+            selecting -> stringResource(if (selected) R.string.common_unselect else R.string.common_select)
+            expanded -> stringResource(R.string.spam_hide_messages)
+            else -> stringResource(R.string.spam_show_messages)
+        }
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable(onClickLabel = toggleLabel) { onToggle(group) }
+                .combinedClickable(
+                    onClickLabel = toggleLabel,
+                    onLongClickLabel = stringResource(R.string.common_select),
+                    onLongClick = { onLongPress(group) },
+                    onClick = { onToggle(group) },
+                )
                 .padding(start = 14.dp, end = 10.dp, top = 14.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SpamAvatar(size = 42.dp)
+            if (selecting) SelectionMark(selected, 42.dp) else SpamAvatar(size = 42.dp)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -193,7 +276,7 @@ private fun SpamGroupCard(
                 )
             }
             Spacer(Modifier.width(4.dp))
-            Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.onSurfaceMuted)
+            if (!selecting) Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = c.onSurfaceMuted)
         }
         if (group.reasons.isNotEmpty()) {
             FlowRow(
@@ -215,7 +298,7 @@ private fun SpamGroupCard(
                 }
             }
         }
-        if (expanded && messages.isNotEmpty()) {
+        if (expanded && messages.isNotEmpty() && !selecting) {
             Spacer(Modifier.height(12.dp))
             Box(Modifier.padding(horizontal = 14.dp).fillMaxWidth().height(1.dp).background(c.divider))
             Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -224,9 +307,12 @@ private fun SpamGroupCard(
         } else {
             Spacer(Modifier.height(12.dp))
         }
-        Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = { onNotSpam(group) })
-            PillButton(stringResource(R.string.spam_delete), icon = Icons.Rounded.Delete, color = c.spam, onClick = { onDelete(group) })
+        // While selecting, the bar on top acts on every chosen sender
+        if (!selecting) {
+            Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = { onNotSpam(group) })
+                PillButton(stringResource(R.string.spam_delete), icon = Icons.Rounded.Delete, color = c.spam, onClick = { onDelete(group) })
+            }
         }
     }
 }
@@ -289,4 +375,5 @@ private fun SpamReason.label(): String = when (this) {
     SpamReason.BrandSender -> stringResource(R.string.spam_reason_brand_sender)
     SpamReason.MarkedByUser -> stringResource(R.string.spam_reason_marked_by_user)
     SpamReason.Poll -> stringResource(R.string.spam_reason_poll)
+    SpamReason.MoneyBait -> stringResource(R.string.spam_reason_money_bait)
 }

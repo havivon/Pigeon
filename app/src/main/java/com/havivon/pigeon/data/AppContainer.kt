@@ -4,7 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.havivon.pigeon.PigeonApp
 import com.havivon.pigeon.data.contacts.AndroidContactsRepository
+import com.havivon.pigeon.data.db.BinDatabase
 import com.havivon.pigeon.data.db.PigeonDatabase
+import com.havivon.pigeon.data.db.RoomBinRepository
 import com.havivon.pigeon.data.db.RoomBlockedKeywordsRepository
 import com.havivon.pigeon.data.db.RoomFavoritesRepository
 import com.havivon.pigeon.data.db.RoomLocksRepository
@@ -17,12 +19,14 @@ import com.havivon.pigeon.data.reminders.ReminderNotifier
 import com.havivon.pigeon.data.settings.DataStoreSettingsRepository
 import com.havivon.pigeon.data.sms.IncomingSmsHandler
 import com.havivon.pigeon.data.sms.PendingSends
+import com.havivon.pigeon.data.sms.ProviderBinRestorer
 import com.havivon.pigeon.data.sms.ProviderSmsStore
 import com.havivon.pigeon.data.sms.TelephonyMessageRepository
 import com.havivon.pigeon.data.sms.TelephonySmsSender
 import com.havivon.pigeon.widget.WidgetRefresher
 import com.havivon.pigeon.widget.refreshSignals
 import com.havivon.pigeon.domain.analysis.SpamOnRead
+import com.havivon.pigeon.domain.bin.RecycleBin
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.FavoritesRepository
@@ -85,10 +89,15 @@ class AppContainer(
     val blockedKeywords: BlockedKeywordsRepository by lazy { RoomBlockedKeywordsRepository(database) }
     val pins: PinsRepository by lazy { RoomPinsRepository(database) }
 
+    /** The recycle bin: a database file of its own, left out of backups (it holds message content). */
+    private val binDatabase: BinDatabase by lazy { BinDatabase.build(app) }
+    val recycleBin: RecycleBin by lazy { RecycleBin(RoomBinRepository(binDatabase)) }
+    val binRestorer: ProviderBinRestorer by lazy { ProviderBinRestorer(app) }
+
     /** Messages sent as a viewer, until Android has stored them. */
     val pendingSends = PendingSends()
 
-    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope, pendingSends, ::canWrite, refresh = accessChanges) }
+    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope, pendingSends, ::canWrite, refresh = accessChanges, bin = recycleBin) }
     val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages, pendingSends, ::canWrite) }
     val notifier: MessageNotifier by lazy {
         MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })

@@ -67,8 +67,21 @@ class FakeMessageRepository : MessageRepository {
     val searched = mutableListOf<String>()
     var nextThreadId = 900L
 
+    /**
+     * As the real repository: a conversation whose messages are in [allMessages] counts its unread ones from them
+     * (their ids are what the Unread list reads); one without messages keeps the count it was given.
+     */
     override val conversations: Flow<List<SmsConversation>> =
-        combine(threads, hiddenThreads) { list, hidden -> list.filter { it.threadId !in hidden } }
+        combine(threads, hiddenThreads, allMessages, hiddenMessages) { list, hidden, all, hiddenIds ->
+            val byThread = all.groupBy { it.threadId }
+            list.filter { it.threadId !in hidden }.map { c ->
+                val own = byThread[c.threadId] ?: return@map c
+                val unread = own.filter { !it.type.outgoing && !it.read && it.id !in hiddenIds }
+                    .sortedWith(compareByDescending<SmsMessage> { it.dateMillis }.thenByDescending { it.id })
+                    .map { it.id }
+                c.copy(unreadIds = unread, unreadCount = unread.size)
+            }
+        }
 
     override fun messages(threadId: Long, limit: Int): Flow<List<SmsMessage>> =
         combine(allMessages, hiddenMessages, hiddenThreads) { list, hidden, ht ->
@@ -80,10 +93,12 @@ class FakeMessageRepository : MessageRepository {
     override suspend fun recentIncoming(limit: Int) =
         allMessages.value.filter { !it.type.outgoing }.sortedByDescending { it.dateMillis }.take(limit)
     override suspend fun unreadMessages(threadId: Long) = allMessages.value.filter { it.threadId == threadId && !it.read }
-    override val unreadInbox: Flow<List<SmsMessage>> = combine(allMessages, hiddenMessages, hiddenThreads) { list, hidden, ht ->
-        list.filter { !it.type.outgoing && !it.read && it.id !in hidden && it.threadId !in ht }
-            .sortedWith(compareByDescending<SmsMessage> { it.dateMillis }.thenByDescending { it.id })
-            .take(MessageRepository.UNREAD_INBOX_LIMIT)
+    val readById = mutableListOf<Collection<Long>>()
+
+    override suspend fun messagesById(ids: Collection<Long>): List<SmsMessage> {
+        readById += ids
+        val wanted = ids.toSet()
+        return allMessages.value.filter { it.id in wanted && it.id !in hiddenMessages.value && it.threadId !in hiddenThreads.value }
     }
     override suspend fun threadIdFor(addresses: List<String>): Long =
         threads.value.firstOrNull { c -> c.addresses.size == addresses.size && c.addresses.all { a -> addresses.any { PhoneNumbers.same(a, it) } } }?.threadId

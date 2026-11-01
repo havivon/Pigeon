@@ -10,6 +10,8 @@ import android.provider.ContactsContract
 import android.provider.Telephony
 import android.util.Log
 import com.havivon.pigeon.domain.PhoneNumbers
+import com.havivon.pigeon.domain.bin.BinCopy
+import com.havivon.pigeon.domain.bin.RecycleBin
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.SearchResults
 import com.havivon.pigeon.domain.model.SmsConversation
@@ -19,7 +21,6 @@ import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNDO_WINDOW_MILLIS
-import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNREAD_INBOX_LIMIT
 import com.havivon.pigeon.domain.repository.PinsRepository
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +70,9 @@ private val MESSAGE_COLUMNS_WITH_SIM = MESSAGE_COLUMNS + Telephony.Sms.SUBSCRIPT
  * messages new ids and could put them in a new thread; waiting keeps them exactly as they were.
  * If the app is killed inside the window the delete simply does not happen, which errs on the side
  * of keeping the user's messages.
+ *
+ * When the window ends the messages are first copied into the [bin] (the recycle bin, 30 days), and deleted
+ * from the system database only once the copy is stored.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TelephonyMessageRepository(
@@ -87,6 +91,8 @@ class TelephonyMessageRepository(
     private val canWrite: () -> Boolean = { true },
     /** Starts the conversations over when it emits (access changed: the default app, a permission). */
     refresh: Flow<Any?> = flowOf(Unit),
+    /** Where deleted messages wait 30 days; null deletes for good at once. */
+    private val bin: RecycleBin? = null,
 ) : MessageRepository {
 
     private val resolver = context.contentResolver
@@ -105,32 +111,22 @@ class TelephonyMessageRepository(
             resolver.changes(Telephony.MmsSms.CONTENT_CONVERSATIONS_URI, Telephony.Sms.CONTENT_URI, ContactsContract.Contacts.CONTENT_URI)
                 .mapNotNull { readConversationsOrKeep() }
         }
-            .combine(hidden) { list, h -> list.filter { it.threadId !in h.threads } }
+            .combine(hidden) { list, h -> list.filter { it.threadId !in h.threads }.map { it.withoutHidden(h.messages) } }
             .flowOn(Dispatchers.IO)
             .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
 
-    /**
-     * Only the unread incoming rows, newest first: far lighter than the conversations, and kept for
-     * every screen the same way (and started over by [refresh] too).
-     */
-    override val unreadInbox: Flow<List<SmsMessage>> =
-        refresh.flatMapLatest { resolver.changes(Telephony.Sms.CONTENT_URI).mapNotNull { readUnreadInboxOrKeep() } }
-            .combine(hidden) { list, h -> list.filter { it.id !in h.messages && it.threadId !in h.threads } }
-            .flowOn(Dispatchers.IO)
-            .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
+    /** Messages waiting to be deleted are not counted as unread either: the count and the Unread list agree. */
+    private fun SmsConversation.withoutHidden(messages: Set<Long>): SmsConversation {
+        if (messages.isEmpty() || unreadIds.none { it in messages }) return this
+        val left = unreadIds.filter { it !in messages }
+        return copy(unreadIds = left, unreadCount = left.size)
+    }
 
-    private fun readUnreadInbox(): List<SmsMessage> = queryMessages(
-        "${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue} AND ${Telephony.Sms.READ} = 0",
-        emptyArray(),
-        "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC LIMIT $UNREAD_INBOX_LIMIT",
-    )
-
-    /** The unread messages, or null (the last list stays) when a maker's provider failed in a way it should not. */
-    private fun readUnreadInboxOrKeep(): List<SmsMessage>? = try {
-        readUnreadInbox()
-    } catch (e: RuntimeException) {
-        Log.w("Pigeon", "Reading the unread messages failed: ${e.javaClass.name}")
-        null
+    override suspend fun messagesById(ids: Collection<Long>): List<SmsMessage> = withContext(Dispatchers.IO) {
+        val h = hidden.value
+        ids.distinct().chunked(SNIPPET_CHUNK).flatMap { chunk ->
+            queryMessages("${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray(), null)
+        }.filter { it.id !in h.messages && it.threadId !in h.threads }
     }
 
     override fun messages(threadId: Long, limit: Int): Flow<List<SmsMessage>> =
@@ -306,17 +302,45 @@ class TelephonyMessageRepository(
         // Not the default SMS app (any more): nothing can be deleted, and the rows come back into view
         if (!canWrite()) return
         try {
-            messages.chunked(DELETE_CHUNK).forEach { chunk ->
-                resolver.delete(Telephony.Sms.CONTENT_URI, "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray())
+            val delete: suspend () -> Unit = {
+                messages.chunked(DELETE_CHUNK).forEach { chunk ->
+                    resolver.delete(Telephony.Sms.CONTENT_URI, "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray())
+                }
+                for (threadId in threads) {
+                    resolver.delete(ContentUris.withAppendedId(Telephony.Sms.Conversations.CONTENT_URI, threadId), null, null)
+                    // The system may give a deleted thread's id to a new conversation later; it must not start out locked or pinned
+                    locks.unlock(threadId)
+                    pins.unpin(threadId)
+                }
             }
-            for (threadId in threads) {
-                resolver.delete(ContentUris.withAppendedId(Telephony.Sms.Conversations.CONTENT_URI, threadId), null, null)
-                // The system may give a deleted thread's id to a new conversation later; it must not start out locked or pinned
-                locks.unlock(threadId)
-                pins.unpin(threadId)
-            }
+            // Copied first: a copy that fails throws, and nothing is deleted
+            if (bin == null) delete() else bin.moveToBin(copiesFor(messages, threads), locks.lockedNow(), delete)
         } catch (_: SecurityException) {
             // Not the default SMS app: nothing can be deleted, and the rows come back into view
         }
+    }
+
+    /** The whole rows of the messages about to be deleted, with their conversations' addresses, for the bin. */
+    private fun copiesFor(messages: Set<Long>, threads: Set<Long>): List<BinCopy> {
+        val rows = ArrayList<SmsMessage>()
+        messages.chunked(DELETE_CHUNK).forEach { chunk ->
+            rows += queryMessages("${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray(), null)
+        }
+        threads.chunked(DELETE_CHUNK).forEach { chunk ->
+            rows += queryMessages("${Telephony.Sms.THREAD_ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray(), null)
+        }
+        val copies = rows.distinctBy { it.id }.filter { it.type != SmsType.Draft }
+        val threadIds = copies.mapTo(HashSet()) { it.threadId }.toList()
+        val addresses = HashMap<Long, LinkedHashSet<String>>()
+        threadIds.chunked(DELETE_CHUNK).forEach { chunk ->
+            resolver.queryList(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS),
+                "${Telephony.Sms.THREAD_ID} IN (${placeholders(chunk.size)})",
+                chunk.map { it.toString() }.toTypedArray(),
+            ) { it.long(Telephony.Sms.THREAD_ID) to it.string(Telephony.Sms.ADDRESS).trim() }
+                .forEach { (thread, address) -> if (address.isNotEmpty()) addresses.getOrPut(thread) { LinkedHashSet() } += address }
+        }
+        return copies.map { BinCopy(it, addresses[it.threadId]?.toList() ?: listOfNotNull(it.address.trim().ifEmpty { null })) }
     }
 }

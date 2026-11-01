@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +28,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -42,7 +45,20 @@ data class SpamUiState(
     val expanded: Set<String> = emptySet(),
     /** The messages of each opened row, newest first, by [SpamGroup.key]. */
     val messages: Map<String, List<SpamMessage>> = emptyMap(),
-)
+    /** The search field is open in the header; [groups] are then the senders that match [query]. */
+    val searching: Boolean = false,
+    val query: String = "",
+    /** The [SpamGroup.key]s chosen in selection mode (a long press starts it); empty when not selecting. */
+    val selected: Set<String> = emptySet(),
+) {
+    val selecting: Boolean get() = selected.isNotEmpty()
+}
+
+/** What the user is doing on the screen besides reading: searching, selecting. */
+private data class SpamUi(val searching: Boolean = false, val query: String = "", val selected: Set<String> = emptySet())
+
+/** How long the search waits for the typing to pause before it reads the messages. */
+private const val SEARCH_PAUSE_MILLIS = 250L
 
 /** The newest messages read for each conversation of an opened row. */
 private const val OPENED_MESSAGES = 30
@@ -79,8 +95,12 @@ class SpamViewModel(
         spamJudging.offer(conversations, verdicts)
         val t = now()
         val items = conversations.mapNotNull { c -> verdictFor(c, verdicts)?.let { mapper.map(c, t, locked = locked, verdict = it) } }
-        Listed(items, groupSpam(items))
+        Listed(items, groupSpam(items)).also { listedNow = it }
     }.flowOn(work).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    /** The latest list, for the actions on the chosen senders (the whole list, not only the search's). */
+    @Volatile
+    private var listedNow: Listed? = null
 
     /** Kept in the view model: an opened row stays open through a rotation and through every new list. */
     private val expanded = MutableStateFlow<Set<String>>(emptySet())
@@ -105,16 +125,73 @@ class SpamViewModel(
             .flowOn(work)
     }
 
-    val state: StateFlow<SpamUiState> = combine(listed, expanded, openedMessages) { l, keys, shown ->
+    private val ui = MutableStateFlow(SpamUi())
+
+    /** The spam conversations whose messages hold the query, by the system's message search (never locked chats). */
+    private val matchingThreads: Flow<Set<Long>> = ui.map { it.query.trim() }.distinctUntilChanged().mapLatest { q ->
+        if (q.isEmpty()) {
+            emptySet()
+        } else {
+            delay(SEARCH_PAUSE_MILLIS)
+            messages.search(q).messages.mapTo(HashSet()) { it.threadId }
+        }
+    }.onStart { emit(emptySet()) }
+
+    val state: StateFlow<SpamUiState> = combine(listed, expanded, openedMessages, ui, matchingThreads) { l, keys, shown, u, matching ->
         val present = l.groups.mapTo(HashSet()) { it.key }
         SpamUiState(
             loaded = true,
             items = l.items,
-            groups = l.groups,
+            groups = if (u.searching) filterSpam(l.groups, u.query, matching) else l.groups,
             expanded = keys.filterTo(LinkedHashSet()) { it in present },
             messages = shown,
+            searching = u.searching,
+            query = u.query,
+            selected = u.selected.filterTo(LinkedHashSet()) { it in present },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpamUiState())
+
+    fun openSearch() = ui.update { it.copy(searching = true) }
+
+    /** Closes the search field: every sender shows again. */
+    fun closeSearch() = ui.update { it.copy(searching = false, query = "") }
+
+    fun setQuery(value: String) = ui.update { it.copy(query = value) }
+
+    /** A long press: selection mode starts with this sender chosen. */
+    fun select(group: SpamGroup) = ui.update { it.copy(selected = it.selected + group.key) }
+
+    /** A tap while selecting: adds or removes the sender. The last one removed ends selection mode. */
+    fun toggleSelected(group: SpamGroup) =
+        ui.update { if (group.key in it.selected) it.copy(selected = it.selected - group.key) else it.copy(selected = it.selected + group.key) }
+
+    fun clearSelection() = ui.update { it.copy(selected = emptySet()) }
+
+    private fun selectedGroups(): List<SpamGroup> {
+        val keys = ui.value.selected
+        return listedNow?.groups.orEmpty().filter { it.key in keys }
+    }
+
+    /**
+     * The chosen senders' conversations, all at once with one undo: the number deleted and the undo. Null, and
+     * nothing is deleted (selection mode stays), while Pigeon is not the default SMS app.
+     */
+    fun deleteSelected(): Pair<Int, PendingDeletion>? {
+        if (!canWriteNow()) return null
+        val ids = selectedGroups().flatMapTo(LinkedHashSet()) { it.threadIds }
+        if (ids.isEmpty()) return null
+        clearSelection()
+        return ids.size to messages.deleteThreads(ids)
+    }
+
+    /** The chosen senders back to the inbox, as [notSpam] does for one. Returns how many. */
+    fun notSpamSelected(): Int {
+        val groups = selectedGroups()
+        clearSelection()
+        expanded.update { it - groups.mapTo(HashSet()) { g -> g.key } }
+        appScope.launch { groups.forEach { g -> g.addresses.forEach { spam.markNotSpam(it) } } }
+        return groups.size
+    }
 
     /** Opens a row to show its sender's messages, or closes it. */
     fun toggle(group: SpamGroup) {

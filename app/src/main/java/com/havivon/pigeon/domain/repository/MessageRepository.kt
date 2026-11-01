@@ -34,11 +34,11 @@ interface MessageRepository {
     suspend fun unreadMessages(threadId: Long): List<SmsMessage>
 
     /**
-     * The unread incoming messages of every conversation, newest first, at most [UNREAD_INBOX_LIMIT]:
-     * the inbox's Unread list. A light query of just those rows (not the conversations), read again
-     * when the database changes. Messages waiting to be deleted are left out.
+     * The messages with these [ids], in any order; those gone or waiting to be deleted are left out. The inbox's
+     * Unread list reads the [SmsConversation.unreadIds] of the conversations it shows: the same messages its
+     * count is made of, so the two always agree.
      */
-    val unreadInbox: Flow<List<SmsMessage>>
+    suspend fun messagesById(ids: Collection<Long>): List<SmsMessage>
 
     /** The system thread for these addresses, created if there is none yet (for a new message); 0 if the system has none to give. */
     suspend fun threadIdFor(addresses: List<String>): Long
@@ -70,8 +70,5 @@ interface MessageRepository {
 
     companion object {
         const val UNDO_WINDOW_MILLIS = 5_000L
-
-        /** The most unread messages [unreadInbox] reads: a screen of them is a lot, and a phone with thousands unread stays quick. */
-        const val UNREAD_INBOX_LIMIT = 500
     }
 }

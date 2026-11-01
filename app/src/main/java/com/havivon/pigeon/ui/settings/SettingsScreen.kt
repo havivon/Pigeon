@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.RestoreFromTrash
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.Shield
@@ -68,6 +69,7 @@ import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.SectionLabel
+import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /** What the phone says, which the settings screen shows next to the user's own choices. */
@@ -91,6 +93,7 @@ data class SettingsActions(
     val onAppIcon: (AppIcon) -> Unit = {},
     val onOpenRules: () -> Unit = {},
     val onOpenKeywords: () -> Unit = {},
+    val onOpenRecycleBin: () -> Unit = {},
     val onAutoDeleteCodes: (Boolean) -> Unit = {},
     val onLockScreenText: (Boolean) -> Unit = {},
     val onSystemNotifications: () -> Unit = {},
@@ -126,7 +129,7 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
     ) { top ->
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = top, bottom = 32.dp),
+            contentPadding = PaddingValues(top = top, bottom = listBottomPadding(32.dp)),
         ) {
             item { SectionLabel(stringResource(R.string.settings_section_appearance), Icons.Rounded.Palette) }
             item {
@@ -174,6 +177,13 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         stringResource(R.string.settings_blocked_words),
                         pluralStringResource(R.plurals.settings_words_count, state.keywordCount, state.keywordCount),
                         actions.onOpenKeywords,
+                    )
+                    RowDivider()
+                    NavRow(
+                        Icons.Rounded.RestoreFromTrash,
+                        stringResource(R.string.settings_recycle_bin),
+                        stringResource(R.string.settings_recycle_bin_note),
+                        actions.onOpenRecycleBin,
                     )
                     RowDivider()
                     SwitchRow(

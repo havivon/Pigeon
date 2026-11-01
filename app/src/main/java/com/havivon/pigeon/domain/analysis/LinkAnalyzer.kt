@@ -8,6 +8,7 @@ data class LinkInfo(
     val range: IntRange,
     /** The real host the link goes to: lower case, without scheme, user info, port or path. */
     val host: String,
+    /** A known link-shortening service, or a short unknown domain shaped like one ([LinkAnalyzer.looksShortened]). */
     val isShortener: Boolean,
     /** The id of the well-known brand this host imitates ("israelpost", "leumi", "paypal"...), or null. */
     val lookalikeOf: String?,
@@ -43,7 +44,7 @@ object LinkAnalyzer {
                 text = raw,
                 range = m.range.first until m.range.first + raw.length,
                 host = host,
-                isShortener = isShortener(host),
+                isShortener = isShortener(host) || looksShortened(host, raw),
                 lookalikeOf = lookalikeOf(host),
                 isPunycode = host.split('.').any { it.startsWith("xn--") },
                 hasUserInfo = raw.contains("://") && raw.substringAfter("://").substringBefore('/').contains('@'),
@@ -54,6 +55,33 @@ object LinkAnalyzer {
 
     /** Whether [host] (as returned in [LinkInfo.host]) belongs to a link-shortening service. */
     fun isShortener(host: String): Boolean = SHORTENERS.any { host == it || host.endsWith(".$it") }
+
+    /**
+     * Whether a link on an unknown domain is shaped like a shortener's: a domain of 2-4 letters or digits on one
+     * of the cheap short TLDs (.me, .ly, .to, .cc, .link, .click...), with a single random-looking path such as
+     * "lp6.me/nejcz" or "l5k.me/iihzE_BP5Az". Advertisers and scammers run their own shorteners like these. The
+     * well-known short domains (wa.me, t.me, amzn.to...) and the brands' real domains are never flagged.
+     */
+    fun looksShortened(host: String, link: String): Boolean {
+        val labels = host.removePrefix("www.").split('.')
+        if (labels.size != 2 || labels[1] !in SHORT_TLDS) return false
+        if (labels[0].length !in 2..4 || labels[0].any { !it.isLetterOrDigit() }) return false
+        if (host.removePrefix("www.") in WELL_KNOWN_SHORT || BRANDS.any { isGenuine(it, host) }) return false
+        val path = link.substringAfter("://").substringAfter('/', "").substringBefore('?').substringBefore('#').trimEnd('/')
+        return path.length in 4..24 && '/' !in path && path.all { it.isLetterOrDigit() || it == '_' || it == '-' } && looksRandom(path)
+    }
+
+    /** A digit, upper and lower case mixed, an underscore or three consonants in a row: "x7Kq9", "nejcz", not "sale". */
+    private fun looksRandom(path: String): Boolean {
+        if (path.any { it.isDigit() } || '_' in path) return true
+        if (path.any { it.isUpperCase() } && path.any { it.isLowerCase() }) return true
+        var run = 0
+        for (ch in path.lowercase()) {
+            run = if (ch in 'a'..'z' && ch !in "aeiouy") run + 1 else 0
+            if (run >= 3) return true
+        }
+        return false
+    }
 
     /** The id of the brand [host] imitates, or null. The brand's own domains are never flagged. */
     fun lookalikeOf(host: String): String? =
@@ -193,6 +221,15 @@ object LinkAnalyzer {
         "tinyurl.is", "rebrand.ly", "short.io", "soo.gd", "x.co", "mcaf.ee", "shorturl.asia", "tiny.one", "u.to", "kutt.it",
         "chilp.it", "cli.re", "link.tl", "po.st", "t2m.io", "urlz.fr", "han.gl", "1url.com", "snip.ly", "2.gp", "zpr.io",
     )
+
+    /** The cheap TLDs that home-made shorteners use ([looksShortened]). */
+    private val SHORT_TLDS = setOf(
+        "me", "ly", "to", "cc", "link", "click", "gl", "gd", "gy", "ws", "nu", "vc", "sh", "su", "tk", "ml", "ga", "cf", "gq",
+        "xyz", "top", "icu", "cyou", "buzz", "cam", "lol", "fun", "vip", "win", "bid", "rest", "life", "live", "site", "online",
+    )
+
+    /** Short domains of well-known services, never taken for a home-made shortener. */
+    private val WELL_KNOWN_SHORT = setOf("wa.me", "t.me", "m.me", "fb.me", "amzn.to", "lnk.to", "spoti.fi", "apple.co", "g.co", "msft.it")
 
     /** TLDs that are also ordinary words: "Thanks.It" is a typo, not a link, unless there is a path. */
     private val WORD_TLDS = setOf("is", "it", "in", "at", "no", "to", "me", "us", "be", "so", "my", "am", "as", "or", "do", "by")

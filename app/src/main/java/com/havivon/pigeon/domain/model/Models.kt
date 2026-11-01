@@ -29,6 +29,8 @@ sealed interface SpamReason {
     data object MarkedByUser : SpamReason
     /** A poll or a political campaign: "סקר", "לאיזו מפלגה", "השיבו 1", "election", "reply 1". */
     data object Poll : SpamReason
+    /** Money bait: "ייתכן שמגיע לכם כסף", "החזר מס", "בדיקה חינם", "you may be owed". */
+    data object MoneyBait : SpamReason
 }
 
 sealed interface RuleMatch {

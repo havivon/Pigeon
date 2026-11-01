@@ -50,7 +50,11 @@ import com.havivon.pigeon.ui.search.SearchScreen
 import com.havivon.pigeon.ui.search.SearchUiState
 import com.havivon.pigeon.ui.spam.SpamMessage
 import com.havivon.pigeon.ui.spam.SpamScreen
+import com.havivon.pigeon.ui.spam.filterSpam
 import com.havivon.pigeon.ui.spam.groupSpam
+import com.havivon.pigeon.ui.bin.BinGroup
+import com.havivon.pigeon.ui.bin.BinRow
+import com.havivon.pigeon.ui.bin.BinScreen
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import com.havivon.pigeon.ui.theme.HebTheme
 import org.junit.Rule
@@ -151,6 +155,44 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
 
     val lookalike = LinkAnalyzer.findLinks(if (hebrew) "isr-post.co/pay" else "usps-track.co/pay").first()
 
+    /** The spam search with a word typed: the senders whose messages hold it, still one row per sender. */
+    val spamQuery = if (hebrew) "פרס" else "prize"
+    val spamFound = filterSpam(groupSpam(sample.spam), spamQuery)
+
+    /** The recycle bin: a contact's two messages deleted today, a business's from last week, a locked chat about to go. */
+    val bin: List<BinGroup> = listOf(
+        BinGroup(
+            key = "0525550123",
+            name = danny.name,
+            messages = listOf(
+                BinRow(2, if (hebrew) "סגרנו, מחר ב-10:00" else "Done, tomorrow at 10:00", "09:21", outgoing = true, locked = false),
+                BinRow(1, if (hebrew) "נפגשים מחר בבוקר?" else "Meeting tomorrow morning?", "09:12", outgoing = false, locked = false),
+            ),
+            deletedLabel = if (hebrew) "10:30" else "10:30 AM",
+            daysLeft = 30,
+            locked = false,
+            ids = setOf(1, 2),
+        ),
+        BinGroup(
+            key = "shopnow",
+            name = "ShopNow",
+            messages = listOf(BinRow(3, if (hebrew) "המבצע מתחיל מחר! 20% הנחה" else "The sale starts tomorrow! 20% off", if (hebrew) "יום ב׳" else "Mon", outgoing = false, locked = false)),
+            deletedLabel = if (hebrew) "יום ב׳" else "Mon",
+            daysLeft = 25,
+            locked = false,
+            ids = setOf(3),
+        ),
+        BinGroup(
+            key = "0545550144",
+            name = noa.name,
+            messages = listOf(BinRow(-4, if (hebrew) "שיחה נעולה" else "Locked chat", "8.10", outgoing = false, locked = true)),
+            deletedLabel = "4.10",
+            daysLeft = 2,
+            locked = true,
+            ids = setOf(4, 5, 6),
+        ),
+    )
+
     /** The Spam folder by sender, the first sender opened to show its two messages. */
     val spamGroups = groupSpam(sample.spam)
     val spamOpened: Map<String, List<SpamMessage>> = run {
@@ -206,6 +248,13 @@ class NewScreensSnapshots {
         }
         shot("70_spam_expanded") { SpamScreen(s.spamGroups, expanded = s.spamOpened.keys, messages = s.spamOpened) }
         shot("72_spam_dark", dark = true) { SpamScreen(s.spamGroups) }
+        shot("73_spam_search") { SpamScreen(s.spamFound, searching = true, query = s.spamQuery, autoFocus = false) }
+        shot("74_spam_selection") { SpamScreen(s.spamGroups, selected = setOf(s.spamGroups[0].key, s.spamGroups[2].key)) }
+        shot("75_recycle_bin") { BinScreen(s.bin, expanded = setOf(s.bin.first().key)) }
+        shot("76_recycle_bin_dark", dark = true) { BinScreen(s.bin, expanded = setOf(s.bin.first().key)) }
+        shot("77_recycle_bin_selection") { BinScreen(s.bin, selected = setOf(s.bin[0].key, s.bin[1].key)) }
+        shot("78_recycle_bin_empty") { BinScreen(emptyList(), onEmpty = null) }
+        shot("79_spam_search_dark", dark = true) { SpamScreen(s.spamFound, searching = true, query = s.spamQuery, autoFocus = false) }
         shot("37_permissions") {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
             Scrim { PermissionsCard(askNotifications = true, askContacts = true, onContinue = {}, onNotNow = {}, modifier = Modifier.fillMaxWidth()) }
@@ -261,6 +310,10 @@ class NewScreensSnapshotsEnglish {
             ConversationScreen(s.danny, s.states, rule = null, draft = "", subtitle = "555-0123")
         }
         shot("71_en_spam_expanded") { SpamScreen(s.spamGroups, expanded = s.spamOpened.keys, messages = s.spamOpened) }
+        shot("80_en_spam_search") { SpamScreen(s.spamFound, searching = true, query = s.spamQuery, autoFocus = false) }
+        shot("81_en_spam_selection") { SpamScreen(s.spamGroups, selected = setOf(s.spamGroups[0].key, s.spamGroups[2].key)) }
+        shot("82_en_recycle_bin") { BinScreen(s.bin, expanded = setOf(s.bin.first().key)) }
+        shot("83_en_recycle_bin_selection") { BinScreen(s.bin, selected = setOf(s.bin[0].key, s.bin[1].key)) }
         shot("69_en_inbox_unread") {
             InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size, unreadMessages = s.unread)
         }

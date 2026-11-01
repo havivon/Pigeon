@@ -93,6 +93,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onAppIcon = vm::setAppIcon,
             onOpenRules = { navigate(Screen.Rules) },
             onOpenKeywords = { navigate(Screen.BlockedKeywords) },
+            onOpenRecycleBin = { navigate(Screen.RecycleBin) },
             // Deleting needs the default SMS app; turning it off always works
             onAutoDeleteCodes = { on -> if (on && !defaultApp.isDefault) needsDefault() else vm.setAutoDeleteCodes(on) },
             onLockScreenText = vm::setLockScreenText,

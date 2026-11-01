@@ -48,6 +48,7 @@ import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.ui.compose.NewMessageRoute
 import com.havivon.pigeon.ui.conversation.ConversationRoute
 import com.havivon.pigeon.ui.inbox.InboxRoute
+import com.havivon.pigeon.ui.bin.BinRoute
 import com.havivon.pigeon.ui.keywords.BlockedKeywordsRoute
 import com.havivon.pigeon.ui.lock.BiometricAuthenticator
 import com.havivon.pigeon.ui.lock.LockCover
@@ -175,6 +176,7 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
             Screen.Settings -> SettingsRoute(onBack = { navigator.pop() }, navigate = navigator::push)
             Screen.Rules -> RulesRoute(onBack = { navigator.pop() })
             Screen.BlockedKeywords -> BlockedKeywordsRoute(onBack = { navigator.pop() })
+            Screen.RecycleBin -> BinRoute(onBack = { navigator.pop() })
         }
     }
 }

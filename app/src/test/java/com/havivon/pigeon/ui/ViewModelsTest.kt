@@ -48,7 +48,6 @@ import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.ui.spam.groupSpam
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -173,6 +172,29 @@ class ViewModelsTest {
     }
 
     @Test
+    fun `a folder's unread count and its unread list always agree, however many unread messages there are elsewhere`() = runTest {
+        // A bank message, older than many unread messages of another conversation: the count said 1, the list was empty
+        val flood = (1..520).map { i ->
+            sms(1000L + i, 5, "Hello $i", millis(2026, 11, 1, 12, 0) + i, "0541112222", read = false)
+        }
+        messages.threads.value = listOf(
+            conversation(5, "0541112222", snippet = "Hello", dateMillis = millis(2026, 11, 1, 13, 0), unread = flood.size),
+            conversation(2, "Leumi", snippet = "Charge of 249.90 on the card ending 4821", dateMillis = millis(2026, 11, 1, 10, 0), unread = 1),
+        )
+        messages.allMessages.value = flood + sms(12, 2, "Charge of 249.90 on the card ending 4821", millis(2026, 11, 1, 10, 0), "Leumi", read = false)
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectUnreadOnly(true)
+        vm.selectFolder(Folder.Banks)
+        assertEquals(1, vm.state.value.unreadCount)
+        assertEquals(1, vm.state.value.folderCounts[Folder.Banks])
+        assertEquals(listOf(12L), vm.state.value.unread!!.map { it.messageId })
+        // Every folder: as many rows as the count says
+        vm.selectFolder(Folder.All)
+        assertEquals(vm.state.value.unreadCount, vm.state.value.unread!!.size)
+    }
+
+    @Test
     fun `the unread toggle applies to the chosen folder and stays on as the folder changes`() = runTest {
         seedInbox()
         seedUnreadMessages()
@@ -261,9 +283,10 @@ class ViewModelsTest {
     @Test
     fun `the unread list waits for its first read, not showing an empty list meanwhile`() = runTest {
         seedInbox()
+        seedUnreadMessages()
         val vm = InboxViewModel(
             object : MessageRepository by messages {
-                override val unreadInbox = MutableSharedFlow<List<SmsMessage>>()
+                override suspend fun messagesById(ids: Collection<Long>): List<SmsMessage> = kotlinx.coroutines.awaitCancellation()
             },
             rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher,
         )
@@ -510,8 +533,96 @@ class ViewModelsTest {
 
     // Spam
 
-    private fun TestScope.spamScreen() =
-        SpamViewModel(messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher)
+    private fun TestScope.spamScreen(canWrite: Boolean = true) =
+        SpamViewModel(
+            messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            canWriteNow = { canWrite }, now = { Now }, work = main.dispatcher,
+        )
+
+    @Test
+    fun `the spam search finds senders by number, by name and by message text, still one row per sender`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender))
+        val vm = spamScreen()
+        collect(vm.state)
+        vm.openSearch()
+        assertTrue(vm.state.value.searching)
+        assertEquals(2, vm.state.value.groups.size)
+
+        vm.setQuery("polls")
+        advanceTimeBy(300)
+        assertEquals(listOf(listOf(5L)), vm.state.value.groups.map { g -> g.conversations.map { it.id } })
+
+        // The system's message search finds an older message of the number's first conversation
+        messages.searchResults = SearchResults(emptyList(), listOf(sms(40, 4, "You won a prize", millis(2026, 11, 1, 9, 30), address = "+972551234567")))
+        vm.setQuery("won a prize")
+        advanceTimeBy(300)
+        assertEquals(listOf(listOf(4L, 6L)), vm.state.value.groups.map { g -> g.conversations.map { it.id } })
+
+        messages.searchResults = SearchResults.Empty
+        vm.setQuery("055-123")
+        advanceTimeBy(300)
+        assertEquals(1, vm.state.value.groups.size)
+        assertEquals(listOf(4L, 6L), vm.state.value.groups.single().conversations.map { it.id })
+
+        vm.setQuery("nothing like this")
+        advanceTimeBy(300)
+        assertTrue(vm.state.value.groups.isEmpty())
+        // Deleting everything still means every spam conversation, not only the search's
+        assertEquals(3, vm.state.value.items.size)
+
+        vm.closeSearch()
+        assertFalse(vm.state.value.searching)
+        assertEquals("", vm.state.value.query)
+        assertEquals(2, vm.state.value.groups.size)
+    }
+
+    @Test
+    fun `a long press selects senders, then delete and not spam act on the chosen ones at once`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender))
+        val vm = spamScreen()
+        collect(vm.state)
+        val (number, polls) = vm.state.value.groups
+        vm.select(number)
+        assertTrue(vm.state.value.selecting)
+        vm.toggleSelected(polls)
+        assertEquals(setOf(number.key, polls.key), vm.state.value.selected)
+        vm.toggleSelected(polls)
+        assertEquals(setOf(number.key), vm.state.value.selected)
+
+        val (n, deletion) = vm.deleteSelected()!!
+        // Both conversations of the number, with one undo; the other sender stays
+        assertEquals(2, n)
+        assertEquals(listOf(5L), vm.state.value.items.map { it.id })
+        assertFalse(vm.state.value.selecting)
+        assertTrue(deletion.undo())
+        assertEquals(3, vm.state.value.items.size)
+
+        vm.select(vm.state.value.groups.first { it.key == polls.key })
+        vm.clearSelection()
+        assertFalse(vm.state.value.selecting)
+
+        vm.select(vm.state.value.groups.first { it.key == polls.key })
+        assertEquals(1, vm.notSpamSelected())
+        assertTrue(spam.isNotSpam("Polls"))
+        assertFalse(vm.state.value.selecting)
+        assertEquals(listOf(4L, 6L), vm.state.value.items.map { it.id })
+    }
+
+    @Test
+    fun `as a viewer the chosen senders are not deleted and selection mode stays`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        val vm = spamScreen(canWrite = false)
+        collect(vm.state)
+        vm.select(vm.state.value.groups.first())
+        assertNull(vm.deleteSelected())
+        assertTrue(vm.state.value.selecting)
+        assertEquals(3, vm.state.value.items.size)
+    }
 
     /** One sender in two conversations (the system wrote its number two ways), and another sender. */
     private fun seedSpam() {

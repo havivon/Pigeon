@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.spam
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.AlertDialog
@@ -68,7 +69,28 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
         onLink = { link = it },
         onDeleteAll = if (state.items.isNotEmpty()) ({ if (vm.canWrite) confirmAll = true else needsDefault() }) else null,
         emptyState = if (state.loaded) ({ EmptyState(Icons.Rounded.Shield, stringResource(R.string.spam_empty_title), stringResource(R.string.spam_empty_body)) }) else null,
+        searching = state.searching,
+        query = state.query,
+        onSearch = vm::openSearch,
+        onQuery = vm::setQuery,
+        onCloseSearch = vm::closeSearch,
+        selected = state.selected,
+        onSelect = vm::select,
+        onToggleSelected = vm::toggleSelected,
+        onClearSelection = vm::clearSelection,
+        onDeleteSelected = {
+            vm.deleteSelected()?.let { (n, deletion) ->
+                notices.undo(context.resources.getQuantityString(R.plurals.spam_deleted_all, n, n), deletion)
+            } ?: run { if (!vm.canWrite) needsDefault() }
+        },
+        onNotSpamSelected = {
+            if (vm.notSpamSelected() > 0) notices.show(backToInbox)
+        },
     )
+
+    // Back leaves selection mode first, then the search, before it leaves the screen
+    BackHandler(enabled = state.selecting) { vm.clearSelection() }
+    BackHandler(enabled = state.searching && !state.selecting) { vm.closeSearch() }
 
     link?.let { l ->
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)

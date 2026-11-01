@@ -39,6 +39,11 @@ data class SmsConversation(
     val incomingCount: Int = 0,
     /** The user wrote in it (sent, or tried to): the other side is someone they talk to, never spam, and Personal. */
     val userWrote: Boolean = false,
+    /**
+     * The ids of its unread incoming messages, newest first: [unreadCount] is their number. The inbox's Unread
+     * list shows exactly these messages, so a folder's count and its list always agree.
+     */
+    val unreadIds: List<Long> = emptyList(),
 ) {
     /** What the list shows as the title: the contact's name, otherwise the address(es). */
     val title: String get() = contactName ?: addresses.joinToString(", ")

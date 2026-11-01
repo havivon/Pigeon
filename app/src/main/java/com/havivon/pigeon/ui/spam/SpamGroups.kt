@@ -6,6 +6,7 @@ import com.havivon.pigeon.domain.analysis.LinkInfo
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.SmsMessage
 import com.havivon.pigeon.domain.model.SpamReason
+import com.havivon.pigeon.ui.common.withoutIsolates
 
 /**
  * One row of the Spam folder: a sender and every spam conversation with them. The system may keep one
@@ -76,4 +77,19 @@ fun spamMessages(group: SpamGroup, messages: List<SmsMessage>, time: (Long) -> S
         .sortedWith(compareByDescending<SmsMessage> { it.dateMillis }.thenByDescending { it.id })
         .map { SpamMessage(it.id, it.threadId, it.body, time(it.dateMillis), LinkAnalyzer.findLinks(it.body)) }
     return read + locked
+}
+
+/**
+ * The groups the spam search shows for [query]: a sender whose name or number matches, or one with a message
+ * whose text holds it (its last message, or a conversation in [matchingThreads], the threads the message search
+ * found). Locked chats are found by their sender only. Still one row per sender, in the same order.
+ */
+fun filterSpam(groups: List<SpamGroup>, query: String, matchingThreads: Set<Long> = emptySet()): List<SpamGroup> {
+    val q = query.trim()
+    if (q.isEmpty()) return groups
+    return groups.filter { g ->
+        withoutIsolates(g.name).contains(q, ignoreCase = true) ||
+            g.addresses.any { it.contains(q, ignoreCase = true) || PhoneNumbers.matchesQuery(it, q) } ||
+            g.conversations.any { c -> !c.locked && (c.snippet.contains(q, ignoreCase = true) || c.id in matchingThreads) }
+    }
 }

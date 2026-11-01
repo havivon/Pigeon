@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -65,6 +66,7 @@ import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.RuleTag
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.SpamAvatar
+import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 @Composable
@@ -127,7 +129,7 @@ private fun InboxList(
     onOpenMessage: (UnreadMessage) -> Unit,
     onLongPressMessage: (UnreadMessage) -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = 110.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(110.dp))) {
         if (banner != null) item { banner() }
         if (nothing && loading) {
             item { LoadingConversations() }
@@ -212,43 +214,42 @@ private fun InboxHeader(
             }
         }
         Spacer(Modifier.height(10.dp))
-        UnreadToggle(unreadOnly, unreadCount, onUnreadOnly)
+        UnreadButtons(unreadOnly, unreadCount, onUnreadOnly)
         Spacer(Modifier.height(4.dp))
     }
 }
 
 /**
- * The two-option toggle under the folder chips: every message of the chosen folder, or only the unread
- * ones (with their number). The chosen option is lit like a chosen chip.
+ * The two buttons under the folder chips, side by side with a clear gap and aligned to the start: every
+ * message of the chosen folder ("All"), or only the unread ones ("Unread", with their number in a badge).
+ * Styled as the folder chips: the chosen one white with the accent text, the other a glassy pill with a
+ * thin outline.
  */
 @Composable
-private fun UnreadToggle(unreadOnly: Boolean, unreadCount: Int, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.18f))
-            .padding(3.dp),
-    ) {
-        ToggleOption(stringResource(R.string.inbox_filter_all), count = 0, selected = !unreadOnly) { onChange(false) }
-        ToggleOption(stringResource(R.string.inbox_filter_unread), count = unreadCount, selected = unreadOnly) { onChange(true) }
+private fun UnreadButtons(unreadOnly: Boolean, unreadCount: Int, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start)) {
+        FilterButton(stringResource(R.string.inbox_filter_all), count = 0, selected = !unreadOnly) { onChange(false) }
+        FilterButton(stringResource(R.string.inbox_filter_unread), count = unreadCount, selected = unreadOnly) { onChange(true) }
     }
 }
 
 @Composable
-private fun ToggleOption(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
+private fun FilterButton(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
     val c = HebTheme.colors
+    val shape = RoundedCornerShape(50)
     Row(
         Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (selected) Color.White else Color.Transparent)
+            .clip(shape)
+            .background(if (selected) Color.White else Color.White.copy(alpha = 0.14f))
+            .then(if (selected) Modifier else Modifier.border(1.dp, Color.White.copy(alpha = 0.55f), shape))
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             label,
             color = if (!selected) Color.White else if (c.isDark) Color(0xFF3A2596) else c.accent,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
         if (count > 0) {
@@ -258,7 +259,7 @@ private fun ToggleOption(label: String, count: Int, selected: Boolean, onClick: 
     }
 }
 
-/** The small round number on a chip or a toggle option. */
+/** The small round number on a chip or the Unread button. */
 @Composable
 private fun CountDot(count: Int, selected: Boolean) {
     val c = HebTheme.colors

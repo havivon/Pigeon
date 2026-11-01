@@ -49,6 +49,14 @@ Baseline, always on, never a setting:
   Validate and length-limit every incoming intent extra.
 - **Own data in app-private storage only** (Room/DataStore), never external storage or shared files.
   Android's normal encrypted backup is allowed, as in the official apps.
+- **Recycle bin.** Deleted messages and conversations (spam included) are copied, just before the
+  provider delete, into a separate Room database file, `pigeon-bin.db` (app-private), and kept 30 days;
+  a daily WorkManager job then deletes them for good. A failed copy cancels the delete. The bin file is
+  excluded from the cloud backup and the device transfer (`res/xml/backup_rules.xml` for
+  `fullBackupContent`, `res/xml/data_extraction_rules.xml` for `dataExtractionRules`; exclusions only, so
+  everything else backs up as before). Restoring (default app only) re-inserts into the provider through
+  `getOrCreateThreadId`. Locked chats' messages show in the bin only after `BiometricPrompt`. The bin is
+  opened from Settings only, and its content is never logged.
 - **No message content in logs**, ever. Release builds: R8 on, not debuggable, signed with the
   user's own key (kept out of the repo).
 - **Copied codes and messages** are flagged sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`,

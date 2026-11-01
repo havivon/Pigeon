@@ -96,7 +96,7 @@ class FolderClassifierTest {
             "Leumi", "BankLeumi", "Leumi-Card", "Hapoalim", "Poalim", "BankHapoalim", "Discount", "DiscountBank", "Mizrahi-Tefahot",
             "MizrahiTfahot", "FIBI", "Beinleumi", "Yahav", "Bank Yahav", "Mercantile", "BankJerusalem", "Massad", "OtsarHahayal",
             "OneZero", "Pepper", "Isracard", "Max", "MAX-IT", "CAL", "Visa Cal", "AMEX", "American Express", "Diners", "bit",
-            "PayBox", "PayPal", "Chase", "HSBC", "Bank of Somewhere",
+            "PayBox", "PayPal", "Chase", "HSBC", "Bank Mizrahi",
             "בנק לאומי", "לאומי", "בנק הפועלים", "דיסקונט", "מזרחי טפחות", "הבינלאומי", "בנק יהב", "בנק ירושלים", "אוצר החייל",
             "ישראכרט", "מקס", "כאל", "ויזה כאל", "ביט",
         )
@@ -338,5 +338,64 @@ class FolderClassifierTest {
         assertEquals(Folder.Banks, classify("חיוב בסך 89.90 ש\"ח בכרטיס המסתיים ב-1234 עבור ביטוח הרכב שחודש", address = "Notify"))
         assertEquals(Folder.Insurance, classify("הפוליסה חודשה, המסמכים יצאו אליך במשלוח", address = "Notify"))
         assertEquals(Folder.Codes, classify("קוד האימות שלך הוא 482913", address = "Harel"))
+    }
+
+    // --- ads and advertisers' names (version 3, made up) ---
+
+    @Test
+    fun theInsuranceRefundAdIsSpamNotInsurance() {
+        val body = "יש לך ביטוח בריאות/חיים? ייתכן שמגיע לכם כסף! בעקבות המצב כעת ניתן לבדוק בחינם כמה הנחה מגיעה לכם - " +
+            "ממוצע חיסכון של ₪2,300 לכל אזרח! לבדיקה חינם: https://lp6.me/nejcz  להסרה https://l5k.me/iihzE_BP5Az"
+        assertEquals(Folder.Spam, classify(body, address = "BituaCheck"))
+        // Even if the scorer had let it through, it is no insurer's message
+        assertEquals(Folder.All, FolderClassifier.classify(IncomingSms("BituaCheck", null, body), SpamVerdict(0, emptyList())))
+    }
+
+    @Test
+    fun aWordInAnUnknownSenderIdIsNoInstitution() {
+        for (sender in listOf("BituaCheck", "Bituach4U", "ביטוח", "ביטוח זול", "Insurance", "InsureNow", "BankCheck", "Bank Deals", "בנק", "Courier", "שליחויות")) {
+            val folder = FolderClassifier.classify(IncomingSms(sender, null, "עדכון חשוב"), SpamVerdict(0, emptyList()))
+            assertEquals(sender, Folder.All, folder)
+        }
+        assertEquals(Folder.Insurance, classify("עדכון", address = "ביטוח לאומי"))
+        assertEquals(Folder.Insurance, classify("עדכון", address = "Harel Insurance"))
+        assertEquals(Folder.Banks, classify("עדכון", address = "Bank Leumi"))
+    }
+
+    @Test
+    fun anAdIsNeverABankAnInsurerOrADeliveryEvenFromOne() {
+        val notSpam = SpamVerdict(0, emptyList())
+        val cases = listOf(
+            "הצטרפו לביטוח נסיעות ב-20% הנחה! להסרה השב הסר" to "Harel",
+            "כרטיס אשראי חדש בלי דמי כרטיס! להסרה הסר" to "Isracard",
+            "משלוח חינם החודש! Reply STOP to opt out" to "DHL",
+            "פוליסה מס' 12345678 חודשה. להסרה השב הסר" to "Notify",
+            "Your parcel arrived. unsubscribe" to "0501110000",
+        )
+        for ((body, address) in cases) {
+            assertEquals("$address: $body", Folder.All, FolderClassifier.classify(IncomingSms(address, null, body), notSpam))
+        }
+        // A code is still a code
+        assertEquals(Folder.Codes, classify("קוד האימות שלך הוא 482913. להסרה השב הסר", address = "Harel"))
+    }
+
+    @Test
+    fun realNoticesStayInTheirFolders() {
+        assertEquals(Folder.Insurance, classify("פוליסת ביטוח הרכב שלך מס' 5512345 חודשה בהצלחה. לפרטים: https://www.harel-group.co.il", address = "Harel"))
+        assertEquals(Folder.Insurance, classify("תביעה מספר 445566 אושרה. הכסף יועבר לחשבונך תוך 3 ימי עסקים", address = "Migdal"))
+        assertEquals(Folder.Banks, classify("חיוב בסך 120 ₪ בכרטיס המסתיים ב-4821", address = "Leumi"))
+        assertEquals(Folder.Deliveries, classify("החבילה שלך יצאה למשלוח, מעקב: https://israelpost.co.il/t/RR123456789IL", address = "IsraelPost"))
+        assertEquals(Folder.All, classify("מבצע סוף עונה! 20% הנחה בכל החנות: https://www.super-pharm.co.il להסרה השב הסר", address = "SuperPharm"))
+    }
+
+    @Test
+    fun moneyBaitAdsAreNeverInTheServiceFolders() {
+        val cases = listOf(
+            "בדיקת קרן פנסיה חינם! ייתכן שמגיע לך החזר. לבדיקה: https://pn4.me/aB3dE להסרה השב הסר" to "PensiaCheck",
+            "ייתכן שמגיע לך החזר עמלות מהבנק! לבדיקה חינם: https://bk2.me/Zz8Yq להסרה" to "BankCheck",
+            "ביטוח רכב? ייתכן שמגיע לכם החזר כספי! לבדיקה: https://kx2.link/abc12 להסרה" to "Bituach4U",
+            "החבילה שלך ממתינה? בדיקה חינם: https://pk7.me/Qz1x להסרה" to "Parcel-Check",
+        )
+        for ((body, address) in cases) assertEquals("$address: $body", Folder.Spam, classify(body, address))
     }
 }

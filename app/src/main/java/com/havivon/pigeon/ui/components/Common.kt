@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,12 +25,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,6 +110,13 @@ fun FixedHeaderLayout(modifier: Modifier = Modifier, header: @Composable () -> U
 }
 
 private enum class FixedHeaderSlot { Header, Content }
+
+/**
+ * The bottom content padding of a scrolling list: the system navigation bar (the app draws edge to edge, so the
+ * bar sits over the window) plus [extra], so the last row (or a credit line) rests fully above the bar.
+ */
+@Composable
+fun listBottomPadding(extra: Dp): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + extra
 
 @Composable
 fun HeaderIcon(icon: ImageVector, description: String, onClick: () -> Unit = {}) {
@@ -308,5 +333,58 @@ fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: 
             Spacer(Modifier.width(4.dp))
             Icon(trailing, contentDescription = null, tint = if (selected) onWhite else Color.White, modifier = Modifier.size(16.dp))
         }
+    }
+}
+
+/**
+ * The search field on a gradient header, as the inbox's search draws it: a glassy rounded row with the search
+ * icon, the text, and X to close the search.
+ */
+@Composable
+fun HeaderSearchField(query: String, hint: String, onQuery: (String) -> Unit, onClose: () -> Unit, autoFocus: Boolean = true) {
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    if (autoFocus) LaunchedEffect(Unit) { focus.requestFocus() }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.2f))
+            .padding(start = 14.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Search, contentDescription = null, tint = Color.White)
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f).padding(vertical = 12.dp)) {
+            BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = TextStyle(color = Color.White, fontSize = 15.sp),
+                cursorBrush = SolidColor(Color.White),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                decorationBox = { inner ->
+                    if (query.isEmpty()) Text(hint, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp, maxLines = 1)
+                    inner()
+                },
+            )
+        }
+        HeaderIcon(Icons.Rounded.Close, stringResource(R.string.common_close_search), onClose)
+    }
+}
+
+/** The round check that stands in for a row's avatar in selection mode. */
+@Composable
+fun SelectionMark(selected: Boolean, size: Dp = 42.dp) {
+    val c = HebTheme.colors
+    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+        Icon(
+            if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+            contentDescription = stringResource(if (selected) R.string.thread_message_selected else R.string.thread_message_not_selected),
+            tint = if (selected) c.accent else c.onSurfaceMuted,
+            modifier = Modifier.size(size * 0.7f),
+        )
     }
 }

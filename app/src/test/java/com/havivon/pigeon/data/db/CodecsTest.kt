@@ -14,6 +14,7 @@ class CodecsTest {
         val reasons = listOf(
             SpamReason.UnknownSender, SpamReason.ShortLink, SpamReason.LookalikeDomain, SpamReason.Keyword("זכית"),
             SpamReason.BlockedKeyword("הלוואה"), SpamReason.ManyLinks, SpamReason.BrandSender, SpamReason.MarkedByUser,
+            SpamReason.Poll, SpamReason.MoneyBait,
         )
         assertEquals(reasons, SpamReasonCodec.decode(SpamReasonCodec.encode(reasons)))
     }

@@ -36,6 +36,9 @@ sealed interface Screen {
 
     /** The blocked words, opened from the settings. */
     data object BlockedKeywords : Screen
+
+    /** The recycle bin, opened from the settings only. */
+    data object RecycleBin : Screen
 }
 
 /** A screen on the stack, with its own ViewModels: they are cleared when the screen is popped. */

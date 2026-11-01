@@ -27,10 +27,15 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
-    <!-- Settings (rules, favourites) follow the user to a new phone through Android's encrypted backup -->
+    <!--
+      Settings (rules, favourites) follow the user to a new phone through Android's encrypted backup.
+      The recycle bin's database (deleted messages' text) is left out of the backup and the transfer.
+    -->
     <application
         android:name=".PigeonApp"
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"

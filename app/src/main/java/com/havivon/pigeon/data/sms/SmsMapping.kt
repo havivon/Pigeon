@@ -45,6 +45,8 @@ data class ThreadSummary(
     val hasFailed: Boolean,
     val incomingCount: Int = 0,
     val userWrote: Boolean = false,
+    /** The unread incoming messages, newest first; [unreadCount] is their number. */
+    val unreadIds: List<Long> = emptyList(),
 )
 
 /**
@@ -59,15 +61,17 @@ fun summarizeThreads(rows: List<SmsSummaryRow>, hidden: Set<Long> = emptySet()):
         .groupBy { it.threadId }
         .map { (threadId, messages) ->
             val newestFirst = messages.sortedWith(compareByDescending<SmsSummaryRow> { it.dateMillis }.thenByDescending { it.id })
+            val unread = newestFirst.filter { it.type == SmsType.Inbox && !it.read }.map { it.id }
             ThreadSummary(
                 threadId = threadId,
                 latestId = newestFirst.first().id,
                 addresses = newestFirst.map { it.address.trim() }.filter { it.isNotEmpty() }.distinct(),
                 dateMillis = newestFirst.first().dateMillis,
-                unreadCount = messages.count { it.type == SmsType.Inbox && !it.read },
+                unreadCount = unread.size,
                 hasFailed = messages.any { it.type == SmsType.Failed },
                 incomingCount = messages.count { it.type == SmsType.Inbox },
                 userWrote = messages.any { it.type.outgoing },
+                unreadIds = unread,
             )
         }
         .sortedByDescending { it.dateMillis }
@@ -85,6 +89,7 @@ fun ThreadSummary.toConversation(snippet: String, names: Map<String, String?>): 
         hasFailed = hasFailed,
         incomingCount = incomingCount,
         userWrote = userWrote,
+        unreadIds = unreadIds,
     )
 }
 
