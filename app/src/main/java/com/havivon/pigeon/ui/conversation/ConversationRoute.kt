@@ -43,6 +43,7 @@ import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.ltr
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
+import com.havivon.pigeon.ui.reminders.ReminderSheet
 import com.havivon.pigeon.ui.theme.HebTheme
 import java.time.ZoneId
 
@@ -72,6 +73,7 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
     val auth = LocalAuthenticator.current
     var textSelectionId by rememberSaveable { mutableStateOf<Long?>(null) }
     var link by remember { mutableStateOf<LinkInfo?>(null) }
+    var remindSheet by rememberSaveable { mutableStateOf(false) }
 
     // While it is on the screen its messages count as read and are not notified
     val container = remember { AppContainer.from(context) }
@@ -206,6 +208,7 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
         menu = menu,
         selectedStarred = vm.allSelectedStarred(),
         onStarSelected = vm::starSelected,
+        onRemindSelected = if (selected.size == 1) ({ remindSheet = true }) else null,
         onDeleteSelected = {
             vm.deleteSelected()?.let { (count, deletion) ->
                 notices.undo(context.resources.getQuantityString(R.plurals.thread_messages_deleted, count, count), deletion)
@@ -215,6 +218,16 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
         onLink = { link = it },
         onNotSpam = vm::markNotSpam,
     )
+
+    if (remindSheet) {
+        ReminderSheet(
+            onChoose = { at ->
+                remindSheet = false
+                vm.remindSelected(at)
+            },
+            onDismiss = { remindSheet = false },
+        )
+    }
 
     link?.let { l ->
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)

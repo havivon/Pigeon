@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Forum
@@ -19,11 +20,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.model.Conversation
@@ -33,6 +36,7 @@ import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.app.LocalNotices
 import com.havivon.pigeon.ui.common.appLocale
 import com.havivon.pigeon.ui.common.conversationMapper
+import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.inboxDateLine
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.EmptyState
@@ -42,6 +46,7 @@ import com.havivon.pigeon.ui.components.SheetTitle
 import com.havivon.pigeon.ui.components.SpamAvatar
 import com.havivon.pigeon.ui.navigation.Screen
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
+import com.havivon.pigeon.ui.reminders.ReminderSheet
 import com.havivon.pigeon.ui.theme.HebTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,7 +56,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
     val locale = appLocale(context)
     val vm = pigeonViewModel { app ->
         InboxViewModel(
-            app.messages, app.rules, app.pins, app.locks, app.spam,
+            app.messages, app.rules, app.pins, app.locks, app.spam, app.reminders, app.reminderScheduler,
             mapper = conversationMapper(context, app),
             accessChanges = app.accessChanges,
             dateLine = { inboxDateLine(locale) },
@@ -62,6 +67,9 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
     val notices = LocalNotices.current
     val auth = LocalAuthenticator.current
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
+    var remindFor by remember { mutableStateOf<Conversation?>(null) }
+    val scope = rememberCoroutineScope()
+    val reminderCreated = stringResource(R.string.thread_reminder_created)
     val deleted = stringResource(R.string.inbox_conversation_deleted)
     val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
 
@@ -90,6 +98,10 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
                 conv,
                 onPin = { vm.togglePin(conv); done() },
                 onMarkRead = { vm.markRead(conv); done() },
+                onRemind = {
+                    done()
+                    remindFor = conv
+                },
                 onLock = {
                     done()
                     when {
@@ -105,6 +117,18 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
             )
         }
     }
+
+    remindFor?.let { conv ->
+        ReminderSheet(
+            onChoose = { at ->
+                remindFor = null
+                scope.launch {
+                    if (vm.remind(conv, at)) notices.show(String.format(reminderCreated, dateLabels(context).reminder(at, System.currentTimeMillis(), withTime = true)))
+                }
+            },
+            onDismiss = { remindFor = null },
+        )
+    }
 }
 
 /** The long-press sheet's content: apart from its window, so the design snapshots can draw it. */
@@ -113,6 +137,7 @@ internal fun ConversationActions(
     conv: Conversation,
     onPin: () -> Unit,
     onMarkRead: () -> Unit,
+    onRemind: () -> Unit,
     onLock: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -121,6 +146,7 @@ internal fun ConversationActions(
         Spacer(Modifier.height(6.dp))
         SheetAction(Icons.Rounded.PushPin, stringResource(if (conv.pinned) R.string.action_unpin else R.string.action_pin), onClick = onPin)
         if (conv.unread > 0) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
+        SheetAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind)
         SheetAction(
             if (conv.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
             stringResource(if (conv.locked) R.string.action_unlock_chat else R.string.action_lock_chat),

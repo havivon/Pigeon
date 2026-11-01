@@ -216,9 +216,9 @@ fun EmptyState(
     }
 }
 
-/** One action in a bottom sheet: an icon in a soft circle and its label; red for a destructive one. */
+/** One action in a bottom sheet: an icon in a soft circle and its label; red for a destructive one. [trailing] is a muted note at the far end (a time). */
 @Composable
-fun SheetAction(icon: ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
+fun SheetAction(icon: ImageVector, label: String, danger: Boolean = false, trailing: String? = null, onClick: () -> Unit) {
     val c = HebTheme.colors
     val color = if (danger) c.spam else c.accent
     Row(
@@ -233,7 +233,8 @@ fun SheetAction(icon: ImageVector, label: String, danger: Boolean = false, onCli
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(14.dp))
-        Text(label, color = if (danger) c.spam else c.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = if (danger) c.spam else c.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        if (trailing != null) Text(trailing, color = c.onSurfaceMuted, fontSize = 13.sp)
     }
 }
 

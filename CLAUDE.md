@@ -35,9 +35,15 @@ Baseline, always on, never a setting:
   WAP_PUSH_DELIVER receiver → `BROADCAST_WAP_PUSH`, respond-via-message service →
   `SEND_RESPOND_VIA_MESSAGE`. Widget receivers are exported as the widget framework requires
   (APPWIDGET_UPDATE only), and Glance adds `GlanceRemoteViewsService`, guarded by
-  `BIND_REMOTEVIEWS`. No exported ContentProvider. Everything else `exported="false"`.
+  `BIND_REMOTEVIEWS`. The reminder boot receiver (`ReminderBootReceiver`) is exported so the system
+  can send BOOT_COMPLETED, MY_PACKAGE_REPLACED, time and time-zone changes: it accepts only those
+  actions and reads nothing from the intent (the alarms come from the app's own database), so a
+  forged broadcast can do no more than re-set the alarms. No exported ContentProvider. Everything
+  else `exported="false"`.
   Glance's WorkManager merges in WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED and
   FOREGROUND_SERVICE; they are harmless without INTERNET and stay.
+- **Reminders** use `SCHEDULE_EXACT_ALARM` (exact when the user allows it, otherwise a few minutes
+  late); `USE_EXACT_ALARM` is for alarm-clock and calendar apps and is not used.
 - **Never send silently.** An `sms:`/`smsto:` intent from another app only opens a draft; sending
   takes the user's tap (the system's permission-guarded respond-via-message is the one exception).
   Validate and length-limit every incoming intent extra.

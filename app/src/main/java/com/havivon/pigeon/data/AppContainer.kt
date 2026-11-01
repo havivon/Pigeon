@@ -13,6 +13,7 @@ import com.havivon.pigeon.data.db.RoomRemindersRepository
 import com.havivon.pigeon.data.db.RoomRulesRepository
 import com.havivon.pigeon.data.db.RoomSpamRepository
 import com.havivon.pigeon.data.notify.MessageNotifier
+import com.havivon.pigeon.data.reminders.ReminderNotifier
 import com.havivon.pigeon.data.settings.DataStoreSettingsRepository
 import com.havivon.pigeon.data.sms.IncomingSmsHandler
 import com.havivon.pigeon.data.sms.TelephonyMessageRepository
@@ -80,6 +81,9 @@ class AppContainer(
     val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages) }
     val notifier: MessageNotifier by lazy {
         MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })
+    }
+    val reminderNotifier: ReminderNotifier by lazy {
+        ReminderNotifier(app, reminders, messages, contacts, locks, settings, reminderScheduler)
     }
     val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(app, incomingHook(this), notifier) }
 

@@ -6,11 +6,14 @@ import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.PendingDeletion
+import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
+import com.havivon.pigeon.domain.repository.RemindersRepository
 import com.havivon.pigeon.domain.repository.RulesRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
+import com.havivon.pigeon.domain.seam.ReminderScheduler
 import com.havivon.pigeon.ui.common.ConversationMapper
 import com.havivon.pigeon.ui.common.folderCounts
 import com.havivon.pigeon.ui.common.inFolder
@@ -24,6 +27,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** The longest text a reminder keeps of its message. */
+private const val REMINDER_TEXT_LENGTH = 200
 
 data class InboxUiState(
     /** False until the conversations are read for the first time. */
@@ -46,6 +52,8 @@ class InboxViewModel(
     private val pins: PinsRepository,
     private val locks: LocksRepository,
     spam: SpamRepository,
+    private val reminders: RemindersRepository,
+    private val scheduler: ReminderScheduler,
     private val mapper: ConversationMapper,
     /** Re-reads the conversations when access changes (a permission granted, the default app changed). */
     accessChanges: Flow<Int>,
@@ -92,6 +100,19 @@ class InboxViewModel(
     /** Only after the user proved who they are (the screen asks). */
     fun unlock(c: Conversation) {
         viewModelScope.launch { locks.unlock(c.id) }
+    }
+
+    /**
+     * "Remind me" from the long-press sheet: a reminder on the conversation (not on one message) at
+     * [atMillis], showing its last message. A locked conversation keeps no text in the reminder.
+     * Times that already passed are ignored; returns whether the reminder was saved.
+     */
+    suspend fun remind(c: Conversation, atMillis: Long): Boolean {
+        if (atMillis <= now()) return false
+        val text = if (c.locked) "" else c.snippet.take(REMINDER_TEXT_LENGTH)
+        val id = reminders.add(c.id, null, text, atMillis)
+        scheduler.schedule(reminders.get(id) ?: Reminder(id, c.id, null, text, atMillis, done = false))
+        return true
     }
 
     fun delete(c: Conversation): PendingDeletion = messages.deleteThreads(setOf(c.id))

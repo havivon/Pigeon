@@ -229,4 +229,19 @@
     <string name="permissions_contacts">Contacts, to show names instead of numbers and to pick who to write to.</string>
     <string name="permissions_optional">Both are optional. Without them Pigeon still works, with numbers instead of names.</string>
     <string name="permissions_continue">Continue</string>
+
+    <!-- reminder_ (remind me about a message) -->
+    <string name="reminder_title">Remind me</string>
+    <string name="reminder_subtitle">You\'ll get a notification at that time</string>
+    <string name="reminder_in_hour">In 1 hour</string>
+    <string name="reminder_this_evening">This evening</string>
+    <string name="reminder_tomorrow_morning">Tomorrow morning</string>
+    <string name="reminder_pick">Pick date and time…</string>
+    <string name="reminder_next">Next</string>
+    <string name="reminder_pick_time">Pick a time</string>
+    <string name="reminder_set">Set reminder</string>
+    <string name="reminder_done">Done</string>
+    <string name="reminder_snooze">Snooze 1 hour</string>
+    <string name="reminder_notification_title">Reminder</string>
+    <string name="notification_channel_reminders_hidden">Reminders (text hidden on the lock screen)</string>
 </resources>

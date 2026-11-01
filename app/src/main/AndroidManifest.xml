@@ -11,6 +11,14 @@
     <!-- Names for numbers, and the new-message picker; everything works (with numbers) without it -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+      Reminders. SCHEDULE_EXACT_ALARM lets a reminder fire at the minute it was set for; without the
+      user's grant (Android 12+) it still fires, a few minutes late at most. USE_EXACT_ALARM is not
+      used: it is only for alarm-clock and calendar apps. RECEIVE_BOOT_COMPLETED puts the alarms back
+      after a reboot (WorkManager already merges it in).
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Locked chats and app lock -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
@@ -143,6 +151,26 @@
         <receiver
             android:name=".data.notify.NotificationActionReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".data.reminders.ReminderReceiver"
+            android:exported="false" />
+
+        <!--
+          Puts the reminder alarms back after a reboot, an app update, a clock or time-zone change.
+          Exported because the system sends these broadcasts from outside the app; it only accepts
+          those actions and reads nothing from the intent (the reminders come from the app's own database).
+        -->
+        <receiver
+            android:name=".data.reminders.ReminderBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Home-screen widgets. The widget framework requires the receivers to be exported; they only accept the system update broadcast. -->
         <receiver

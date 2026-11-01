@@ -141,6 +141,8 @@ fun ConversationScreen(
     /** Whether every selected message is starred already (the star then removes them). */
     selectedStarred: Boolean = false,
     onStarSelected: () -> Unit = {},
+    /** "Remind me about this message"; null hides the button (it is about exactly one message). */
+    onRemindSelected: (() -> Unit)? = null,
     onDeleteSelected: () -> Unit = {},
     onReminder: (Message) -> Unit = {},
     onLink: (LinkInfo) -> Unit = {},
@@ -163,7 +165,7 @@ fun ConversationScreen(
     }
     Column(Modifier.fillMaxSize().background(c.background)) {
         if (selecting) {
-            SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll, onStarSelected, onDeleteSelected)
+            SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll, onStarSelected, onRemindSelected, onDeleteSelected)
         } else {
             ThreadBar(conversation, subtitle, onBack, onCall, menu)
         }
@@ -267,6 +269,7 @@ private fun SelectionBar(
     onClear: () -> Unit,
     onSelectAll: () -> Unit,
     onStar: () -> Unit,
+    onRemind: (() -> Unit)?,
     onDelete: () -> Unit,
 ) {
     GradientHeader {
@@ -286,6 +289,7 @@ private fun SelectionBar(
                 stringResource(if (allStarred) R.string.thread_unstar else R.string.thread_star),
                 onStar,
             )
+            if (onRemind != null) HeaderIcon(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onRemind)
             HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.thread_delete_selected), onDelete)
             HeaderIcon(Icons.Rounded.SelectAll, stringResource(R.string.common_select_all), onSelectAll)
         }

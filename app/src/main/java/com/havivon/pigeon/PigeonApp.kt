@@ -3,6 +3,7 @@ package com.havivon.pigeon
 import android.app.Application
 import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.notify.NotificationChannels
+import com.havivon.pigeon.data.reminders.AlarmReminderScheduler
 import com.havivon.pigeon.data.work.CodeCleanupWorker
 import com.havivon.pigeon.domain.analysis.AnalysisSeams
 import com.havivon.pigeon.domain.analysis.SpamFilterHook
@@ -16,7 +17,7 @@ class PigeonApp : Application() {
             codeFinder = AnalysisSeams.codeFinder,
             folderClassifier = AnalysisSeams.folderClassifier,
             incomingHook = { SpamFilterHook(it.contacts, it.spam, it.blockedKeywords) },
-            // The reminder alarms come with the reminders stage; until then ReminderScheduler.None
+            reminderScheduler = AlarmReminderScheduler(this),
         )
     }
 

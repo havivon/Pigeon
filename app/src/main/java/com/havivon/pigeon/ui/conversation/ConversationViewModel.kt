@@ -268,12 +268,35 @@ class ConversationViewModel(
                 }
                 events.trySend(ConversationEvent.ReminderRemoved)
             } else {
-                val id = reminders.add(threadId, message.id, message.text.take(REMINDER_TEXT_LENGTH), at)
-                val reminder = reminders.get(id) ?: Reminder(id, threadId, message.id, message.text.take(REMINDER_TEXT_LENGTH), at, done = false)
-                scheduler.schedule(reminder)
+                createReminder(message.id, message.text, at)
                 events.trySend(ConversationEvent.ReminderCreated(message.reminder.orEmpty()))
             }
         }
+    }
+
+    /**
+     * "Remind me about this message": a reminder at [atMillis] on the one selected message (the button
+     * is only offered for exactly one), which replaces an earlier reminder on it. Times that already
+     * passed are ignored.
+     */
+    fun remindSelected(atMillis: Long) {
+        val message = selectedMessages().singleOrNull() ?: return
+        if (atMillis <= now()) return
+        clearSelection()
+        viewModelScope.launch {
+            reminders.pending.first().filter { it.messageId == message.id }.forEach {
+                scheduler.cancel(it.id)
+                reminders.delete(it.id)
+            }
+            createReminder(message.id, message.body, atMillis)
+            events.trySend(ConversationEvent.ReminderCreated(labels.reminder(atMillis, now(), withTime = true)))
+        }
+    }
+
+    private suspend fun createReminder(messageId: Long, body: String, atMillis: Long) {
+        val text = body.take(REMINDER_TEXT_LENGTH)
+        val id = reminders.add(threadId, messageId, text, atMillis)
+        scheduler.schedule(reminders.get(id) ?: Reminder(id, threadId, messageId, text, atMillis, done = false))
     }
 
     // The menu

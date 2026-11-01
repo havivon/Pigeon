@@ -80,7 +80,7 @@ class ViewModelsTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect { } }
     }
 
-    private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now })
+    private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now })
 
     private fun TestScope.thread(threadId: Long = 1) = ConversationViewModel(
         threadId, messages, sender, rules, favorites, reminders, scheduler, spam, locks, pins, mapper, labels, Utc,

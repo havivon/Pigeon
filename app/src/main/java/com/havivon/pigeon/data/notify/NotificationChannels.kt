@@ -23,6 +23,9 @@ object NotificationChannels {
 
     const val REMINDERS = "reminders"
 
+    /** Reminders while "message text on the lock screen" is off, for the same reason as [MESSAGES_HIDDEN]. */
+    const val REMINDERS_HIDDEN = "reminders_hidden"
+
     fun create(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannels(
@@ -43,5 +46,17 @@ object NotificationChannels {
             manager.createNotificationChannel(channel)
         }
         return MESSAGES_HIDDEN
+    }
+
+    /** The channel for a reminder notification, creating the hidden-text one when it is first needed. */
+    fun forReminders(context: Context, lockScreenText: Boolean): String {
+        if (lockScreenText) return REMINDERS
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(REMINDERS_HIDDEN) == null) {
+            val channel = NotificationChannel(REMINDERS_HIDDEN, context.getString(R.string.notification_channel_reminders_hidden), NotificationManager.IMPORTANCE_HIGH)
+            channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            manager.createNotificationChannel(channel)
+        }
+        return REMINDERS_HIDDEN
     }
 }
