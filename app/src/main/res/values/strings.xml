@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pigeon</string>
+    <string name="credit_line" translatable="false">Created by Havivon</string>
 
     <!-- onboarding_ -->
     <string name="onboarding_welcome_title">Welcome to Pigeon</string>

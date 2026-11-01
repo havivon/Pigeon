@@ -9,3 +9,7 @@ Status: design approved on sample data (screens and widgets); SMS access is the 
 See [docs/research.md](docs/research.md) for the feature research and decisions.
 
 Design shots of the real screens: `gradlew :app:recordPaparazziDebug` → `app/src/test/snapshots/images/`.
+
+---
+
+Created by Havivon

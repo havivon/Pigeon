@@ -275,6 +275,16 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                 InfoRow(Icons.Rounded.Lock, stringResource(R.string.settings_no_internet_title), stringResource(R.string.settings_no_internet))
             }
         }
+        // The credit every one of the user's apps carries, as in HebReminder
+        item {
+            Text(
+                stringResource(R.string.credit_line),
+                color = HebTheme.colors.onSurfaceMuted,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
+            )
+        }
     }
 }
 

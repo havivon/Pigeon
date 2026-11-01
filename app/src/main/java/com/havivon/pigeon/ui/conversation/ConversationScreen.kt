@@ -496,7 +496,11 @@ private fun SelectableMessageText(
                                 post { link(tapped) }
                                 return@setOnTouchListener true
                             }
-                            if (isTap && !hasSelection()) {
+                            // A tap on another word while one is selected selects that word at once (inside
+                            // the current selection, the tap is left to the editor, which clears it)
+                            val outsideSelection = !hasSelection() ||
+                                getOffsetForPosition(e.x, e.y).let { it < selectionStart || it >= selectionEnd }
+                            if (isTap && outsideSelection) {
                                 tapSelects = true
                                 // Now, before this ACTION_UP reaches the TextView: the editor then gets the finger-up while
                                 // it is in word-drag mode, which is what makes it show the toolbar (after the up, it waits
