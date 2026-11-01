@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -38,7 +39,9 @@ import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.LinkInfo
 import com.havivon.pigeon.domain.model.SendStatus
 import com.havivon.pigeon.ui.app.LocalAuthenticator
+import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.app.LocalNotices
+import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.ltr
@@ -64,6 +67,7 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
             me = me,
             cancelNotification = app.notifier::cancel,
             appScope = app.appScope,
+            canWrite = app::canWrite,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -105,10 +109,17 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val backToInbox = stringResource(R.string.spam_back_to_inbox)
     val reminderCreatedFormat = stringResource(R.string.thread_reminder_created)
+    val needsDefault = rememberNeedsDefaultNotice()
+    // The events are collected once: read the access as it is when one comes
+    val access by rememberUpdatedState(LocalDefaultApp.current)
+    val makeDefaultLabel = stringResource(R.string.needs_default_action)
     LaunchedEffect(vm) {
         vm.eventFlow.collect { e ->
             when (e) {
-                ConversationEvent.SendFailed -> notices.show(sendFailed)
+                // Not the default and not allowed to send either: the same way out as everywhere else
+                ConversationEvent.SendFailed ->
+                    if (access.isDefault) notices.show(sendFailed) else notices.action(sendFailed, makeDefaultLabel, access.makeDefault)
+                ConversationEvent.NeedsDefault -> needsDefault()
                 is ConversationEvent.ReminderCreated -> notices.show(String.format(reminderCreatedFormat, e.label))
                 ConversationEvent.ReminderRemoved -> notices.show(reminderRemoved)
                 ConversationEvent.MovedToSpam -> {
@@ -153,8 +164,10 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
             ThreadMenuItem(stringResource(R.string.action_mark_spam), Icons.Rounded.Report) { vm.markSpam() }
         },
         ThreadMenuItem(stringResource(R.string.action_delete_conversation), Icons.Rounded.Delete, danger = true) {
-            notices.undo(conversationDeleted, vm.deleteConversation())
-            onClosed()
+            vm.deleteConversation()?.let {
+                notices.undo(conversationDeleted, it)
+                onClosed()
+            }
         },
     )
 

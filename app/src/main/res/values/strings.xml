@@ -4,21 +4,29 @@
 
     <!-- onboarding_ -->
     <string name="onboarding_welcome_title">Welcome to Pigeon</string>
-    <string name="onboarding_welcome_body">To receive and send messages, Pigeon has to be your phone\'s messaging app. You can bring back the previous one at any time in Settings.</string>
+    <string name="onboarding_welcome_body">Make Pigeon your phone\'s messaging app to receive and send here, or just view your messages while your current app keeps receiving them. You can change this at any time in Settings.</string>
     <string name="onboarding_benefit_colors">Colors by sender or topic</string>
     <string name="onboarding_benefit_spam">Spam is moved aside automatically</string>
     <string name="onboarding_benefit_offline">No internet, so your messages never leave the phone</string>
     <string name="onboarding_make_default">Make Pigeon my messaging app</string>
+    <string name="onboarding_view_only">Just view my messages</string>
     <string name="onboarding_not_now">Not now</string>
     <string name="onboarding_restricted_title">One approval for Pigeon</string>
-    <string name="onboarding_restricted_body">Android does not let an app installed from a file become your messaging app until you allow it. It takes half a minute:</string>
+    <string name="onboarding_restricted_body">Android does not let an app installed from a file become your messaging app, or read your messages, until you allow it. It takes half a minute:</string>
     <string name="onboarding_restricted_step1">Tap \"Open app info\" below.</string>
     <string name="onboarding_restricted_step2">Tap ⋮ at the top, then \"Allow restricted settings\", and confirm with your fingerprint or screen lock.</string>
     <string name="onboarding_restricted_step3">Come back here: Pigeon asks again by itself.</string>
     <string name="onboarding_restricted_open">Open app info</string>
     <string name="onboarding_restricted_close">Close</string>
     <string name="onboarding_reminder_title">Pigeon isn\'t your messaging app yet</string>
-    <string name="onboarding_reminder_body">Until you make it your messaging app, new messages will not reach it.</string>
+    <string name="onboarding_reminder_body">Make it your messaging app to receive messages here, or just view them while your current app keeps receiving them.</string>
+
+    <!-- viewer_ (another app is the default, Pigeon only reads and sends) -->
+    <string name="viewer_banner">Viewing only · new messages arrive in your messaging app</string>
+    <string name="viewer_banner_make_default">Make default</string>
+    <string name="viewer_banner_hide">Hide</string>
+    <string name="needs_default_notice">Only when Pigeon is your messaging app</string>
+    <string name="needs_default_action">Make default</string>
 
     <!-- common_ -->
     <string name="common_back">Back</string>
@@ -52,7 +60,7 @@
     <string name="inbox_empty_body">When a message arrives, it shows up here. To write one, tap New message.</string>
     <string name="inbox_empty_folder_title">Nothing in %1$s</string>
     <string name="inbox_empty_folder_body">Conversations are sorted here automatically when they fit.</string>
-    <string name="inbox_empty_not_default">Your messages show up here once Pigeon is your messaging app.</string>
+    <string name="inbox_empty_not_default">Your messages show up here once Pigeon is your messaging app, or once you let it view them.</string>
 
     <!-- action_ (the long-press sheet and the conversation menu) -->
     <string name="action_pin">Pin to the top</string>
@@ -118,7 +126,7 @@
     <string name="thread_copied">Copied</string>
     <string name="thread_sending">Sending…</string>
     <string name="thread_failed">Not sent · tap to retry</string>
-    <string name="thread_send_failed">Couldn\'t send. Pigeon has to be your messaging app to send.</string>
+    <string name="thread_send_failed">Couldn\'t send. Pigeon has to be your messaging app, or be allowed to send SMS.</string>
     <string name="thread_reminder_set">Reminder · %1$s</string>
     <string name="thread_reminder_created">Reminder saved for %1$s</string>
     <string name="thread_reminder_removed">Reminder removed</string>
@@ -340,8 +348,11 @@
     <string name="settings_section_default">Messaging app</string>
     <string name="settings_default_yes">Pigeon is your messaging app</string>
     <string name="settings_default_yes_note">New messages arrive here.</string>
-    <string name="settings_default_no">Another app is your messaging app</string>
-    <string name="settings_default_no_note">Until Pigeon is your messaging app, new messages do not reach it.</string>
+    <string name="settings_default_viewer">Viewing only</string>
+    <string name="settings_default_viewer_note">Pigeon shows and sends your messages. New messages arrive in your messaging app.</string>
+    <string name="settings_default_none">No access to your messages</string>
+    <string name="settings_default_none_note">Make Pigeon your messaging app, or just let it view your messages.</string>
+    <string name="settings_default_view_only">Just view</string>
     <string name="settings_default_change">Change</string>
     <string name="settings_default_make">Make default</string>
     <string name="settings_section_about">About</string>

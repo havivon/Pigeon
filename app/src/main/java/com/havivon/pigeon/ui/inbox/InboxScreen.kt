@@ -76,6 +76,8 @@ fun InboxScreen(
     onNewMessage: () -> Unit = {},
     /** Shown instead of the list when there are no conversations; null shows nothing. */
     emptyState: (@Composable () -> Unit)? = null,
+    /** A line under the header (the "viewing only" banner); null for none. */
+    banner: (@Composable () -> Unit)? = null,
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
@@ -83,6 +85,7 @@ fun InboxScreen(
     Box(Modifier.fillMaxSize().background(c.background)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
             item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) }
+            if (banner != null) item { banner() }
             if (conversations.isEmpty() && emptyState != null) {
                 item { emptyState() }
             }

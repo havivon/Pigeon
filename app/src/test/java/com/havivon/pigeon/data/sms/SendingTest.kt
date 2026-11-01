@@ -13,7 +13,7 @@ class SendingTest {
     @Test
     fun `each recipient is written, then handed to the radio`() {
         var id = 10L
-        val ids = sendEach(listOf("0525550100", " 0525550101 "), write = { id++ }) { a, i -> transmitted += a to i }
+        val ids = sendEach(listOf("0525550100", " 0525550101 "), write = { id++ }) { a, i -> transmitted += a to i; true }
         assertEquals(listOf(10L, 11L), ids)
         assertEquals(listOf("0525550100" to 10L, "0525550101" to 11L), transmitted)
     }
@@ -21,7 +21,7 @@ class SendingTest {
     @Test
     fun `a message the system database refused is not sent at all`() {
         // Not the default SMS app: sent anyway, the screen would say "failed" and a second tap would send it twice
-        val ids = sendEach(listOf("0525550100"), write = { null }) { a, i -> transmitted += a to i }
+        val ids = sendEach(listOf("0525550100"), write = { null }) { a, i -> transmitted += a to i; true }
         assertTrue(ids.isEmpty())
         assertTrue(transmitted.isEmpty())
     }
@@ -29,7 +29,7 @@ class SendingTest {
     @Test
     fun `the same number written twice is sent once, and blank recipients not at all`() {
         var id = 1L
-        sendEach(listOf("+972525550100", "+972 52-555-0100", "  ", ""), write = { id++ }) { a, i -> transmitted += a to i }
+        sendEach(listOf("+972525550100", "+972 52-555-0100", "  ", ""), write = { id++ }) { a, i -> transmitted += a to i; true }
         assertEquals(1, transmitted.size)
     }
 

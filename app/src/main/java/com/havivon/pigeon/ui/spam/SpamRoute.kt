@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
 import com.havivon.pigeon.ui.app.LocalNotices
+import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.components.EmptyState
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
@@ -25,12 +26,19 @@ import com.havivon.pigeon.ui.theme.HebTheme
 @Composable
 fun SpamRoute(onBack: () -> Unit, openThread: (Long) -> Unit) {
     val context = LocalContext.current
-    val vm = pigeonViewModel { app -> SpamViewModel(app.messages, app.spam, app.locks, conversationMapper(context, app), app.accessChanges, app.appScope) }
+    val vm = pigeonViewModel { app ->
+        SpamViewModel(
+            app.messages, app.spam, app.locks, conversationMapper(context, app), app.accessChanges, app.appScope,
+            canWriteNow = app::canWrite,
+            judgeSpam = app.spamOnRead::judge,
+        )
+    }
     val state by vm.state.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     var confirmAll by rememberSaveable { mutableStateOf(false) }
     val deleted = stringResource(R.string.inbox_conversation_deleted)
     val backToInbox = stringResource(R.string.spam_back_to_inbox)
+    val needsDefault = rememberNeedsDefaultNotice()
 
     SpamScreen(
         items = state.items,
@@ -39,9 +47,9 @@ fun SpamRoute(onBack: () -> Unit, openThread: (Long) -> Unit) {
             vm.notSpam(it)
             notices.show(backToInbox)
         },
-        onDelete = { notices.undo(deleted, vm.delete(it)) },
+        onDelete = { c -> vm.delete(c)?.let { notices.undo(deleted, it) } ?: needsDefault() },
         onOpen = { openThread(it.id) },
-        onDeleteAll = if (state.items.isNotEmpty()) ({ confirmAll = true }) else null,
+        onDeleteAll = if (state.items.isNotEmpty()) ({ if (vm.canWrite) confirmAll = true else needsDefault() }) else null,
         emptyState = if (state.loaded) ({ EmptyState(Icons.Rounded.Shield, stringResource(R.string.spam_empty_title), stringResource(R.string.spam_empty_body)) }) else null,
     )
 

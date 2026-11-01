@@ -21,6 +21,7 @@ import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.BlockedKeyword
+import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.reminders.QuickReminder
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.keywords.BlockedKeywordsScreen
@@ -63,7 +64,7 @@ private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
         contactsAllowed = true,
         notificationsAllowed = false,
         exactAlarmsAllowed = false,
-        isDefaultSmsApp = true,
+        smsAccess = SmsAccess.Default,
         versionName = "0.1.0",
     )
 

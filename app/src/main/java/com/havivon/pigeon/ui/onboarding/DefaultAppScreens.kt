@@ -1,6 +1,7 @@
 package com.havivon.pigeon.ui.onboarding
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,9 +47,12 @@ import com.havivon.pigeon.ui.components.LauncherIcon
 import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.theme.HebTheme
 
-/** First launch: the whole screen asks the user to make Pigeon the phone's messaging app. */
+/**
+ * First launch: the whole screen offers the two ways to use Pigeon. Making it the phone's
+ * messaging app comes first; "just view" reads (and sends) while the current app stays the default.
+ */
 @Composable
-fun DefaultAppWelcome(onMakeDefault: () -> Unit, onNotNow: () -> Unit) {
+fun DefaultAppWelcome(onMakeDefault: () -> Unit, onViewOnly: () -> Unit, onNotNow: () -> Unit) {
     val c = HebTheme.colors
     val iconShape = RoundedCornerShape(30)
     Column(
@@ -106,12 +110,24 @@ fun DefaultAppWelcome(onMakeDefault: () -> Unit, onNotNow: () -> Unit) {
         ) {
             Text(stringResource(R.string.onboarding_make_default), color = onWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
+        Spacer(Modifier.height(10.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .border(1.5.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(50))
+                .clickable(onClick = onViewOnly)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(stringResource(R.string.onboarding_view_only), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        }
         Box(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
                 .clickable(onClick = onNotNow)
-                .padding(vertical = 14.dp),
+                .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(stringResource(R.string.onboarding_not_now), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
@@ -138,8 +154,9 @@ private fun BenefitRow(icon: ImageVector, text: String) {
 }
 
 /**
- * Shown instead of the system's "denied" dialog when Android's restricted settings block the
- * request (the app was installed from a file): the three steps to allow it, and a way there.
+ * Shown instead of the system's "denied" dialog when Android's restricted settings block a
+ * request (the app was installed from a file): to be the messaging app, or to read the messages.
+ * The three steps to allow it, and a way there.
  */
 @Composable
 fun RestrictedSettingsHelp(onOpenAppInfo: () -> Unit, onClose: () -> Unit) {
@@ -214,17 +231,20 @@ private fun RestrictedStep(number: Int, text: String) {
     }
 }
 
-/** Every later open while Pigeon is still not the default: a card over the app, easy to dismiss. */
+/**
+ * Every later open while Pigeon can see no messages (neither the default nor allowed to view):
+ * a card over the app with the same two ways, easy to dismiss. A viewer gets the inbox banner instead.
+ */
 @Composable
-fun DefaultAppReminder(onMakeDefault: () -> Unit, onNotNow: () -> Unit) {
+fun DefaultAppReminder(onMakeDefault: () -> Unit, onViewOnly: () -> Unit, onNotNow: () -> Unit) {
     Dialog(onDismissRequest = onNotNow) {
-        DefaultAppReminderCard(onMakeDefault, onNotNow, Modifier.fillMaxWidth())
+        DefaultAppReminderCard(onMakeDefault, onViewOnly, onNotNow, Modifier.fillMaxWidth())
     }
 }
 
 /** The reminder's card itself, apart from its window, so the design snapshots can draw it. */
 @Composable
-internal fun DefaultAppReminderCard(onMakeDefault: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier) {
+internal fun DefaultAppReminderCard(onMakeDefault: () -> Unit, onViewOnly: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier) {
     val c = HebTheme.colors
     Surface(modifier, shape = RoundedCornerShape(28.dp), color = c.surface, shadowElevation = 8.dp) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -251,6 +271,12 @@ internal fun DefaultAppReminderCard(onMakeDefault: () -> Unit, onNotNow: () -> U
                 Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
                 filled = true,
                 onClick = onMakeDefault,
+            )
+            Spacer(Modifier.height(10.dp))
+            PillButton(
+                stringResource(R.string.onboarding_view_only),
+                Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                onClick = onViewOnly,
             )
             Spacer(Modifier.height(4.dp))
             Box(

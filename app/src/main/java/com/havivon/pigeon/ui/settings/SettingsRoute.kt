@@ -31,6 +31,7 @@ import com.havivon.pigeon.data.DefaultSmsRole
 import com.havivon.pigeon.data.reminders.AlarmReminderScheduler
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
+import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.navigation.Screen
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
 
@@ -49,6 +50,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val auth = LocalAuthenticator.current
     val defaultApp = LocalDefaultApp.current
+    val needsDefault = rememberNeedsDefaultNotice()
 
     // What the phone allows right now; read again whenever the user comes back from a system screen
     var phone by remember { mutableStateOf(readPhone(context)) }
@@ -63,7 +65,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
     fun afterRequest(granted: Boolean) {
         phone = readPhone(context)
         if (granted) {
-            container.onAccessChanged()
+            container.refreshAccess()
         } else if (SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS) {
             // Refused for good: only the app's settings can allow it now
             open(context, appDetails(context))
@@ -77,7 +79,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
         contactsAllowed = phone.contacts,
         notificationsAllowed = phone.notifications,
         exactAlarmsAllowed = phone.exactAlarms,
-        isDefaultSmsApp = defaultApp.isDefault,
+        smsAccess = defaultApp.mode,
         versionName = versionName(context),
     )
 
@@ -91,7 +93,8 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onAppIcon = vm::setAppIcon,
             onOpenRules = { navigate(Screen.Rules) },
             onOpenKeywords = { navigate(Screen.BlockedKeywords) },
-            onAutoDeleteCodes = vm::setAutoDeleteCodes,
+            // Deleting needs the default SMS app; turning it off always works
+            onAutoDeleteCodes = { on -> if (on && !defaultApp.isDefault) needsDefault() else vm.setAutoDeleteCodes(on) },
             onLockScreenText = vm::setLockScreenText,
             onSystemNotifications = {
                 open(context, Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
@@ -127,6 +130,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onDefaultApp = {
                 if (defaultApp.isDefault) open(context, DefaultSmsRole.settingsIntent()) else defaultApp.makeDefault()
             },
+            onViewOnly = defaultApp.viewOnly,
         ),
     )
 }

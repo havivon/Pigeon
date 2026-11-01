@@ -141,7 +141,7 @@ class ViewModelsTest {
         assertEquals(0, vm.state.value.conversations.first { it.id == 1L }.unread)
         vm.lock(mom)
         assertEquals("Locked chat", vm.state.value.conversations.first { it.id == 1L }.snippet)
-        val deletion = vm.delete(mom)
+        val deletion = vm.delete(mom)!!
         assertFalse(vm.state.value.conversations.any { it.id == 1L })
         assertTrue(deletion.undo())
         assertTrue(vm.state.value.conversations.any { it.id == 1L })

@@ -63,17 +63,23 @@ class WapPushDeliverReceiver : BroadcastReceiver() {
 
 /**
  * The radio's answer for each part of a sent message. Not exported: the PendingIntents that reach
- * it are the app's own, fired by the system on the app's behalf.
+ * it are the app's own, fired by the system on the app's behalf. A negative id is a viewer send
+ * ([PendingSends]), which Android stores itself; a positive one is Pigeon's own Outbox row.
  */
 class SmsSentReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_SENT) return
         val messageId = intent.getLongExtra(EXTRA_MESSAGE_ID, 0L)
-        if (messageId <= 0) return
+        if (messageId == 0L) return
         val part = intent.getIntExtra(EXTRA_PART, 0)
         val count = intent.getIntExtra(EXTRA_PART_COUNT, 1)
         val success = resultCode == Activity.RESULT_OK
+        if (PendingSends.isPending(messageId)) {
+            // Sent as a viewer: Android has stored the message (Sent or Failed) by now, so the wait ends
+            AppContainer.from(context).pendingSends.onResult(messageId, success, isLastPart = part >= count - 1)
+            return
+        }
         val resolver = context.contentResolver
         runAsync("SmsSent") {
             val uri = messageUri(messageId)

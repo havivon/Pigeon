@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
 import android.view.WindowManager
@@ -37,14 +36,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.DefaultSmsRole
 import com.havivon.pigeon.data.LaunchRequests
+import com.havivon.pigeon.data.viewerPermissions
 import com.havivon.pigeon.domain.model.AppSettings
+import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.ui.compose.NewMessageRoute
 import com.havivon.pigeon.ui.conversation.ConversationRoute
 import com.havivon.pigeon.ui.inbox.InboxRoute
@@ -237,11 +237,18 @@ private fun LockGate(settings: AppSettings?, navigator: Navigator, authenticator
     LaunchedEffect(shown) { unlock() }
 }
 
+/** Which request Android's restricted settings blocked, so it runs again once the user has allowed it. */
+private enum class Blocked { Role, Viewer }
+
 /**
- * Asks the user to make Pigeon the default SMS app: the welcome screen instead of the app on the
- * first launch, a reminder card over it on every later open. "Not now" hides the prompt until the
- * user comes back to the app. Once Pigeon is the default, it explains and asks (once) for
- * notifications and contacts; the app works without them.
+ * How Pigeon gets to the messages. While it can see none, it offers the two ways: becoming the
+ * default SMS app, or just viewing (READ_SMS and the permissions around it, while another app stays
+ * the default). The welcome screen comes instead of the app on the first launch, a reminder card
+ * over it on every later open; "Not now" hides it until the user comes back to the app. A viewer is
+ * reminded by a slim banner at the top of the inbox instead, which can be closed for the session.
+ * Once Pigeon is the default, it explains and asks (once) for notifications and contacts; the app
+ * works without them. Android's restricted settings (an app installed from a file) block both
+ * requests: the help explains how to allow them, and the request runs again by itself after.
  */
 @Composable
 private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Unit) {
@@ -251,34 +258,24 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
     var welcomeDone by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(settings != null) { if (welcomeDone == null && settings != null) welcomeDone = settings.welcomeDone }
     val scope = rememberCoroutineScope()
-    var isDefault by remember { mutableStateOf(DefaultSmsRole.isDefault(context)) }
+    val access by container.access.collectAsState()
     var hidden by remember { mutableStateOf(false) }
     var requestedAt by remember { mutableLongStateOf(0L) }
-    var access by remember { mutableStateOf(accessOf(context)) }
     var explainerHidden by remember { mutableStateOf(false) }
-    // Android's restricted settings block the request (installed from a file): the help is open,
-    // and once the user has allowed it in app info, the request runs again by itself
-    var restrictedHelp by remember { mutableStateOf(false) }
-    var restrictionLifted by remember { mutableStateOf(false) }
-
-    fun refreshAccess() {
-        isDefault = DefaultSmsRole.isDefault(context)
-        val now = accessOf(context)
-        if (now != access) {
-            access = now
-            container.onAccessChanged()
-        }
-    }
+    var bannerHidden by rememberSaveable { mutableStateOf(false) }
+    var restricted by remember { mutableStateOf<Blocked?>(null) }
+    var restrictionLifted by remember { mutableStateOf<Blocked?>(null) }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
                 hidden = false
-                refreshAccess()
-                if (restrictedHelp && !DefaultSmsRole.isRestrictedByAndroid(context)) {
-                    restrictedHelp = false
-                    restrictionLifted = true
+                container.refreshAccess()
+                val blocked = restricted
+                if (blocked != null && !DefaultSmsRole.isRestrictedByAndroid(context)) {
+                    restricted = null
+                    restrictionLifted = blocked
                 }
             }
         }
@@ -296,12 +293,12 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         hidden = true
     }
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+    val roleRequest = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         welcomeDone = true
-        refreshAccess()
+        val now = container.refreshAccess()
         when {
-            isDefault -> Unit
-            DefaultSmsRole.isRestrictedByAndroid(context) -> restrictedHelp = true
+            now.sms == SmsAccess.Default -> Unit
+            DefaultSmsRole.isRestrictedByAndroid(context) -> restricted = Blocked.Role
             SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openDefaultAppSettings(context)
             else -> hidden = true
         }
@@ -312,58 +309,84 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
         saveWelcomeDone()
         if (DefaultSmsRole.isRestrictedByAndroid(context)) {
             // The system would only answer "denied": explain how to allow it instead
-            restrictedHelp = true
+            restricted = Blocked.Role
             return
         }
         requestedAt = SystemClock.elapsedRealtime()
         try {
-            launcher.launch(DefaultSmsRole.requestIntent(context) ?: DefaultSmsRole.settingsIntent())
+            roleRequest.launch(DefaultSmsRole.requestIntent(context) ?: DefaultSmsRole.settingsIntent())
         } catch (_: ActivityNotFoundException) {
             openDefaultAppSettings(context)
         }
     }
 
+    val viewerRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        welcomeDone = true
+        // Notifications and contacts were part of it: the explainer does not ask again later
+        scope.launch { container.settings.setPermissionsAsked(true) }
+        val now = container.refreshAccess()
+        when {
+            now.sms != SmsAccess.None -> Unit
+            DefaultSmsRole.isRestrictedByAndroid(context) -> restricted = Blocked.Viewer
+            // Refused for good earlier: the system no longer asks, only the app's info screen can allow it
+            SystemClock.elapsedRealtime() - requestedAt < SUPPRESSED_DIALOG_MS -> openAppInfo(context)
+            else -> hidden = true
+        }
+    }
+
+    fun viewOnly() {
+        saveWelcomeDone()
+        if (DefaultSmsRole.isRestrictedByAndroid(context)) {
+            restricted = Blocked.Viewer
+            return
+        }
+        requestedAt = SystemClock.elapsedRealtime()
+        viewerRequest.launch(viewerPermissions())
+    }
+
     val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         scope.launch { container.settings.setPermissionsAsked(true) }
-        refreshAccess()
+        container.refreshAccess()
     }
 
     LaunchedEffect(restrictionLifted) {
-        if (restrictionLifted) {
-            restrictionLifted = false
-            makeDefault()
+        when (restrictionLifted) {
+            Blocked.Role -> makeDefault()
+            Blocked.Viewer -> viewOnly()
+            null -> Unit
         }
+        restrictionLifted = null
     }
 
-    val notDefault = DefaultSmsRole.SMS_HANDLING_READY && !isDefault
-    val showPrompt = notDefault && !hidden
-    CompositionLocalProvider(LocalDefaultApp provides DefaultAppAccess(isDefault = !notDefault, makeDefault = ::makeDefault)) {
+    val mode = if (DefaultSmsRole.SMS_HANDLING_READY) access.sms else SmsAccess.Default
+    val showPrompt = mode == SmsAccess.None && !hidden
+    val gate = DefaultAppAccess(
+        mode = mode,
+        makeDefault = ::makeDefault,
+        viewOnly = ::viewOnly,
+        showViewerBanner = mode == SmsAccess.Viewer && !bannerHidden,
+        dismissViewerBanner = { bannerHidden = true },
+    )
+    CompositionLocalProvider(LocalDefaultApp provides gate) {
         if (showPrompt && welcomeDone == null) {
             // Not known yet whether this is the first launch: show nothing rather than the wrong screen
         } else if (showPrompt && welcomeDone == false) {
-            DefaultAppWelcome(onMakeDefault = ::makeDefault, onNotNow = ::notNow)
+            DefaultAppWelcome(onMakeDefault = ::makeDefault, onViewOnly = ::viewOnly, onNotNow = ::notNow)
         } else {
             content()
-            if (showPrompt && !restrictedHelp) DefaultAppReminder(onMakeDefault = ::makeDefault, onNotNow = ::notNow)
+            if (showPrompt && restricted == null) DefaultAppReminder(onMakeDefault = ::makeDefault, onViewOnly = ::viewOnly, onNotNow = ::notNow)
         }
-        if (restrictedHelp && notDefault) {
-            RestrictedSettingsHelp(
-                onOpenAppInfo = {
-                    try {
-                        context.startActivity(DefaultSmsRole.appInfoIntent(context))
-                    } catch (_: ActivityNotFoundException) {
-                        openDefaultAppSettings(context)
-                    }
-                },
-                onClose = { restrictedHelp = false },
-            )
+        // Still needed: the role while Pigeon is not the default, reading while it sees nothing
+        val blocked = restricted
+        if (blocked != null && (if (blocked == Blocked.Role) mode != SmsAccess.Default else mode == SmsAccess.None)) {
+            RestrictedSettingsHelp(onOpenAppInfo = { openAppInfo(context) }, onClose = { restricted = null })
         }
     }
 
     // After becoming the default: notifications (Android 13+) and contacts, explained first, asked once
     val askNotifications = !access.notifications
     val askContacts = !access.contacts
-    if (!notDefault && settings != null && !settings.permissionsAsked && !explainerHidden && (askNotifications || askContacts)) {
+    if (mode == SmsAccess.Default && settings != null && !settings.permissionsAsked && !explainerHidden && (askNotifications || askContacts)) {
         PermissionsExplainer(
             askNotifications = askNotifications,
             askContacts = askContacts,
@@ -384,22 +407,19 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
     }
 }
 
-/** What the app may read and show: when it changes, the screens read their data again. */
-private data class Access(val defaultApp: Boolean, val contacts: Boolean, val notifications: Boolean)
-
-private fun accessOf(context: Context) = Access(
-    defaultApp = DefaultSmsRole.isDefault(context),
-    contacts = granted(context, Manifest.permission.READ_CONTACTS),
-    notifications = Build.VERSION.SDK_INT < 33 || granted(context, Manifest.permission.POST_NOTIFICATIONS),
-)
-
-private fun granted(context: Context, permission: String) =
-    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-
 private fun openDefaultAppSettings(context: Context) {
     try {
         context.startActivity(DefaultSmsRole.settingsIntent())
     } catch (_: ActivityNotFoundException) {
         // A phone without that screen: nothing more to offer
+    }
+}
+
+/** This app's info screen: "Allow restricted settings" and the permissions live there. */
+private fun openAppInfo(context: Context) {
+    try {
+        context.startActivity(DefaultSmsRole.appInfoIntent(context))
+    } catch (_: ActivityNotFoundException) {
+        openDefaultAppSettings(context)
     }
 }

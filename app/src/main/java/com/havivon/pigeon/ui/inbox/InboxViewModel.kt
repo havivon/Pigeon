@@ -7,6 +7,8 @@ import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.Reminder
+import com.havivon.pigeon.domain.model.SmsConversation
+import com.havivon.pigeon.domain.model.SpamVerdict
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
@@ -62,6 +64,10 @@ class InboxViewModel(
     accessChanges: Flow<Int>,
     private val dateLine: () -> String,
     private val cancelNotification: (Long) -> Unit,
+    /** Whether Pigeon may change the system database (it is the default SMS app); a viewer only reads. */
+    private val canWrite: () -> Boolean = { true },
+    /** Judges spam on the conversations a viewer reads ([com.havivon.pigeon.domain.analysis.SpamOnRead]). */
+    private val judgeSpam: suspend (List<SmsConversation>, List<SpamVerdict>) -> Unit = { _, _ -> },
     private val now: () -> Long = System::currentTimeMillis,
     /** Where the conversations are mapped (rules, folders, codes for each one): off the main thread. */
     work: CoroutineDispatcher = Dispatchers.Default,
@@ -76,6 +82,8 @@ class InboxViewModel(
         locks.lockedThreadIds,
         spam.verdicts,
     ) { conversations, ruleList, pinned, locked, verdicts ->
+        // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
+        if (!canWrite()) viewModelScope.launch { judgeSpam(conversations, verdicts) }
         val t = now()
         conversations.map { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) } to ruleList
     }
@@ -93,9 +101,12 @@ class InboxViewModel(
         viewModelScope.launch { if (c.pinned) pins.unpin(c.id) else pins.pin(c.id) }
     }
 
-    fun markRead(c: Conversation) {
+    /** False, and nothing changes, while Pigeon is not the default SMS app: the screen says so. */
+    fun markRead(c: Conversation): Boolean {
+        if (!canWrite()) return false
         cancelNotification(c.id)
         viewModelScope.launch { messages.markThreadRead(c.id) }
+        return true
     }
 
     fun lock(c: Conversation) {
@@ -120,5 +131,6 @@ class InboxViewModel(
         return true
     }
 
-    fun delete(c: Conversation): PendingDeletion = messages.deleteThreads(setOf(c.id))
+    /** Null, and nothing is deleted, while Pigeon is not the default SMS app: the screen says so. */
+    fun delete(c: Conversation): PendingDeletion? = if (canWrite()) messages.deleteThreads(setOf(c.id)) else null
 }

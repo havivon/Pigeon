@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -34,6 +35,9 @@ import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.app.LocalNotices
+import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
+import com.havivon.pigeon.domain.model.SmsAccess
+import com.havivon.pigeon.ui.onboarding.ViewerBanner
 import com.havivon.pigeon.ui.common.appLocale
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
@@ -61,6 +65,8 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
             accessChanges = app.accessChanges,
             dateLine = { inboxDateLine(locale) },
             cancelNotification = app.notifier::cancel,
+            canWrite = app::canWrite,
+            judgeSpam = app.spamOnRead::judge,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -72,6 +78,8 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val deleted = stringResource(R.string.inbox_conversation_deleted)
     val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
+    val needsDefault = rememberNeedsDefaultNotice()
+    val access = LocalDefaultApp.current
 
     InboxScreen(
         conversations = state.conversations,
@@ -86,6 +94,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
         onSearch = { navigate(Screen.Search) },
         onNewMessage = { navigate(Screen.NewMessage()) },
         emptyState = if (state.loaded) ({ InboxEmpty(state.folder) }) else null,
+        banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
 
     sheetFor?.let { conv ->
@@ -97,7 +106,10 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
             ConversationActions(
                 conv,
                 onPin = { vm.togglePin(conv); done() },
-                onMarkRead = { vm.markRead(conv); done() },
+                onMarkRead = {
+                    done()
+                    if (!vm.markRead(conv)) needsDefault()
+                },
                 onRemind = {
                     done()
                     remindFor = conv
@@ -112,7 +124,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
                 },
                 onDelete = {
                     done()
-                    notices.undo(deleted, vm.delete(conv))
+                    vm.delete(conv)?.let { notices.undo(deleted, it) } ?: needsDefault()
                 },
             )
         }
@@ -156,16 +168,22 @@ internal fun ConversationActions(
     }
 }
 
-/** No conversations: until Pigeon is the messaging app, the reason and the way to fix it; then a plain "No messages yet". */
+/** No conversations: until Pigeon may see the messages, the reason and the two ways to fix it; then a plain "No messages yet". */
 @Composable
 internal fun InboxEmpty(folder: Folder) {
     val access = LocalDefaultApp.current
     when {
-        !access.isDefault -> EmptyState(
+        access.mode == SmsAccess.None -> EmptyState(
             Icons.Rounded.Forum,
             stringResource(R.string.onboarding_reminder_title),
             stringResource(R.string.inbox_empty_not_default),
-        ) { PillButton(stringResource(R.string.onboarding_make_default), filled = true, onClick = access.makeDefault) }
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                PillButton(stringResource(R.string.onboarding_make_default), filled = true, onClick = access.makeDefault)
+                Spacer(Modifier.height(10.dp))
+                PillButton(stringResource(R.string.onboarding_view_only), onClick = access.viewOnly)
+            }
+        }
         folder == Folder.All -> EmptyState(Icons.Rounded.Forum, stringResource(R.string.inbox_empty_title), stringResource(R.string.inbox_empty_body))
         else -> EmptyState(
             Icons.Rounded.Forum,

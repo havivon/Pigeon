@@ -63,8 +63,11 @@ data class ConversationUiState(
 }
 
 sealed interface ConversationEvent {
-    /** The message could not even be handed to the radio (Pigeon is not the default SMS app). */
+    /** The message could not even be handed to the radio (no permission to send, no SIM). */
     data object SendFailed : ConversationEvent
+
+    /** Deleting or retrying needs Pigeon to be the default SMS app; nothing was changed. */
+    data object NeedsDefault : ConversationEvent
     data class ReminderCreated(val label: String) : ConversationEvent
     data object ReminderRemoved : ConversationEvent
     data object MovedToSpam : ConversationEvent
@@ -90,6 +93,11 @@ class ConversationViewModel(
     private val cancelNotification: (Long) -> Unit,
     /** Sends and deletes outlive the screen: a message handed to the radio must be finished. */
     private val appScope: CoroutineScope,
+    /**
+     * Whether Pigeon may change the system database (it is the default SMS app). A viewer reads and
+     * sends; marking read is then skipped quietly, and deleting or retrying says why it cannot.
+     */
+    private val canWrite: () -> Boolean = { true },
     private val now: () -> Long = System::currentTimeMillis,
     /**
      * Where the messages are mapped (dates, reminders and rules for each one): off the main thread,
@@ -159,6 +167,8 @@ class ConversationViewModel(
 
     private fun markRead() {
         cancelNotification(threadId)
+        // A viewer may not write: the default messaging app keeps its own read state
+        if (!canWrite()) return
         viewModelScope.launch { messages.markThreadRead(threadId) }
     }
 
@@ -208,22 +218,32 @@ class ConversationViewModel(
         }
     }
 
+    /** A failed message goes back to the Outbox and out again: only the default SMS app may do that. */
     fun retry(messageId: Long) {
+        if (!canWrite()) {
+            events.trySend(ConversationEvent.NeedsDefault)
+            return
+        }
         appScope.launch { sender.retry(messageId) }
     }
 
     // Multi-select
 
+    // A message still on its way as a viewer (a negative id, not in the system database yet) cannot be
+    // starred, reminded or deleted: it is not selectable until Android has stored it
+
     fun toggleSelected(id: Long) {
+        if (id < 0) return
         _selected.value = _selected.value.let { if (id in it) it - id else it + id }
     }
 
     fun select(id: Long) {
+        if (id < 0) return
         _selected.value = _selected.value + id
     }
 
     fun selectAll() {
-        _selected.value = latest.map { it.id }.toSet()
+        _selected.value = latest.map { it.id }.filter { it >= 0 }.toSet()
     }
 
     fun clearSelection() {
@@ -262,6 +282,11 @@ class ConversationViewModel(
     fun deleteSelected(): Pair<Int, PendingDeletion>? {
         val ids = _selected.value
         if (ids.isEmpty()) return null
+        if (!canWrite()) {
+            // The selection stays, so nothing seems to have happened to the messages
+            events.trySend(ConversationEvent.NeedsDefault)
+            return null
+        }
         clearSelection()
         return ids.size to messages.deleteMessages(ids)
     }
@@ -350,5 +375,12 @@ class ConversationViewModel(
         }
     }
 
-    fun deleteConversation(): PendingDeletion = messages.deleteThreads(setOf(threadId))
+    /** Null, and nothing is deleted, while Pigeon is not the default SMS app (the screen hears [ConversationEvent.NeedsDefault]). */
+    fun deleteConversation(): PendingDeletion? {
+        if (!canWrite()) {
+            events.trySend(ConversationEvent.NeedsDefault)
+            return null
+        }
+        return messages.deleteThreads(setOf(threadId))
+    }
 }

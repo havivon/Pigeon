@@ -17,13 +17,14 @@ import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.onboarding.DefaultAppReminderCard
 import com.havivon.pigeon.ui.onboarding.RestrictedSettingsHelpCard
 import com.havivon.pigeon.ui.onboarding.DefaultAppWelcome
+import com.havivon.pigeon.ui.onboarding.ViewerBanner
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * The "make Pigeon your messaging app" screens: the welcome on first launch and the reminder over
- * the inbox on later opens. The reminder is a Dialog in the app, which Paparazzi may not draw, so
+ * The "make Pigeon your messaging app" screens: the welcome on first launch (make default, or just
+ * view), the reminder over the inbox on later opens, and the viewer's banner at the top of the inbox. The reminder is a Dialog in the app, which Paparazzi may not draw, so
  * its card is rendered over a dimmed inbox in the same composition.
  */
 class OnboardingSnapshots {
@@ -38,18 +39,28 @@ class OnboardingSnapshots {
 
     @Test
     fun onboarding() {
-        paparazzi.snapshot("26_welcome") { HebSmsTheme { DefaultAppWelcome({}, {}) } }
+        paparazzi.snapshot("26_welcome") { HebSmsTheme { DefaultAppWelcome({}, {}, {}) } }
         paparazzi.snapshot("27_reminder_over_inbox") {
             HebSmsTheme {
                 InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine)
                 ReminderOverScrim()
             }
         }
-        paparazzi.snapshot("29_welcome_dark") { HebSmsTheme(darkTheme = true) { DefaultAppWelcome({}, {}) } }
+        paparazzi.snapshot("29_welcome_dark") { HebSmsTheme(darkTheme = true) { DefaultAppWelcome({}, {}, {}) } }
         paparazzi.snapshot("59_restricted_help") {
             HebSmsTheme {
-                DefaultAppWelcome({}, {})
+                DefaultAppWelcome({}, {}, {})
                 OverScrim { RestrictedSettingsHelpCard({}, {}, Modifier.fillMaxWidth()) }
+            }
+        }
+        paparazzi.snapshot("61_viewer_banner") {
+            HebSmsTheme {
+                InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine, banner = { ViewerBanner({}, {}) })
+            }
+        }
+        paparazzi.snapshot("63_viewer_banner_dark") {
+            HebSmsTheme(darkTheme = true) {
+                InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine, banner = { ViewerBanner({}, {}) })
             }
         }
     }
@@ -66,18 +77,24 @@ class OnboardingSnapshotsEnglish {
 
     @Test
     fun onboarding() {
-        paparazzi.snapshot("28_en_welcome") { HebSmsTheme { DefaultAppWelcome({}, {}) } }
+        paparazzi.snapshot("28_en_welcome") { HebSmsTheme { DefaultAppWelcome({}, {}, {}) } }
         paparazzi.snapshot("60_en_restricted_help") {
             HebSmsTheme {
-                DefaultAppWelcome({}, {})
+                DefaultAppWelcome({}, {}, {})
                 OverScrim { RestrictedSettingsHelpCard({}, {}, Modifier.fillMaxWidth()) }
+            }
+        }
+        val sample = SampleData.english
+        paparazzi.snapshot("62_en_viewer_banner") {
+            HebSmsTheme {
+                InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine, banner = { ViewerBanner({}, {}) })
             }
         }
     }
 }
 
 @Composable
-private fun ReminderOverScrim() = OverScrim { DefaultAppReminderCard({}, {}, Modifier.fillMaxWidth()) }
+private fun ReminderOverScrim() = OverScrim { DefaultAppReminderCard({}, {}, {}, Modifier.fillMaxWidth()) }
 
 /** A dialog's card drawn in the same composition, over a dimmed screen (a Dialog window does not render here). */
 @Composable

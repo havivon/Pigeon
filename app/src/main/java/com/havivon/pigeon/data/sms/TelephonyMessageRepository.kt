@@ -67,6 +67,13 @@ class TelephonyMessageRepository(
     private val pins: PinsRepository,
     /** Outlives the screens, so a deletion completes after the user leaves the conversation. */
     private val appScope: CoroutineScope,
+    /** Messages sent as a viewer that Android has not stored yet: shown in their conversation meanwhile. */
+    private val pendingSends: PendingSends = PendingSends(),
+    /**
+     * Whether Pigeon may change the system database now (it is the default SMS app). While it may
+     * not, marking read and deleting are not even tried: the screens say why instead.
+     */
+    private val canWrite: () -> Boolean = { true },
 ) : MessageRepository {
 
     private val resolver = context.contentResolver
@@ -85,6 +92,7 @@ class TelephonyMessageRepository(
         resolver.changes(Telephony.Sms.CONTENT_URI)
             .mapLatest { queryMessages("${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()), "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC") }
             .combine(hidden) { list, h -> if (threadId in h.threads) emptyList() else list.filter { it.id !in h.messages } }
+            .combine(pendingSends.pending) { list, pending -> withPendingSends(list, pending.filter { it.threadId == threadId }) }
             .flowOn(Dispatchers.IO)
 
     override suspend fun message(id: Long): SmsMessage? = withContext(Dispatchers.IO) {
@@ -119,6 +127,8 @@ class TelephonyMessageRepository(
     }
 
     override suspend fun markThreadRead(threadId: Long) {
+        // A viewer may not write: the default messaging app keeps its own read state
+        if (!canWrite()) return
         withContext(Dispatchers.IO) {
             val values = ContentValues().apply {
                 put(Telephony.Sms.READ, 1)
@@ -230,6 +240,8 @@ class TelephonyMessageRepository(
     )
 
     private suspend fun commit(messages: Set<Long>, threads: Set<Long>) {
+        // Not the default SMS app (any more): nothing can be deleted, and the rows come back into view
+        if (!canWrite()) return
         try {
             messages.chunked(DELETE_CHUNK).forEach { chunk ->
                 resolver.delete(Telephony.Sms.CONTENT_URI, "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray())

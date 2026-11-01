@@ -3,10 +3,12 @@ package com.havivon.pigeon.ui.compose
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.app.LocalNotices
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
 
@@ -23,6 +25,9 @@ fun NewMessageRoute(recipients: List<String>, body: String, onBack: () -> Unit, 
     val text by vm.bodyText.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     val failed = stringResource(R.string.thread_send_failed)
+    val makeDefaultLabel = stringResource(R.string.needs_default_action)
+    // The events are collected once: read the access as it is when one comes
+    val access by rememberUpdatedState(LocalDefaultApp.current)
     LaunchedEffect(vm) {
         vm.eventFlow.collect { e ->
             when (e) {
@@ -31,7 +36,8 @@ fun NewMessageRoute(recipients: List<String>, body: String, onBack: () -> Unit, 
                     notices.show(context.resources.getQuantityString(R.plurals.compose_sent_to_many, e.count, e.count))
                     onBack()
                 }
-                NewMessageEvent.Failed -> notices.show(failed)
+                NewMessageEvent.Failed ->
+                    if (access.isDefault) notices.show(failed) else notices.action(failed, makeDefaultLabel, access.makeDefault)
             }
         }
     }

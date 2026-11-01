@@ -4,21 +4,29 @@
 
     <!-- onboarding_ -->
     <string name="onboarding_welcome_title">ברוכים הבאים ל-Pigeon</string>
-    <string name="onboarding_welcome_body">כדי שהודעות יגיעו אליך ויישלחו ממך, Pigeon צריכה להיות אפליקציית ההודעות של הטלפון. אפשר להחזיר את האפליקציה הקודמת בכל רגע דרך ההגדרות.</string>
+    <string name="onboarding_welcome_body">הפוך את Pigeon לאפליקציית ההודעות של הטלפון כדי לקבל ולשלוח כאן, או רק הצג בה את ההודעות שלך בזמן שהאפליקציה הנוכחית ממשיכה לקבל אותן. אפשר לשנות את זה בכל רגע דרך ההגדרות.</string>
     <string name="onboarding_benefit_colors">צבעים לפי שולח או נושא</string>
     <string name="onboarding_benefit_spam">ספאם מועבר הצידה אוטומטית</string>
     <string name="onboarding_benefit_offline">בלי אינטרנט, כך שההודעות לא יוצאות מהטלפון לעולם</string>
     <string name="onboarding_make_default">הפוך את Pigeon לאפליקציית ההודעות שלי</string>
+    <string name="onboarding_view_only">רק הצג את ההודעות שלי</string>
     <string name="onboarding_not_now">לא עכשיו</string>
     <string name="onboarding_restricted_title">צריך לאשר את Pigeon פעם אחת</string>
-    <string name="onboarding_restricted_body">אנדרואיד לא נותן לאפליקציה שהותקנה מקובץ להפוך לאפליקציית ההודעות, עד שמאשרים אותה. זה לוקח חצי דקה:</string>
+    <string name="onboarding_restricted_body">אנדרואיד לא נותן לאפליקציה שהותקנה מקובץ להפוך לאפליקציית ההודעות או לקרוא את ההודעות שלך, עד שמאשרים אותה. זה לוקח חצי דקה:</string>
     <string name="onboarding_restricted_step1">הקש למטה על \"פתח את פרטי האפליקציה\".</string>
     <string name="onboarding_restricted_step2">הקש על ⋮ למעלה, ואז על \"הגדרות מוגבלות\" (Allow restricted settings), ואשר בטביעת אצבע או בנעילת המסך.</string>
     <string name="onboarding_restricted_step3">חזור לכאן: Pigeon תבקש שוב לבד.</string>
     <string name="onboarding_restricted_open">פתח את פרטי האפליקציה</string>
     <string name="onboarding_restricted_close">סגור</string>
     <string name="onboarding_reminder_title">Pigeon עדיין לא אפליקציית ההודעות שלך</string>
-    <string name="onboarding_reminder_body">כל עוד היא לא אפליקציית ההודעות שלך, הודעות חדשות לא יגיעו אליה.</string>
+    <string name="onboarding_reminder_body">הפוך אותה לאפליקציית ההודעות כדי לקבל כאן הודעות, או רק הצג בה את ההודעות בזמן שהאפליקציה הנוכחית ממשיכה לקבל אותן.</string>
+
+    <!-- viewer_ (another app is the default, Pigeon only reads and sends) -->
+    <string name="viewer_banner">צפייה בלבד · הודעות חדשות מגיעות לאפליקציית ההודעות שלך</string>
+    <string name="viewer_banner_make_default">הפוך לברירת מחדל</string>
+    <string name="viewer_banner_hide">הסתר</string>
+    <string name="needs_default_notice">רק כש-Pigeon היא אפליקציית ההודעות שלך</string>
+    <string name="needs_default_action">הפוך לברירת מחדל</string>
 
     <!-- common_ -->
     <string name="common_back">חזרה</string>
@@ -52,7 +60,7 @@
     <string name="inbox_empty_body">כשתגיע הודעה, היא תופיע כאן. כדי לכתוב הודעה, הקש על \"הודעה חדשה\".</string>
     <string name="inbox_empty_folder_title">אין כלום ב%1$s</string>
     <string name="inbox_empty_folder_body">שיחות מתאימות ממוינות לכאן אוטומטית.</string>
-    <string name="inbox_empty_not_default">ההודעות שלך יופיעו כאן ברגע ש-Pigeon תהיה אפליקציית ההודעות שלך.</string>
+    <string name="inbox_empty_not_default">ההודעות שלך יופיעו כאן ברגע ש-Pigeon תהיה אפליקציית ההודעות שלך, או כשתאפשר לה להציג אותן.</string>
 
     <!-- action_ (the long-press sheet and the conversation menu) -->
     <string name="action_pin">הצמד למעלה</string>
@@ -121,7 +129,7 @@
     <string name="thread_copied">הועתק</string>
     <string name="thread_sending">שולח…</string>
     <string name="thread_failed">לא נשלחה · הקש לשליחה חוזרת</string>
-    <string name="thread_send_failed">השליחה נכשלה. כדי לשלוח, Pigeon צריכה להיות אפליקציית ההודעות שלך.</string>
+    <string name="thread_send_failed">השליחה נכשלה. כדי לשלוח, Pigeon צריכה להיות אפליקציית ההודעות שלך או לקבל הרשאה לשלוח SMS.</string>
     <string name="thread_reminder_set">תזכורת · %1$s</string>
     <string name="thread_reminder_created">נשמרה תזכורת ל%1$s</string>
     <string name="thread_reminder_removed">התזכורת הוסרה</string>
@@ -353,8 +361,11 @@
     <string name="settings_section_default">אפליקציית ההודעות</string>
     <string name="settings_default_yes">Pigeon היא אפליקציית ההודעות שלך</string>
     <string name="settings_default_yes_note">הודעות חדשות מגיעות אליה.</string>
-    <string name="settings_default_no">אפליקציה אחרת היא אפליקציית ההודעות שלך</string>
-    <string name="settings_default_no_note">כל עוד Pigeon אינה אפליקציית ההודעות שלך, הודעות חדשות לא יגיעו אליה.</string>
+    <string name="settings_default_viewer">צפייה בלבד</string>
+    <string name="settings_default_viewer_note">Pigeon מציגה ושולחת את ההודעות שלך. הודעות חדשות מגיעות לאפליקציית ההודעות שלך.</string>
+    <string name="settings_default_none">אין גישה להודעות שלך</string>
+    <string name="settings_default_none_note">הפוך את Pigeon לאפליקציית ההודעות, או אפשר לה רק להציג את ההודעות שלך.</string>
+    <string name="settings_default_view_only">רק להציג</string>
     <string name="settings_default_change">שנה</string>
     <string name="settings_default_make">הפוך לברירת מחדל</string>
     <string name="settings_section_about">אודות</string>

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.Icon
@@ -61,6 +62,7 @@ import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppTheme
+import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
@@ -75,7 +77,8 @@ data class SettingsEnvironment(
     val notificationsAllowed: Boolean = true,
     /** Null on phones before Android 12, where exact alarms need no permission. */
     val exactAlarmsAllowed: Boolean? = null,
-    val isDefaultSmsApp: Boolean = true,
+    /** Default app, viewing only, or no access: the "Messaging app" row says which, with the action that fits. */
+    val smsAccess: SmsAccess = SmsAccess.Default,
     val versionName: String = "",
 )
 
@@ -97,6 +100,8 @@ data class SettingsActions(
     val onNotificationsPermission: () -> Unit = {},
     val onWidgetsShowText: (Boolean) -> Unit = {},
     val onDefaultApp: () -> Unit = {},
+    /** "Just view": asks for the permissions to read the messages while another app stays the default. */
+    val onViewOnly: () -> Unit = {},
 )
 
 /** The settings, in sections: look, messages, notifications, privacy, widgets, the default app, about. */
@@ -260,7 +265,7 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
         }
 
         item { SectionLabel(stringResource(R.string.settings_section_default), Icons.Rounded.Sms) }
-        item { DefaultAppCard(env.isDefaultSmsApp, actions.onDefaultApp) }
+        item { DefaultAppCard(env.smsAccess, actions.onDefaultApp, actions.onViewOnly) }
 
         item { SectionLabel(stringResource(R.string.settings_section_about)) }
         item {
@@ -414,28 +419,45 @@ private fun <T> ChoiceRow(icon: ImageVector, title: String, options: List<Pair<S
     }
 }
 
-/** Whether Pigeon is the messaging app, and the button that changes it. */
+/**
+ * What Pigeon may do with the messages (the messaging app, viewing only, no access), and the
+ * button that goes further: "Change" for the default app, "Make default" otherwise, and with no
+ * access also "Just view".
+ */
 @Composable
-private fun DefaultAppCard(isDefault: Boolean, onClick: () -> Unit) {
+private fun DefaultAppCard(access: SmsAccess, onClick: () -> Unit, onViewOnly: () -> Unit) {
+    val isDefault = access == SmsAccess.Default
+    val (title, note) = when (access) {
+        SmsAccess.Default -> R.string.settings_default_yes to R.string.settings_default_yes_note
+        SmsAccess.Viewer -> R.string.settings_default_viewer to R.string.settings_default_viewer_note
+        SmsAccess.None -> R.string.settings_default_none to R.string.settings_default_none_note
+    }
     SettingsCard {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start,
         ) {
-            RowIcon(if (isDefault) Icons.Rounded.Check else Icons.Rounded.Sms, if (isDefault) Color(0xFF1E9E6A) else HebTheme.colors.accent)
+            val icon = when (access) {
+                SmsAccess.Default -> Icons.Rounded.Check
+                SmsAccess.Viewer -> Icons.Rounded.Visibility
+                SmsAccess.None -> Icons.Rounded.Sms
+            }
+            RowIcon(icon, if (isDefault) Color(0xFF1E9E6A) else HebTheme.colors.accent)
             Spacer(Modifier.width(14.dp))
-            RowText(
-                stringResource(if (isDefault) R.string.settings_default_yes else R.string.settings_default_no),
-                stringResource(if (isDefault) R.string.settings_default_yes_note else R.string.settings_default_no_note),
-                Modifier.weight(1f),
-            )
+            RowText(stringResource(title), stringResource(note), Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
-            PillButton(
-                stringResource(if (isDefault) R.string.settings_default_change else R.string.settings_default_make),
-                filled = !isDefault,
-                onClick = onClick,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                PillButton(
+                    stringResource(if (isDefault) R.string.settings_default_change else R.string.settings_default_make),
+                    filled = !isDefault,
+                    onClick = onClick,
+                )
+                if (access == SmsAccess.None) {
+                    Spacer(Modifier.height(6.dp))
+                    PillButton(stringResource(R.string.settings_default_view_only), onClick = onViewOnly)
+                }
+            }
         }
     }
 }

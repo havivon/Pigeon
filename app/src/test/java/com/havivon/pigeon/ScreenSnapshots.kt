@@ -24,6 +24,7 @@ import com.havivon.pigeon.domain.analysis.LinkAnalyzer
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.Message
+import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.model.SendStatus
 import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.domain.model.ThreadItem
@@ -135,7 +136,7 @@ class NewScreensSnapshots {
             InboxScreen(emptyList(), s.sample.rules, emptyMap(), s.sample.dateLine, emptyState = { InboxEmpty(Folder.All) })
         }
         shot("35_inbox_not_default") {
-            CompositionLocalProvider(LocalDefaultApp provides DefaultAppAccess(isDefault = false, makeDefault = {})) {
+            CompositionLocalProvider(LocalDefaultApp provides DefaultAppAccess(SmsAccess.None, makeDefault = {})) {
                 InboxScreen(emptyList(), s.sample.rules, emptyMap(), s.sample.dateLine, emptyState = { InboxEmpty(Folder.All) })
             }
         }

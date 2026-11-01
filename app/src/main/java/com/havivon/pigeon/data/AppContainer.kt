@@ -16,11 +16,13 @@ import com.havivon.pigeon.data.notify.MessageNotifier
 import com.havivon.pigeon.data.reminders.ReminderNotifier
 import com.havivon.pigeon.data.settings.DataStoreSettingsRepository
 import com.havivon.pigeon.data.sms.IncomingSmsHandler
+import com.havivon.pigeon.data.sms.PendingSends
 import com.havivon.pigeon.data.sms.ProviderSmsStore
 import com.havivon.pigeon.data.sms.TelephonyMessageRepository
 import com.havivon.pigeon.data.sms.TelephonySmsSender
 import com.havivon.pigeon.widget.WidgetRefresher
 import com.havivon.pigeon.widget.refreshSignals
+import com.havivon.pigeon.domain.analysis.SpamOnRead
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.FavoritesRepository
@@ -40,6 +42,8 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +58,7 @@ import kotlinx.coroutines.flow.update
  * notify everything, every conversation personal, reminders never fire), so the SMS platform works
  * on its own. The hook is built from the container, since it needs the repositories.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppContainer(
     context: Context,
     val codeFinder: CodeFinder = CodeFinder.None,
@@ -80,8 +85,11 @@ class AppContainer(
     val blockedKeywords: BlockedKeywordsRepository by lazy { RoomBlockedKeywordsRepository(database) }
     val pins: PinsRepository by lazy { RoomPinsRepository(database) }
 
-    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope) }
-    val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages) }
+    /** Messages sent as a viewer, until Android has stored them. */
+    val pendingSends = PendingSends()
+
+    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope, pendingSends, ::canWrite) }
+    val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages, pendingSends, ::canWrite) }
     val notifier: MessageNotifier by lazy {
         MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })
     }
@@ -89,13 +97,22 @@ class AppContainer(
     val widgets: WidgetRefresher by lazy {
         WidgetRefresher(
             app, appScope,
-            refreshSignals(messages.conversations, favorites.favorites, pins.pinnedThreadIds, locks.lockedThreadIds, settings.settings, rules.rules, spam.verdicts),
+            refreshSignals(accessChanges.flatMapLatest { messages.conversations }, favorites.favorites, pins.pinnedThreadIds, locks.lockedThreadIds, settings.settings, rules.rules, spam.verdicts),
         )
     }
     val reminderNotifier: ReminderNotifier by lazy {
         ReminderNotifier(app, reminders, messages, contacts, locks, settings, reminderScheduler)
     }
-    val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(ProviderSmsStore(app), incomingHook(this), notifier) }
+    private val hook: IncomingMessageHook by lazy { incomingHook(this) }
+    val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(ProviderSmsStore(app), hook, notifier) }
+
+    /** Spam for the messages a viewer reads (they never pass through [incomingSms]); the screens call it while Pigeon is not the default. */
+    val spamOnRead: SpamOnRead by lazy {
+        SpamOnRead(hook) { threadId ->
+            // Someone the user wrote to is never spam: no need to judge at all
+            messages.recentMessages(threadId, SPAM_ON_READ_DEPTH).let { list -> if (list.any { it.type.outgoing }) null else list.lastOrNull() }
+        }
+    }
 
     /**
      * The conversation open on the screen right now (the app in the foreground), or null. Its new
@@ -104,18 +121,40 @@ class AppContainer(
     @Volatile
     var visibleThreadId: Long? = null
 
+    private val _access = MutableStateFlow(readAppAccess(app))
+
+    /** What the app may do now: default app, viewer or neither, and the permissions around it. Kept current by [refreshAccess]. */
+    val access: StateFlow<AppAccess> = _access.asStateFlow()
+
     private val _accessChanges = MutableStateFlow(0)
 
     /**
-     * Counts changes in what the app may read (default SMS app, contacts permission). The system
+     * Counts changes in [access] (default SMS app, the SMS and contacts permissions). The system
      * does not report a newly granted permission to content observers, so the screens re-read
      * their data whenever this changes.
      */
     val accessChanges: StateFlow<Int> = _accessChanges.asStateFlow()
 
-    fun onAccessChanged() = _accessChanges.update { it + 1 }
+    /** Reads [access] again (the app came back, a request returned); a change makes every screen re-read. */
+    fun refreshAccess(): AppAccess {
+        val now = readAppAccess(app)
+        if (now != _access.value) {
+            _access.value = now
+            _accessChanges.update { it + 1 }
+        }
+        return now
+    }
+
+    /**
+     * Whether Pigeon may change Android's SMS database right now: only as the default SMS app.
+     * Asked live, since another app can take the role at any moment.
+     */
+    fun canWrite(): Boolean = DefaultSmsRole.isDefault(app)
 
     companion object {
+        /** How far back a conversation is read for a message the user wrote, when judging spam on read. */
+        private const val SPAM_ON_READ_DEPTH = 50
+
         fun from(context: Context): AppContainer = (context.applicationContext as PigeonApp).container
     }
 }
