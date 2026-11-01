@@ -24,11 +24,14 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.AutoDelete
+import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lock
@@ -96,6 +99,8 @@ data class SettingsActions(
     val onOpenKeywords: () -> Unit = {},
     val onOpenFolders: () -> Unit = {},
     val onOpenRecycleBin: () -> Unit = {},
+    val onExportSettings: () -> Unit = {},
+    val onImportSettings: () -> Unit = {},
     val onAutoDeleteCodes: (Boolean) -> Unit = {},
     val onLockScreenText: (Boolean) -> Unit = {},
     val onSystemNotifications: () -> Unit = {},
@@ -283,6 +288,25 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         stringResource(R.string.settings_widgets_text_note),
                         s.widgetsShowText,
                         onChange = actions.onWidgetsShowText,
+                    )
+                }
+            }
+
+            item { SectionLabel(stringResource(R.string.settings_section_backup), Icons.Rounded.Backup) }
+            item {
+                SettingsCard {
+                    NavRow(
+                        Icons.Rounded.FileUpload,
+                        stringResource(R.string.settings_backup_export),
+                        stringResource(R.string.settings_backup_export_note),
+                        actions.onExportSettings,
+                    )
+                    RowDivider()
+                    NavRow(
+                        Icons.Rounded.FileDownload,
+                        stringResource(R.string.settings_backup_import),
+                        stringResource(R.string.settings_backup_import_note),
+                        actions.onImportSettings,
                     )
                 }
             }

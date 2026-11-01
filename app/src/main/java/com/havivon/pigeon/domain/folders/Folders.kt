@@ -27,6 +27,12 @@ object FolderKeys {
 
     /** The key of one sender (an incoming message). */
     fun sender(address: String): String? = PhoneNumbers.lookupKey(address)
+
+    /** A group's key, from its thread. */
+    fun forThread(threadId: Long): String = "$THREAD$threadId"
+
+    /** The thread inside a group's key, or null for a sender's key. */
+    fun threadOf(key: String): Long? = if (key.startsWith(THREAD)) key.removePrefix(THREAD).toLongOrNull() else null
 }
 
 /** What is wrong with a name typed for a category. */

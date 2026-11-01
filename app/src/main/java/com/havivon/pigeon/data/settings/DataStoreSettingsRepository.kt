@@ -110,6 +110,21 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
         store.edit { if (millis == null) it.remove(SettingsKeys.AUTO_DELETE_CODES_SINCE) else it[SettingsKeys.AUTO_DELETE_CODES_SINCE] = millis }
     }
 
+    override suspend fun restoreBackedUp(values: AppSettings) {
+        store.edit {
+            it[SettingsKeys.LANGUAGE] = values.language.name
+            it[SettingsKeys.THEME] = values.theme.name
+            it[SettingsKeys.APP_ICON] = values.appIcon.name
+            it[SettingsKeys.LOCK_SCREEN_TEXT] = values.lockScreenText
+            it[SettingsKeys.WIDGETS_SHOW_TEXT] = values.widgetsShowText
+            it[SettingsKeys.BLOCK_SCREENSHOTS] = values.blockScreenshots
+            it[SettingsKeys.APP_LOCK] = values.appLock
+            it[SettingsKeys.AUTO_DELETE_CODES] = values.autoDeleteCodes
+            val since = values.autoDeleteCodesSinceMillis
+            if (since == null) it.remove(SettingsKeys.AUTO_DELETE_CODES_SINCE) else it[SettingsKeys.AUTO_DELETE_CODES_SINCE] = since
+        }
+    }
+
     private suspend fun <T> put(key: Preferences.Key<T>, value: T) {
         store.edit { it[key] = value }
     }

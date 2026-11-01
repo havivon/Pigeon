@@ -16,6 +16,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
+import com.havivon.pigeon.domain.backup.BackupSummary
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
@@ -33,6 +34,7 @@ import com.havivon.pigeon.ui.rules.RuleEditorState
 import com.havivon.pigeon.ui.rules.RuleKind
 import com.havivon.pigeon.ui.rules.RuleSwatches
 import com.havivon.pigeon.ui.rules.RulesScreen
+import com.havivon.pigeon.ui.settings.ImportConfirmContent
 import com.havivon.pigeon.ui.settings.SettingsActions
 import com.havivon.pigeon.ui.settings.SettingsEnvironment
 import com.havivon.pigeon.ui.settings.SettingsScreen
@@ -41,9 +43,10 @@ import com.havivon.pigeon.ui.theme.HebSmsTheme
 import com.havivon.pigeon.ui.theme.HebTheme
 import org.junit.Rule
 import org.junit.Test
+import java.time.Instant
 
 /** A phone tall enough to draw the whole settings list in one picture. */
-private val TallPhone = DeviceConfig.PIXEL_6.copy(screenHeight = 5600)
+private val TallPhone = DeviceConfig.PIXEL_6.copy(screenHeight = 6200)
 
 /** Made-up settings content; nothing here is a real person, number or message. */
 private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
@@ -97,11 +100,25 @@ private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
         CustomFolder(3, if (hebrew) "חוג כדורסל" else "Basketball club"),
     )
 
+    /** What an exported file holds, for the import confirmation. */
+    val importSummary = BackupSummary(
+        exportedAtMillis = Instant.parse("2026-10-26T12:00:00Z").toEpochMilli(),
+        appVersion = "0.4.4",
+        settings = 8, rules = 4, categories = 3, moves = 12, pinned = 2, locked = 1,
+        notSpam = 5, blockedWords = 3, reminders = 2, favorites = 14,
+    )
+
     val reminderTimes = mapOf(
         QuickReminder.InOneHour to (if (hebrew) "13:41" else "1:41 PM"),
         QuickReminder.ThisEvening to (if (hebrew) "היום 20:00" else "Today 8:00 PM"),
         QuickReminder.TomorrowMorning to (if (hebrew) "מחר 09:00" else "Tomorrow 9:00 AM"),
     )
+}
+
+/** A dialog as the app shows it, drawn in the same composition (Paparazzi does not draw its window). */
+@Composable
+private fun DialogOver(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) { content() }
 }
 
 /** A bottom sheet as the app shows it, drawn in the same composition (Paparazzi does not draw its window). */
@@ -170,6 +187,14 @@ class EditingSnapshots {
         shot("93_categories") { FoldersScreen(s.folders) }
         shot("94_categories_reordering_dark", dark = true) { FoldersScreen(s.folders, previewDragging = 2) }
         shot("95_categories_empty") { FoldersScreen(emptyList()) }
+        shot("97_import_dialog") {
+            SettingsScreen(s.state, s.environment, SettingsActions())
+            DialogOver { ImportConfirmContent(s.importSummary, {}, {}) }
+        }
+        shot("98_import_dialog_dark", dark = true) {
+            SettingsScreen(s.state, s.environment, SettingsActions())
+            DialogOver { ImportConfirmContent(s.importSummary, {}, {}) }
+        }
     }
 }
 
@@ -219,5 +244,9 @@ class EditingSnapshotsEnglish {
             Sheet { ReminderChooser(s.reminderTimes, {}, {}) }
         }
         shot("96_en_categories") { FoldersScreen(s.folders) }
+        shot("99_en_import_dialog") {
+            SettingsScreen(s.state, s.environment, SettingsActions())
+            DialogOver { ImportConfirmContent(s.importSummary, {}, {}) }
+        }
     }
 }

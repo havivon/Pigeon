@@ -59,6 +59,11 @@ class SettingsViewModel(
     /** The screen asks for the fingerprint or screen lock first (see `SettingsRoute`), so this only stores the answer. */
     fun setAppLock(value: Boolean) = launch { settings.setAppLock(value) }
 
+    /** The launcher icon was switched elsewhere (an import): show the chosen one. */
+    fun iconChanged(value: AppIcon) {
+        icon.value = value
+    }
+
     fun setAppIcon(value: AppIcon) {
         applyIcon(value)
         icon.value = value

@@ -22,4 +22,10 @@ interface SettingsRepository {
     suspend fun setAutoDeleteCodesSince(millis: Long?)
     suspend fun setWelcomeDone(value: Boolean)
     suspend fun setPermissionsAsked(value: Boolean)
+
+    /**
+     * Writes the settings an imported file covers, in one step: everything but the welcome and permission flags,
+     * which belong to this phone. [AppSettings.autoDeleteCodesSinceMillis] is written as given.
+     */
+    suspend fun restoreBackedUp(values: AppSettings)
 }

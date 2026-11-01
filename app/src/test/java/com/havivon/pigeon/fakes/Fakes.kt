@@ -296,6 +296,7 @@ class FakeSettings(initial: AppSettings = AppSettings()) : SettingsRepository {
     override suspend fun setAutoDeleteCodesSince(millis: Long?) = state.update { it.copy(autoDeleteCodesSinceMillis = millis) }
     override suspend fun setWelcomeDone(value: Boolean) = state.update { it.copy(welcomeDone = value) }
     override suspend fun setPermissionsAsked(value: Boolean) = state.update { it.copy(permissionsAsked = value) }
+    override suspend fun restoreBackedUp(values: AppSettings) = state.update { values.copy(welcomeDone = it.welcomeDone, permissionsAsked = it.permissionsAsked) }
 }
 
 /** The user's categories and moves by hand, in memory, as the Room repository keeps them. */

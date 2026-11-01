@@ -7,6 +7,7 @@ import com.havivon.pigeon.data.contacts.AndroidContactsRepository
 import com.havivon.pigeon.data.db.BinDatabase
 import com.havivon.pigeon.data.db.PigeonDatabase
 import com.havivon.pigeon.data.db.RoomBinRepository
+import com.havivon.pigeon.data.db.RoomBackupStore
 import com.havivon.pigeon.data.db.RoomBlockedKeywordsRepository
 import com.havivon.pigeon.data.db.RoomFavoritesRepository
 import com.havivon.pigeon.data.db.RoomFoldersRepository
@@ -26,6 +27,7 @@ import com.havivon.pigeon.data.sms.TelephonyMessageRepository
 import com.havivon.pigeon.data.sms.TelephonySmsSender
 import com.havivon.pigeon.widget.WidgetRefresher
 import com.havivon.pigeon.widget.refreshSignals
+import com.havivon.pigeon.domain.backup.SettingsBackupManager
 import com.havivon.pigeon.domain.analysis.SpamOnRead
 import com.havivon.pigeon.domain.bin.RecycleBin
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
@@ -92,6 +94,15 @@ class AppContainer(
     val pins: PinsRepository by lazy { RoomPinsRepository(database) }
     /** The user's categories and the conversations moved by hand ("Move to category"). */
     val folders: FoldersRepository by lazy { RoomFoldersRepository(database) }
+
+    /** Export and import of the settings file (Settings, Backup). */
+    val backup: SettingsBackupManager by lazy {
+        SettingsBackupManager(
+            settings, rules, folders, pins, locks, spam, blockedKeywords, favorites, reminders, messages,
+            reminderScheduler, RoomBackupStore(database),
+            applyIcon = { AppIconSwitcher.set(app, it) },
+        )
+    }
 
     /** The recycle bin: a database file of its own, left out of backups (it holds message content). */
     private val binDatabase: BinDatabase by lazy { BinDatabase.build(app) }

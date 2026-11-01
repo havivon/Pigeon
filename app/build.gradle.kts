@@ -15,8 +15,8 @@ android {
         applicationId = "com.havivon.pigeon"
         minSdk = 26
         targetSdk = 34
-        versionCode = 19
-        versionName = "0.4.4"
+        versionCode = 20
+        versionName = "0.4.5"
     }
 
     // The release key stays out of the (public) repo: keystore.properties next to settings.gradle.kts,
@@ -107,4 +107,6 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    // org.json is part of Android but only a stub in JVM tests; the real library, for the settings file tests only
+    testImplementation("org.json:json:20240303")
 }

@@ -471,4 +471,37 @@
         <item quantity="other">%1$d categories</item>
     </plurals>
     <string name="inbox_empty_custom_body">Long-press a conversation and choose Move to category.</string>
+    <!-- backup_ (Settings, Backup: export and import of the settings file) -->
+    <string name="settings_section_backup">Backup</string>
+    <string name="settings_backup_export">Export settings</string>
+    <string name="settings_backup_export_note">Save your settings to a file. Your messages are never included.</string>
+    <string name="settings_backup_import">Import settings</string>
+    <string name="settings_backup_import_note">Load settings from a file that Pigeon saved</string>
+    <string name="backup_exported">Settings exported</string>
+    <string name="backup_export_failed">Could not save the file</string>
+    <string name="backup_import_title">Import settings?</string>
+    <string name="backup_import_saved_on">Saved on %1$s</string>
+    <string name="backup_import_saved_unknown">A Pigeon settings file</string>
+    <string name="backup_import_contains">The file holds</string>
+    <string name="backup_import_nothing">Nothing that Pigeon can use</string>
+    <string name="backup_import_replaces">Importing replaces your current settings, color rules, categories, blocked words, pinned and locked chats, reminders and starred messages. Your messages are not touched.</string>
+    <string name="backup_import_confirm">Import</string>
+    <string name="backup_item_settings">App settings</string>
+    <string name="backup_item_moves">Conversations moved to a category</string>
+    <string name="backup_item_pinned">Pinned chats</string>
+    <string name="backup_item_locked">Locked chats</string>
+    <string name="backup_item_not_spam">Senders marked as not spam</string>
+    <string name="backup_item_reminders">Reminders</string>
+    <string name="backup_item_favorites">Starred messages</string>
+    <string name="backup_imported">Settings imported</string>
+    <string name="backup_import_failed">Could not import the settings. Nothing was changed.</string>
+    <string name="backup_refused_not_settings">This is not a Pigeon settings file</string>
+    <string name="backup_refused_too_new">This file comes from a newer version of Pigeon. Update the app and try again.</string>
+    <string name="backup_refused_too_large">The file is too big to be a Pigeon settings file</string>
+    <string name="backup_refused_unreadable">Could not read the file</string>
+    <string name="backup_note_favorites">%1$d of %2$d starred messages found</string>
+    <string name="backup_note_reminders">%1$d of %2$d reminders restored</string>
+    <string name="backup_note_chats">%1$d of %2$d pinned or locked chats found</string>
+    <string name="backup_note_app_lock">App lock stays off: set a screen lock on the phone first</string>
+    <string name="backup_note_no_messages">Pinned and locked chats, reminders and starred messages were not changed: Pigeon cannot read your messages right now</string>
 </resources>

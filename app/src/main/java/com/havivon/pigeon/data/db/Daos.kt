@@ -23,6 +23,9 @@ interface ColorRuleDao {
     @Insert
     suspend fun insert(rule: ColorRuleEntity): Long
 
+    @Query("DELETE FROM color_rules")
+    suspend fun deleteAll()
+
     @Query("UPDATE color_rules SET label = :label, kind = :kind, value = :value, argb = :argb, enabled = :enabled WHERE id = :id")
     suspend fun updateContent(id: Int, label: String, kind: String, value: String, argb: Long, enabled: Boolean)
 
@@ -55,6 +58,9 @@ interface FavoriteDao {
     @Insert
     suspend fun insert(favorite: FavoriteEntity): Long
 
+    @Query("DELETE FROM favorites")
+    suspend fun deleteAll()
+
     @Update
     suspend fun update(favorite: FavoriteEntity)
 
@@ -75,6 +81,9 @@ interface ReminderDao {
 
     @Insert
     suspend fun insert(reminder: ReminderEntity): Long
+
+    @Query("DELETE FROM reminders WHERE done = 0")
+    suspend fun deletePending()
 
     @Query("UPDATE reminders SET done = :done WHERE id = :id")
     suspend fun setDone(id: Long, done: Boolean)
@@ -97,6 +106,9 @@ interface LockedThreadDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(lock: LockedThreadEntity)
 
+    @Query("DELETE FROM locked_threads")
+    suspend fun deleteAll()
+
     @Query("DELETE FROM locked_threads WHERE threadId = :threadId")
     suspend fun delete(threadId: Long)
 }
@@ -108,6 +120,9 @@ interface PinnedThreadDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(pin: PinnedThreadEntity)
+
+    @Query("DELETE FROM pinned_threads")
+    suspend fun deleteAll()
 
     @Query("DELETE FROM pinned_threads WHERE threadId = :threadId")
     suspend fun delete(threadId: Long)
@@ -142,6 +157,9 @@ interface SpamDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertNotSpam(entry: NotSpamEntity)
 
+    @Query("DELETE FROM not_spam")
+    suspend fun deleteAllNotSpam()
+
     @Query("DELETE FROM not_spam WHERE address = :address")
     suspend fun deleteNotSpam(address: String)
 
@@ -171,6 +189,9 @@ interface BlockedKeywordDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(keyword: BlockedKeywordEntity): Long
 
+    @Query("DELETE FROM blocked_keywords")
+    suspend fun deleteAll()
+
     @Query("DELETE FROM blocked_keywords WHERE id = :id")
     suspend fun delete(id: Long)
 }
@@ -188,6 +209,12 @@ interface FolderDao {
 
     @Insert
     suspend fun insertFolder(folder: CustomFolderEntity): Long
+
+    @Query("DELETE FROM custom_folders")
+    suspend fun deleteAllFolders()
+
+    @Query("DELETE FROM folder_overrides")
+    suspend fun deleteAllOverrides()
 
     @Query("UPDATE custom_folders SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)

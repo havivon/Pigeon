@@ -12,6 +12,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -28,12 +29,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.AppIconSwitcher
 import com.havivon.pigeon.data.DefaultSmsRole
+import com.havivon.pigeon.data.backup.BackupFiles
 import com.havivon.pigeon.data.reminders.AlarmReminderScheduler
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
+import com.havivon.pigeon.ui.app.LocalNotices
 import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.navigation.Screen
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
+import java.time.LocalDate
 
 /** A permission request that returns this fast showed no dialog: the system suppresses it after a refusal, so the app's settings are the only way. */
 private const val SUPPRESSED_DIALOG_MS = 400L
@@ -48,6 +52,24 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
         SettingsViewModel(app.settings, app.rules, app.blockedKeywords, app.folders, AppIconSwitcher.current(appContext)) { AppIconSwitcher.set(appContext, it) }
     }
     val state by vm.state.collectAsStateWithLifecycle()
+
+    // Export and import of the settings file: the system's file picker, so Pigeon needs no storage permission
+    val backup = pigeonViewModel { app -> BackupViewModel(app.backup) }
+    val pendingImport by backup.pending.collectAsStateWithLifecycle()
+    val notices = LocalNotices.current
+    val exportRequest = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) backup.export(versionName(context)) { json -> BackupFiles.write(context, uri, json) }
+    }
+    val importRequest = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) backup.load { BackupFiles.read(context, uri) }
+    }
+    LaunchedEffect(backup) {
+        backup.eventFlow.collect { e ->
+            notices.show(backupNotice(context, e))
+            // The icon is switched behind the picker's back: show the chosen one
+            if (e is BackupEvent.Imported) vm.iconChanged(AppIconSwitcher.current(context.applicationContext))
+        }
+    }
     val auth = LocalAuthenticator.current
     val defaultApp = LocalDefaultApp.current
     val needsDefault = rememberNeedsDefaultNotice()
@@ -83,6 +105,15 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
         versionName = versionName(context),
     )
 
+    pendingImport?.let { file ->
+        ImportConfirmDialog(
+            summary = file.summary(),
+            // Importing can change the app lock and the locked chats, so it asks for the fingerprint or screen lock first
+            onConfirm = { auth.authenticate { ok -> if (ok) backup.confirmImport(canLock = auth.available()) } },
+            onDismiss = backup::cancelImport,
+        )
+    }
+
     SettingsScreen(
         state = state,
         env = env,
@@ -95,6 +126,8 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onOpenKeywords = { navigate(Screen.BlockedKeywords) },
             onOpenFolders = { navigate(Screen.Folders) },
             onOpenRecycleBin = { navigate(Screen.RecycleBin) },
+            onExportSettings = { exportRequest.launch("pigeon-settings-${LocalDate.now()}.json") },
+            onImportSettings = { importRequest.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
             // Deleting needs the default SMS app; turning it off always works
             onAutoDeleteCodes = { on -> if (on && !defaultApp.isDefault) needsDefault() else vm.setAutoDeleteCodes(on) },
             onLockScreenText = vm::setLockScreenText,

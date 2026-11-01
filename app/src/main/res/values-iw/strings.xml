@@ -493,4 +493,37 @@
         <item quantity="other">%1$d קטגוריות</item>
     </plurals>
     <string name="inbox_empty_custom_body">לוחצים לחיצה ארוכה על שיחה ובוחרים „העבר לקטגוריה”.</string>
+    <!-- backup_ (הגדרות, גיבוי: ייצוא וייבוא של קובץ ההגדרות) -->
+    <string name="settings_section_backup">גיבוי</string>
+    <string name="settings_backup_export">ייצוא הגדרות</string>
+    <string name="settings_backup_export_note">שמירת ההגדרות לקובץ. ההודעות שלך לא נכללות לעולם.</string>
+    <string name="settings_backup_import">ייבוא הגדרות</string>
+    <string name="settings_backup_import_note">טעינת הגדרות מקובץ ש-Pigeon שמר</string>
+    <string name="backup_exported">ההגדרות יוצאו</string>
+    <string name="backup_export_failed">לא הצלחנו לשמור את הקובץ</string>
+    <string name="backup_import_title">לייבא הגדרות?</string>
+    <string name="backup_import_saved_on">נשמר ב-%1$s</string>
+    <string name="backup_import_saved_unknown">קובץ הגדרות של Pigeon</string>
+    <string name="backup_import_contains">מה יש בקובץ</string>
+    <string name="backup_import_nothing">שום דבר ש-Pigeon יכול להשתמש בו</string>
+    <string name="backup_import_replaces">הייבוא מחליף את ההגדרות הנוכחיות, כללי הצבע, הקטגוריות, המילים החסומות, השיחות המוצמדות והנעולות, התזכורות וההודעות המסומנות בכוכב. ההודעות שלך נשארות כמו שהן.</string>
+    <string name="backup_import_confirm">ייבוא</string>
+    <string name="backup_item_settings">הגדרות האפליקציה</string>
+    <string name="backup_item_moves">שיחות שהועברו לקטגוריה</string>
+    <string name="backup_item_pinned">שיחות מוצמדות</string>
+    <string name="backup_item_locked">שיחות נעולות</string>
+    <string name="backup_item_not_spam">שולחים שסומנו כ„לא ספאם”</string>
+    <string name="backup_item_reminders">תזכורות</string>
+    <string name="backup_item_favorites">הודעות מסומנות בכוכב</string>
+    <string name="backup_imported">ההגדרות יובאו</string>
+    <string name="backup_import_failed">הייבוא נכשל. שום דבר לא השתנה.</string>
+    <string name="backup_refused_not_settings">זה לא קובץ הגדרות של Pigeon</string>
+    <string name="backup_refused_too_new">הקובץ נשמר בגרסה חדשה יותר של Pigeon. עדכנו את האפליקציה ונסו שוב.</string>
+    <string name="backup_refused_too_large">הקובץ גדול מדי בשביל להיות קובץ הגדרות של Pigeon</string>
+    <string name="backup_refused_unreadable">לא הצלחנו לקרוא את הקובץ</string>
+    <string name="backup_note_favorites">נמצאו %1$d מתוך %2$d הודעות מסומנות בכוכב</string>
+    <string name="backup_note_reminders">שוחזרו %1$d מתוך %2$d תזכורות</string>
+    <string name="backup_note_chats">נמצאו %1$d מתוך %2$d שיחות מוצמדות או נעולות</string>
+    <string name="backup_note_app_lock">נעילת האפליקציה נשארת כבויה: קודם מגדירים נעילת מסך בטלפון</string>
+    <string name="backup_note_no_messages">שיחות מוצמדות ונעולות, תזכורות והודעות מסומנות לא שונו: Pigeon לא יכול לקרוא עכשיו את ההודעות שלך</string>
 </resources>
