@@ -52,8 +52,10 @@ internal object Text {
      * Whether [phrase] appears in [words] as whole consecutive words. A Hebrew first word also matches
      * with ה/ו/ב/ל/מ/ש/כ glued in front, so "משלוח" matches "המשלוח" and "וכשהמשלוח" but not "משלוחים".
      */
-    fun containsPhrase(words: List<String>, phrase: String): Boolean {
-        val target = words(phrase)
+    fun containsPhrase(words: List<String>, phrase: String): Boolean = containsWords(words, words(phrase))
+
+    /** [containsPhrase] with the phrase already split by [words]: for keyword lists checked against many messages. */
+    fun containsWords(words: List<String>, target: List<String>): Boolean {
         if (target.isEmpty() || target.size > words.size) return false
         for (start in 0..words.size - target.size) {
             if (!sameWord(words[start], target[0], prefixAllowed = true)) continue

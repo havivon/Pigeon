@@ -60,7 +60,7 @@ class FolderClassifierTest {
                 Triple("היתרה בחשבונך היא 3,200 ₪", "0527000000", false),
                 Triple("בוצעה עסקה בכרטיס שלך", "Isracard", false),
                 Triple("Transaction of \$45.00 at Amazon", "VISA", false),
-                Triple("Your balance is \$1,500.00", "0501110000", false),
+                Triple("Your account balance is \$1,500.00", "0501110000", false),
                 Triple("Your card was debited", "Chase", false),
                 Triple("שלום, מעדכנים אותך שהחשבון נפתח", "Bank-Hapoalim", false),
                 Triple("עדכון חשוב", "BANKLEUMI", false),
@@ -84,6 +84,131 @@ class FolderClassifierTest {
                 Triple("עדכון", "דואר ישראל", false),
                 Triple("update", "Cheetah", false),
                 Triple("תודה", "DHL Express", false),
+            ),
+        )
+    }
+
+    @Test
+    fun banksByTheirSenderIds() {
+        val senders = listOf(
+            "Leumi", "BankLeumi", "Leumi-Card", "Hapoalim", "Poalim", "BankHapoalim", "Discount", "DiscountBank", "Mizrahi-Tefahot",
+            "MizrahiTfahot", "FIBI", "Beinleumi", "Yahav", "Bank Yahav", "Mercantile", "BankJerusalem", "Massad", "OtsarHahayal",
+            "OneZero", "Pepper", "Isracard", "Max", "MAX-IT", "CAL", "Visa Cal", "AMEX", "American Express", "Diners", "bit",
+            "PayBox", "PayPal", "Chase", "HSBC", "Bank of Somewhere",
+            "בנק לאומי", "לאומי", "בנק הפועלים", "דיסקונט", "מזרחי טפחות", "הבינלאומי", "בנק יהב", "בנק ירושלים", "אוצר החייל",
+            "ישראכרט", "מקס", "כאל", "ויזה כאל", "ביט",
+        )
+        for (sender in senders) assertEquals(sender, Folder.Banks, classify("עדכון לגבי הפעילות האחרונה", address = sender))
+    }
+
+    @Test
+    fun banksByTheShapeOfATransaction() {
+        check(
+            Folder.Banks,
+            listOf(
+                Triple("חיוב בסך 89.90 ש\"ח בכרטיס המסתיים ב-1234", "0527000000", false),
+                Triple("בוצעה עסקה בסך ₪250 בבית קפה", "Notify", false),
+                Triple("הופקדו 1,000 ₪ לחשבונך", "Notify", false),
+                Triple("נמשכו 500 ₪ מחשבונך בכספומט", "0527000000", false),
+                Triple("יתרת העו״ש שלך: 4,321.50 ₪", "Notify", false),
+                Triple("כרטיסך שמסתיים ב-9876 חויב ב-120 ש״ח", "Notify", false),
+                Triple("Your card ending in 4821 was charged \$12.99", "Alerts", false),
+                Triple("A withdrawal of \$200 was made from your account", "Alerts", false),
+                Triple("\$1,250.00 was deposited to your checking account", "Alerts", false),
+                Triple("Transaction: 45.00 USD at Store, card x4821", "Alerts", false),
+                Triple("Your account balance is £300", "+447700900123", false),
+                Triple("€30 was transferred to your account", "Alerts", false),
+            ),
+        )
+    }
+
+    @Test
+    fun adsAreNotBanks() {
+        check(
+            Folder.All,
+            listOf(
+                // "כרטיס" is a ticket too, "אשראי" and "תשלומים" are how a shop sells
+                Triple("כרטיסים להופעה במחיר מיוחד! רק 99 ₪ לכרטיס", "Tickets", false),
+                Triple("מבצע! 12 תשלומים ללא ריבית בכרטיס אשראי", "SuperPharm", false),
+                Triple("ללא חיוב נוסף! מנוי חודשי ב-29.90 ₪", "YesTV", false),
+                Triple("יתרת הנקודות שלך: 250. ממשו עכשיו!", "Shufersal", false),
+                Triple("נשארה לך יתרה של 50 ₪ בשובר המתנה", "Fox", false),
+                Triple("עסקה משתלמת: 2 ב-100 ₪", "Castro", false),
+                Triple("הזוכה בהגרלה יקבל 500 ₪!", "Lotto", false),
+                Triple("המבצע נמשך עד מוצאי שבת, הכל ב-₪20", "Zara", false),
+                Triple("יתרת החשבון לתשלום: 150 ₪", "Cellcom", false),
+                Triple("חיוב החשבון החודשי שלך יבוצע בקרוב", "Partner", false),
+                Triple("קחו בחשבון: המבצע ב-49 ₪ רק היום", "Dominos", false),
+                Triple("Get 20% off your next purchase over \$50", "ShopNow", false),
+                Triple("Credit card offer: 0% APR, apply now", "OfferCo", false),
+                Triple("Your balance of points: 1,200. Redeem now", "Rewards", false),
+                // Names that only look like a bank's
+                Triple("הכל ב-10 ₪ בסניפים", "Max Stock", false),
+                Triple("תזכורת לתור", "Leumit", false),
+                Triple("עדכון בנוגע לפנייתך", "ביטוח לאומי", false),
+                Triple("מבצעי סוף שבוע", "Cal Fitness", false),
+                Triple("Big sale", "Bit Shop", false),
+                Triple("Hello", "Maxim Pizza", false),
+            ),
+        )
+    }
+
+    @Test
+    fun aLoneBankWordFromAPhoneNumberIsPersonal() {
+        check(
+            Folder.Personal,
+            listOf(
+                Triple("יש לי כרטיס נוסף להופעה, רוצה?", "0541234567", false),
+                Triple("שילמתי בכרטיס אשראי, תחזיר לי 50 ₪", "0541234567", false),
+                Triple("What's your balance on the game?", "+14155550100", false),
+            ),
+        )
+    }
+
+    @Test
+    fun contactsWhoseNamesLookLikeABankStayPersonal() {
+        assertEquals(Folder.Personal, classify("מה נשמע?", address = "0541234567", contact = true, name = "Max"))
+        assertEquals(Folder.Personal, classify("נתראה", address = "0541234567", contact = true, name = "Dan Mizrahi"))
+        assertEquals(Folder.Personal, classify("היי", address = "0541234567", contact = true, name = "יוסי מזרחי"))
+        assertEquals(Folder.Personal, classify("חויבתי ב-50 ₪ בכרטיס המסתיים ב-1234", address = "0541234567", contact = true, name = "Mom"))
+        assertEquals(Folder.Banks, classify("עדכון", address = "0391234567", contact = true, name = "Isracard"))
+    }
+
+    @Test
+    fun deliveriesByTheShapeOfAnUpdate() {
+        check(
+            Folder.Deliveries,
+            listOf(
+                Triple("החבילה שלך יצאה למשלוח", "Shop", false),
+                Triple("ההזמנה שלך נשלחה, מספר מעקב: 5501234567", "Shop", false),
+                Triple("חבילה ממתינה לך בנקודת האיסוף", "Lockers", false),
+                Triple("המשלוח נמסר ללקוח", "0527000000", false),
+                Triple("Your order has shipped", "ShopNow", false),
+                Triple("Your parcel is out for delivery", "Couriers", false),
+                Triple("Tracking number: 1Z999AA10123456784", "ShopNow", false),
+                Triple("Your shipment RR123456789IL is in transit", "ShopNow", false),
+                Triple("עדכון", "HFD", false),
+                Triple("Your food is on its way", "Wolt", false),
+            ),
+        )
+    }
+
+    @Test
+    fun adsAreNotDeliveries() {
+        check(
+            Folder.All,
+            listOf(
+                Triple("משלוח חינם בכל הזמנה מעל 200 ₪!", "Fox", false),
+                Triple("פיצה משפחתית ב-49 ₪, עכשיו עם משלוח חינם", "Dominos", false),
+                Triple("חבילת גלישה 50GB ב-29 ₪ בלבד", "Cellcom", false),
+                Triple("החבילה שלך עומדת להסתיים, חדשו עכשיו", "Partner", false),
+                Triple("ההזמנה תגיע עד הבית תוך 3 ימי עסקים", "Ikea", false),
+                Triple("משלוחים לכל הארץ, הזמינו עכשיו", "Shop", false),
+                Triple("Free shipping on all orders this weekend", "ShopNow", false),
+                Triple("Track your order easily with our new app", "AppCo", false),
+                Triple("New packages for your summer vacation", "Travel", false),
+                Triple("Your Uber is arriving in 2 minutes", "Uber", false),
+                Triple("We deliver to Groups too", "Groups", false),
             ),
         )
     }
