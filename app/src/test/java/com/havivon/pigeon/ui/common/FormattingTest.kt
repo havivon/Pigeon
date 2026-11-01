@@ -68,4 +68,16 @@ class FormattingTest {
         assertEquals(avatarColor("0525550100"), avatarColor("0525550100"))
         assertFalse(avatarColor("0525550100") == SpamArgb)
     }
+
+    @Test
+    fun `an avatar shows the first letter or emoji, and a person for a bare number`() {
+        assertEquals("D", avatarInitial("danny"))
+        assertEquals("ד", avatarInitial("  דני"))
+        assertEquals("😀", avatarInitial("😀 Mom"))
+        // A number is shown left to right with direction marks around it: never an empty circle
+        assertEquals(null, avatarInitial(ltr("+972 52-555-0123")))
+        assertEquals(null, avatarInitial("0525550123"))
+        assertEquals(null, avatarInitial(""))
+        assertEquals("L", avatarInitial(ltr("Leumi")))
+    }
 }

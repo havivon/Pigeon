@@ -472,4 +472,25 @@ class ViewModelsTest {
         assertEquals("Danny", vm.state.value.senderName)
         assertEquals(listOf(1L), vm.state.value.messages.map { it.messageId })
     }
+
+    @Test
+    fun `the starred chip lists the starred messages, also by text, never from a locked chat`() = runTest {
+        messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny"), conversation(3, "0535550100", name = "Secret"))
+        favorites.star(10, 1, "0525550100", "Danny", "The address: 12 Maple Street", millis(2026, 10, 30, 9, 0))
+        favorites.star(11, 1, "0525550100", "Danny", "Gate code 4590", millis(2026, 10, 30, 10, 0))
+        favorites.star(12, 3, "0535550100", "Secret", "Hidden", millis(2026, 10, 30, 11, 0))
+        locks.state.value = setOf(3L)
+        val vm = SearchViewModel(
+            messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now }, lockedThreads = locks.state, favorites = favorites.state, work = main.dispatcher,
+        )
+        collect(vm.state)
+        vm.toggleStarred()
+        advanceTimeBy(300)
+        assertEquals(setOf(10L, 11L), vm.state.value.messages.map { it.messageId }.toSet())
+        assertEquals("Danny", vm.state.value.messages.first().name)
+        vm.setQuery("maple")
+        advanceTimeBy(300)
+        assertEquals(listOf(10L), vm.state.value.messages.map { it.messageId })
+        assertTrue("starred results are messages only", vm.state.value.conversations.isEmpty())
+    }
 }

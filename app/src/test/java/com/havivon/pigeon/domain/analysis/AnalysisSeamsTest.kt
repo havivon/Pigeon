@@ -33,6 +33,14 @@ class AnalysisSeamsTest {
     }
 
     @Test
+    fun `someone the user wrote to is never spam, even without the contacts permission`() = runTest {
+        val spam = FakeSpam()
+        val hook = SpamFilterHook(FakeContacts(), spam, FakeBlockedKeywords()) { threadId -> threadId == 7L }
+        assertEquals(IncomingVerdict.Notify, hook.onStored(stored("+972551234567", scam)))
+        assertTrue(spam.verdictState.value.isEmpty())
+    }
+
+    @Test
     fun `a contact is never spam`() = runTest {
         val spam = FakeSpam()
         val hook = SpamFilterHook(FakeContacts(listOf(Contact(1, "Dana", listOf("0551234567")))), spam, FakeBlockedKeywords())

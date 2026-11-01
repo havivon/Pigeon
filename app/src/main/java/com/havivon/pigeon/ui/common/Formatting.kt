@@ -108,3 +108,22 @@ fun ltr(text: String): String = if (text.any { it.isLetter() }) text else "$LRI$
 
 /** The text without the direction marks [ltr] adds, for the clipboard. */
 fun withoutIsolates(text: String): String = text.filter { it != LRI && it != PDI }
+
+/**
+ * What an avatar shows for [name]: its first letter (upper case) or emoji, whole even when it is
+ * two UTF-16 chars. Null for a phone number, or nothing at all: the avatar then shows a person
+ * icon. The direction marks of [ltr] are skipped, so a number never shows as an empty circle.
+ */
+fun avatarInitial(name: String): String? {
+    var i = 0
+    while (i < name.length) {
+        val cp = name.codePointAt(i)
+        val ch = String(Character.toChars(cp))
+        when {
+            Character.isWhitespace(cp) || ch[0] == LRI || ch[0] == PDI || Character.getType(cp) == Character.FORMAT.toInt() -> i += ch.length
+            Character.isDigit(cp) || ch == "+" || ch == "(" -> return null
+            else -> return ch.uppercase()
+        }
+    }
+    return null
+}

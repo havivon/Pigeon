@@ -79,6 +79,7 @@ fun SearchScreen(
     onSender: (Long?) -> Unit = {},
     onHasLink: () -> Unit = {},
     onHasCode: () -> Unit = {},
+    onStarred: () -> Unit = {},
     onRange: (DateRange) -> Unit = {},
     onOpenConversation: (Long) -> Unit = {},
     /** False in the design snapshots, where there is no keyboard to open. */
@@ -89,7 +90,7 @@ fun SearchScreen(
         Modifier.fillMaxSize().background(c.background).imePadding(),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        item { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onRange, autoFocus) }
+        item { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus) }
         when {
             state.query.isBlank() && !state.filters.any -> item {
                 EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
@@ -122,6 +123,7 @@ private fun SearchHeader(
     onSender: (Long?) -> Unit,
     onHasLink: () -> Unit,
     onHasCode: () -> Unit,
+    onStarred: () -> Unit,
     onRange: (DateRange) -> Unit,
     autoFocus: Boolean,
 ) {
@@ -165,6 +167,7 @@ private fun SearchHeader(
             SenderChip(state, onSender)
             HeaderChip(stringResource(R.string.search_filter_link), state.filters.hasLink, onHasLink)
             HeaderChip(stringResource(R.string.search_filter_code), state.filters.hasCode, onHasCode)
+            HeaderChip(stringResource(R.string.search_filter_starred), state.filters.starred, onStarred)
             HeaderChip(stringResource(R.string.search_filter_7_days), state.filters.range == DateRange.Last7Days, {
                 onRange(if (state.filters.range == DateRange.Last7Days) DateRange.Any else DateRange.Last7Days)
             })

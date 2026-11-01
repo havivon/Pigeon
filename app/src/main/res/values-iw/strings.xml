@@ -61,6 +61,7 @@
     <string name="search_filter_sender">שולח</string>
     <string name="search_filter_link">יש קישור</string>
     <string name="search_filter_code">יש קוד</string>
+    <string name="search_filter_starred">מסומנות בכוכב</string>
     <string name="search_filter_7_days">7 ימים אחרונים</string>
     <string name="search_filter_30_days">30 ימים אחרונים</string>
     <string name="search_section_conversations">שיחות</string>

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.common.avatarInitial
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /** The coloured band at the top of every screen, with two soft circles for depth. */
@@ -82,7 +84,13 @@ fun Avatar(name: String, argb: Long, size: Dp = 48.dp) {
             .background(Brush.linearGradient(listOf(base.copy(alpha = 0.7f).compositeOver(Color.White), base))),
         contentAlignment = Alignment.Center,
     ) {
-        Text(name.trim().take(1), color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.42f).sp)
+        val initial = avatarInitial(name)
+        if (initial != null) {
+            Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.42f).sp)
+        } else {
+            // A number without a contact name
+            Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(size * 0.55f))
+        }
     }
 }
 

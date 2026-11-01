@@ -9,6 +9,9 @@ import com.havivon.pigeon.domain.analysis.AnalysisSeams
 import com.havivon.pigeon.domain.analysis.SpamFilterHook
 import kotlinx.coroutines.launch
 
+/** How far back a conversation is read for a message the user wrote (which makes the sender known). */
+private const val KNOWN_SENDER_DEPTH = 50
+
 class PigeonApp : Application() {
 
     /** The platform with the analysis plugged in: codes, spam on arrival, folders. See [AppContainer]. */
@@ -17,7 +20,11 @@ class PigeonApp : Application() {
             this,
             codeFinder = AnalysisSeams.codeFinder,
             folderClassifier = AnalysisSeams.folderClassifier,
-            incomingHook = { SpamFilterHook(it.contacts, it.spam, it.blockedKeywords) },
+            incomingHook = { app ->
+                SpamFilterHook(app.contacts, app.spam, app.blockedKeywords) { threadId ->
+                    app.messages.recentMessages(threadId, KNOWN_SENDER_DEPTH).any { it.type.outgoing }
+                }
+            },
             reminderScheduler = AlarmReminderScheduler(this),
         )
     }

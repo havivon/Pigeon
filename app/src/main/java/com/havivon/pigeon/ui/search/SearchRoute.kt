@@ -13,7 +13,7 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit) {
     val context = LocalContext.current
     val vm = pigeonViewModel { app ->
         val labels = dateLabels(context)
-        SearchViewModel(app.messages, conversationMapper(context, app, labels), labels, app.codeFinder, lockedThreads = app.locks.lockedThreadIds)
+        SearchViewModel(app.messages, conversationMapper(context, app, labels), labels, app.codeFinder, lockedThreads = app.locks.lockedThreadIds, favorites = app.favorites.favorites)
     }
     val state by vm.state.collectAsStateWithLifecycle()
     val query by vm.queryText.collectAsStateWithLifecycle()
@@ -24,6 +24,7 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit) {
         onSender = vm::setSender,
         onHasLink = vm::toggleHasLink,
         onHasCode = vm::toggleHasCode,
+        onStarred = vm::toggleStarred,
         onRange = vm::setRange,
         onOpenConversation = openThread,
     )

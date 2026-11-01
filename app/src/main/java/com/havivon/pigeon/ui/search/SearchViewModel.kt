@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.LinkAnalyzer
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.Favorite
 import com.havivon.pigeon.domain.model.SearchResults
 import com.havivon.pigeon.domain.model.SmsConversation
+import com.havivon.pigeon.domain.model.SmsMessage
+import com.havivon.pigeon.domain.model.SmsType
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.seam.CodeFinder
 import com.havivon.pigeon.ui.common.ConversationMapper
@@ -51,8 +54,10 @@ data class SearchFilters(
     val hasLink: Boolean = false,
     val hasCode: Boolean = false,
     val range: DateRange = DateRange.Any,
+    /** Only the starred messages (the favourites), kept even when the message itself was deleted. */
+    val starred: Boolean = false,
 ) {
-    val any: Boolean get() = threadId != null || hasLink || hasCode || range != DateRange.Any
+    val any: Boolean get() = threadId != null || hasLink || hasCode || range != DateRange.Any || starred
 }
 
 /** A message that matched, as a result row. */
@@ -94,7 +99,7 @@ fun filterResults(results: SearchResults, filters: SearchFilters, nowMillis: Lon
             (!filters.hasLink || LinkAnalyzer.findLinks(m.body).isNotEmpty()) &&
             (!filters.hasCode || codeFinder.find(m.body) != null)
     }
-    val conversations = if (filters.hasLink || filters.hasCode) {
+    val conversations = if (filters.hasLink || filters.hasCode || filters.starred) {
         emptyList()
     } else {
         results.conversations.filter { c ->
@@ -109,6 +114,18 @@ fun senderOptions(results: SearchResults, titleOf: (Long) -> String?): List<Send
     (results.conversations.map { it.threadId } + results.messages.map { it.threadId })
         .distinct()
         .mapNotNull { id -> titleOf(id)?.let { SenderOption(id, it) } }
+
+/**
+ * The starred messages as search results, newest star first: those whose text or sender contains
+ * [query] (all of them when nothing is typed). They are the favourites' own copies, so a starred
+ * message stays findable after the message itself was deleted.
+ */
+fun starredMessages(favorites: List<Favorite>, query: String): List<SmsMessage> {
+    val q = query.trim()
+    return favorites
+        .filter { f -> q.isEmpty() || f.body.contains(q, ignoreCase = true) || f.senderName?.contains(q, ignoreCase = true) == true || PhoneNumbers.matchesQuery(f.address, q) }
+        .map { f -> SmsMessage(f.messageId, f.threadId, f.address, f.body, f.dateMillis, 0, SmsType.Inbox, read = true, subId = null) }
+}
 
 /**
  * Who the sender chip offers before anything is typed: the newest conversations, locked ones left out.
@@ -130,6 +147,8 @@ class SearchViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     /** Left out of the sender chip; the repository already leaves them out of the results. */
     private val lockedThreads: Flow<Set<Long>> = flowOf(emptySet()),
+    /** For the "Starred" chip. */
+    favorites: Flow<List<Favorite>> = flowOf(emptyList()),
     /** Where the results are filtered and mapped: off the main thread, since every message is read for links and codes. */
     work: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
@@ -147,10 +166,12 @@ class SearchViewModel(
      */
     private val results = combine(
         query.debounce(DEBOUNCE_MS),
-        filters.map { it.threadId to it.any }.distinctUntilChanged(),
-    ) { q, f -> q to f }.flatMapLatest { (q, f) ->
-        val (threadId, anyFilter) = f
+        filters.map { Triple(it.threadId, it.any, it.starred) }.distinctUntilChanged(),
+        favorites,
+    ) { q, f, favs -> Triple(q, f, favs) }.flatMapLatest { (q, f, favs) ->
+        val (threadId, anyFilter, starred) = f
         when {
+            starred -> flowOf(q to SearchResults(emptyList(), starredMessages(favs, q)))
             q.isNotBlank() -> flow { emit(q to messages.search(q)) }
             anyFilter -> flow { emit(q to SearchResults(emptyList(), messages.browse(threadId, BROWSE_LIMIT))) }
             else -> flowOf(q to SearchResults.Empty)
@@ -160,7 +181,8 @@ class SearchViewModel(
     val state: StateFlow<SearchUiState> = combine(query, filters, results, messages.conversations, lockedThreads) { q, f, (searched, found), conversations, locked ->
         val byId = conversations.associateBy { it.threadId }
         val t = now()
-        val filtered = filterResults(found, f, t, codeFinder)
+        // Locked conversations are never in the results (the repository leaves them out; starred copies are checked here)
+        val filtered = filterResults(found, f, t, codeFinder).let { r -> r.copy(messages = r.messages.filter { it.threadId !in locked }) }
         SearchUiState(
             query = q,
             filters = f,
@@ -195,6 +217,7 @@ class SearchViewModel(
     fun setSender(threadId: Long?) = filters.update { it.copy(threadId = threadId) }
     fun toggleHasLink() = filters.update { it.copy(hasLink = !it.hasLink) }
     fun toggleHasCode() = filters.update { it.copy(hasCode = !it.hasCode) }
+    fun toggleStarred() = filters.update { it.copy(starred = !it.starred) }
     fun setRange(value: DateRange) = filters.update { it.copy(range = value) }
     fun clearFilters() {
         filters.value = SearchFilters()

@@ -61,6 +61,7 @@
     <string name="search_filter_sender">Sender</string>
     <string name="search_filter_link">Has a link</string>
     <string name="search_filter_code">Has a code</string>
+    <string name="search_filter_starred">Starred</string>
     <string name="search_filter_7_days">Last 7 days</string>
     <string name="search_filter_30_days">Last 30 days</string>
     <string name="search_section_conversations">Conversations</string>
