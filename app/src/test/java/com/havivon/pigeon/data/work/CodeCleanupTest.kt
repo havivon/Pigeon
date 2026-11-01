@@ -47,4 +47,17 @@ class CodeCleanupTest {
     fun `without a code finder nothing is deleted`() {
         assertTrue(codesToDelete(listOf(candidate(1, "Your code 123456", 3 * day)), CodeFinder.None, now, 0, emptySet()).isEmpty())
     }
+
+    @Test
+    fun `codes from the user's contacts are never deleted`() {
+        val ids = codesToDelete(
+            listOf(
+                CodeCandidate(1, "Your code 123456", now - 2 * day, address = "Leumi"),
+                CodeCandidate(2, "The gate code is 123456", now - 2 * day, address = "+972525550100"),
+            ),
+            finder, now, sinceMillis = 0, starred = emptySet(),
+            fromContact = { it == "+972525550100" },
+        )
+        assertEquals(listOf(1L), ids)
+    }
 }

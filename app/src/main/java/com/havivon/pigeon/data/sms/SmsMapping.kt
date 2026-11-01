@@ -82,6 +82,14 @@ fun typeAfterSendResult(current: SmsType, success: Boolean, isLastPart: Boolean)
     else -> null
 }
 
+/**
+ * The condition on the row's update for a send result: a failure always lands, a success only on a
+ * message that is not Failed by then. The read in [typeAfterSendResult] and the write are two steps,
+ * and two parts of one message can report at the same moment; the condition makes the write atomic.
+ */
+fun sentResultGuard(next: SmsType): String? =
+    if (next == SmsType.Failed) null else "type != ${SmsType.Failed.providerValue}"
+
 /** A LIKE pattern that finds [query] anywhere, with its own `%`, `_` and `\` taken literally (ESCAPE '\'). */
 fun likeContains(query: String): String {
     val escaped = buildString {

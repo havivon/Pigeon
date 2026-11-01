@@ -11,10 +11,14 @@ import android.provider.Telephony
 import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.runAsync
 import com.havivon.pigeon.domain.model.SmsType
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** How the system tells which SIM a message came in on (the first key is Android 11+, the second older). */
 private const val EXTRA_SUBSCRIPTION_INDEX = "android.telephony.extra.SUBSCRIPTION_INDEX"
 private const val EXTRA_SUBSCRIPTION_LEGACY = "subscription"
+
+/** A receiver's goAsync work must end within about 10 seconds; storing and notifying come first. */
+private const val WIDGET_UPDATE_BUDGET_MILLIS = 4_000L
 
 /**
  * New SMS, delivered only to the default SMS app. Exported because the system delivers it, and
@@ -41,8 +45,9 @@ class SmsDeliverReceiver : BroadcastReceiver() {
         val app = AppContainer.from(context)
         runAsync("SmsDeliver") {
             app.incomingSms.handle(parts, subId)
-            // The process may not live long enough for the usual quiet-time refresh
-            app.widgets.updateNow()
+            // The process may not live long enough for the usual quiet-time refresh. The message is
+            // stored and notified by now; the redraw only gets what is left of the broadcast's time.
+            withTimeoutOrNull(WIDGET_UPDATE_BUDGET_MILLIS) { app.widgets.updateNow() }
         }
     }
 }
@@ -75,7 +80,8 @@ class SmsSentReceiver : BroadcastReceiver() {
             val current = resolver.queryList(uri, arrayOf(Telephony.Sms.TYPE)) { SmsType.fromProvider(it.int(Telephony.Sms.TYPE)) }.firstOrNull()
                 ?: return@runAsync
             val next = typeAfterSendResult(current, success, isLastPart = part >= count - 1) ?: return@runAsync
-            resolver.update(uri, ContentValues().apply { put(Telephony.Sms.TYPE, next.providerValue) }, null, null)
+            // The parts' results are handled at the same time: Sent must never overwrite a Failed another part just wrote
+            resolver.update(uri, ContentValues().apply { put(Telephony.Sms.TYPE, next.providerValue) }, sentResultGuard(next), null)
         }
     }
 

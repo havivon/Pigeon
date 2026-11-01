@@ -30,7 +30,7 @@ interface MessageRepository {
     /** The conversation's unread incoming messages, oldest first. */
     suspend fun unreadMessages(threadId: Long): List<SmsMessage>
 
-    /** The system thread for these addresses, created if there is none yet (for a new message). */
+    /** The system thread for these addresses, created if there is none yet (for a new message); 0 if the system has none to give. */
     suspend fun threadIdFor(addresses: List<String>): Long
 
     /** Marks every incoming message in the conversation read (and seen). */
@@ -50,6 +50,13 @@ interface MessageRepository {
      * it, newest first. Locked conversations are never in the results.
      */
     suspend fun search(query: String): SearchResults
+
+    /**
+     * The newest messages, newest first, of one conversation ([threadId]) or of all of them, for the
+     * search filters used without any text ("has a code" alone). As in [search], locked
+     * conversations and messages waiting to be deleted are left out.
+     */
+    suspend fun browse(threadId: Long?, limit: Int): List<SmsMessage>
 
     companion object {
         const val UNDO_WINDOW_MILLIS = 5_000L

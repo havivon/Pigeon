@@ -16,6 +16,7 @@ import com.havivon.pigeon.data.notify.MessageNotifier
 import com.havivon.pigeon.data.reminders.ReminderNotifier
 import com.havivon.pigeon.data.settings.DataStoreSettingsRepository
 import com.havivon.pigeon.data.sms.IncomingSmsHandler
+import com.havivon.pigeon.data.sms.ProviderSmsStore
 import com.havivon.pigeon.data.sms.TelephonyMessageRepository
 import com.havivon.pigeon.data.sms.TelephonySmsSender
 import com.havivon.pigeon.widget.WidgetRefresher
@@ -94,7 +95,7 @@ class AppContainer(
     val reminderNotifier: ReminderNotifier by lazy {
         ReminderNotifier(app, reminders, messages, contacts, locks, settings, reminderScheduler)
     }
-    val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(app, incomingHook(this), notifier) }
+    val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(ProviderSmsStore(app), incomingHook(this), notifier) }
 
     /**
      * The conversation open on the screen right now (the app in the foreground), or null. Its new

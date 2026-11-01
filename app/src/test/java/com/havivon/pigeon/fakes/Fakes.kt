@@ -105,6 +105,16 @@ class FakeMessageRepository : MessageRepository {
         return searchResults
     }
 
+    val browsed = mutableListOf<Long?>()
+
+    override suspend fun browse(threadId: Long?, limit: Int): List<SmsMessage> {
+        browsed += threadId
+        return allMessages.value
+            .filter { (threadId == null || it.threadId == threadId) && it.id !in hiddenMessages.value && it.threadId !in hiddenThreads.value }
+            .sortedByDescending { it.dateMillis }
+            .take(limit)
+    }
+
     private class Undo(private val restore: () -> Unit) : PendingDeletion {
         private var done = false
         override fun undo(): Boolean {

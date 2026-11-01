@@ -11,6 +11,7 @@ import androidx.core.app.RemoteInput
 import com.havivon.pigeon.MainActivity
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.LaunchRequests
+import com.havivon.pigeon.data.sms.NewMessageNotifier
 import com.havivon.pigeon.domain.model.SmsMessage
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
@@ -47,11 +48,11 @@ class MessageNotifier(
     private val codeFinder: CodeFinder,
     /** Whether the conversation is open on the screen: its messages then show there instead. */
     private val isOnScreen: (Long) -> Boolean = { false },
-) {
+) : NewMessageNotifier {
     private val manager = NotificationManagerCompat.from(context)
 
     /** Shows (or refreshes) the conversation's notification with its unread messages, alerting the user. */
-    suspend fun notifyThread(threadId: Long) {
+    override suspend fun notifyThread(threadId: Long) {
         if (isOnScreen(threadId)) return
         val unread = messages.unreadMessages(threadId)
         if (unread.isEmpty()) {
@@ -76,7 +77,7 @@ class MessageNotifier(
      * default SMS app). The notification is then its only copy, so it shows the text, still
      * following the lock-screen setting.
      */
-    suspend fun notifyUnsaved(address: String, body: String, dateMillis: Long) {
+    override suspend fun notifyUnsaved(address: String, body: String, dateMillis: Long) {
         val s = settings.settings.first()
         val title = contacts.displayName(address) ?: address
         val builder = baseBuilder(NotificationChannels.forMessages(context, s.lockScreenText), unreadCount = 1)

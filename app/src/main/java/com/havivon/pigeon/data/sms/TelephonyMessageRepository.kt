@@ -19,19 +19,16 @@ import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNDO_WINDOW_MILLIS
 import com.havivon.pigeon.domain.repository.PinsRepository
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
 
 /** The threads table, without the per-message join the full conversations URI does. */
@@ -41,6 +38,9 @@ private val THREADS_URI: Uri = Telephony.Threads.CONTENT_URI.buildUpon().appendQ
 private val CANONICAL_ADDRESSES_URI: Uri = Uri.parse("content://mms-sms/canonical-addresses")
 
 private const val SEARCH_LIMIT = 200
+
+/** The most messages [TelephonyMessageRepository.browse] reads at once. */
+private const val BROWSE_LIMIT = 1_000
 
 /** Deleted in chunks below SQLite's limit of arguments per statement. */
 private const val DELETE_CHUNK = 500
@@ -113,7 +113,12 @@ class TelephonyMessageRepository(
     }
 
     override suspend fun threadIdFor(addresses: List<String>): Long = withContext(Dispatchers.IO) {
-        Telephony.Threads.getOrCreateThreadId(context, addresses.toSet())
+        try {
+            Telephony.Threads.getOrCreateThreadId(context, addresses.toSet())
+        } catch (_: RuntimeException) {
+            // The system could not find or make one (no permission, a provider that failed)
+            0L
+        }
     }
 
     override suspend fun markThreadRead(threadId: Long) {
@@ -124,20 +129,20 @@ class TelephonyMessageRepository(
             }
             try {
                 resolver.update(Telephony.Sms.CONTENT_URI, values, "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0", arrayOf(threadId.toString()))
-            } catch (_: SecurityException) {
-                // Not the default SMS app: the system database is read-only for us
+            } catch (_: RuntimeException) {
+                // Not the default SMS app (the system database is read-only for us), or a maker's provider that failed
             }
         }
     }
 
     override fun deleteMessages(ids: Set<Long>): PendingDeletion {
         hidden.update { it.copy(messages = it.messages + ids) }
-        return Deletion(messages = ids, threads = emptySet())
+        return deletion(messages = ids, threads = emptySet())
     }
 
     override fun deleteThreads(threadIds: Set<Long>): PendingDeletion {
         hidden.update { it.copy(threads = it.threads + threadIds) }
-        return Deletion(messages = emptySet(), threads = threadIds)
+        return deletion(messages = emptySet(), threads = threadIds)
     }
 
     override suspend fun search(query: String): SearchResults = withContext(Dispatchers.IO) {
@@ -154,6 +159,14 @@ class TelephonyMessageRepository(
             "${Telephony.Sms.DATE} DESC LIMIT $SEARCH_LIMIT",
         ).filter { it.threadId !in excluded && it.id !in hidden.value.messages }
         SearchResults(conversations, messages)
+    }
+
+    override suspend fun browse(threadId: Long?, limit: Int): List<SmsMessage> = withContext(Dispatchers.IO) {
+        val excluded = locks.lockedNow() + hidden.value.threads
+        if (threadId != null && threadId in excluded) return@withContext emptyList()
+        val (selection, args) = if (threadId == null) null to emptyArray() else "${Telephony.Sms.THREAD_ID} = ?" to arrayOf(threadId.toString())
+        queryMessages(selection, args, "${Telephony.Sms.DATE} DESC LIMIT ${limit.coerceIn(1, BROWSE_LIMIT)}")
+            .filter { it.threadId !in excluded && it.id !in hidden.value.messages }
     }
 
     private suspend fun readConversations(): List<SmsConversation> {
@@ -186,7 +199,7 @@ class TelephonyMessageRepository(
         return assembleConversations(rows, canonical, unread, failed, names)
     }
 
-    private fun queryMessages(selection: String, args: Array<String>, sortOrder: String?): List<SmsMessage> {
+    private fun queryMessages(selection: String?, args: Array<String>, sortOrder: String?): List<SmsMessage> {
         val withSim = try {
             resolver.query(Telephony.Sms.CONTENT_URI, MESSAGE_COLUMNS_WITH_SIM, selection, args, sortOrder)
         } catch (_: IllegalArgumentException) {
@@ -213,44 +226,26 @@ class TelephonyMessageRepository(
         subId = intOrNull(Telephony.Sms.SUBSCRIPTION_ID)?.takeIf { it >= 0 },
     )
 
-    private inner class Deletion(private val messages: Set<Long>, private val threads: Set<Long>) : PendingDeletion {
-        private val settled = AtomicBoolean(false)
+    private fun deletion(messages: Set<Long>, threads: Set<Long>): PendingDeletion = DelayedDeletion(
+        appScope + Dispatchers.IO,
+        UNDO_WINDOW_MILLIS,
+        commit = { commit(messages, threads) },
+        release = { hidden.update { Hidden(messages = it.messages - messages, threads = it.threads - threads) } },
+    )
 
-        private val job = appScope.launch(Dispatchers.IO) {
-            delay(UNDO_WINDOW_MILLIS)
-            if (settled.compareAndSet(false, true)) {
-                withContext(NonCancellable) {
-                    commit()
-                    unhide()
-                }
+    private suspend fun commit(messages: Set<Long>, threads: Set<Long>) {
+        try {
+            messages.chunked(DELETE_CHUNK).forEach { chunk ->
+                resolver.delete(Telephony.Sms.CONTENT_URI, "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray())
             }
-        }
-
-        override fun undo(): Boolean {
-            if (!settled.compareAndSet(false, true)) return false
-            job.cancel()
-            unhide()
-            return true
-        }
-
-        private fun unhide() {
-            hidden.update { Hidden(messages = it.messages - messages, threads = it.threads - threads) }
-        }
-
-        private suspend fun commit() {
-            try {
-                messages.chunked(DELETE_CHUNK).forEach { chunk ->
-                    resolver.delete(Telephony.Sms.CONTENT_URI, "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})", chunk.map { it.toString() }.toTypedArray())
-                }
-                for (threadId in threads) {
-                    resolver.delete(ContentUris.withAppendedId(Telephony.Sms.Conversations.CONTENT_URI, threadId), null, null)
-                    // The system may give a deleted thread's id to a new conversation later; it must not start out locked or pinned
-                    locks.unlock(threadId)
-                    pins.unpin(threadId)
-                }
-            } catch (_: SecurityException) {
-                // Not the default SMS app: nothing can be deleted, and the rows come back into view
+            for (threadId in threads) {
+                resolver.delete(ContentUris.withAppendedId(Telephony.Sms.Conversations.CONTENT_URI, threadId), null, null)
+                // The system may give a deleted thread's id to a new conversation later; it must not start out locked or pinned
+                locks.unlock(threadId)
+                pins.unpin(threadId)
             }
+        } catch (_: SecurityException) {
+            // Not the default SMS app: nothing can be deleted, and the rows come back into view
         }
     }
 }

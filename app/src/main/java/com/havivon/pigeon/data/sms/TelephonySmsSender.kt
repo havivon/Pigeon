@@ -32,14 +32,7 @@ class TelephonySmsSender(
     override suspend fun send(recipients: List<String>, body: String, subId: Int?): List<Long> = withContext(Dispatchers.IO) {
         if (body.isBlank() || body.length > MAX_SEND_LENGTH) return@withContext emptyList()
         val sub = subId ?: SmsManager.getDefaultSmsSubscriptionId().takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
-        recipients.map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .distinctBy { PhoneNumbers.normalize(it) }
-            .mapNotNull { address ->
-                val id = writeOutbox(address, body, sub)
-                transmit(address, body, sub, id)
-                id
-            }
+        sendEach(recipients, write = { writeOutbox(it, body, sub) }, transmit = { address, id -> transmit(address, body, sub, id) })
     }
 
     override suspend fun retry(messageId: Long): Boolean = withContext(Dispatchers.IO) {
@@ -67,27 +60,26 @@ class TelephonySmsSender(
         }
         return try {
             resolver.insert(Telephony.Sms.Outbox.CONTENT_URI, values)?.let(ContentUris::parseId)?.takeIf { it > 0 }
-        } catch (_: SecurityException) {
-            null
-        } catch (_: IllegalArgumentException) {
+        } catch (_: RuntimeException) {
+            // Refused (not the default SMS app), or a maker's provider that failed: nothing is sent
             null
         }
     }
 
-    /** Hands the message to the radio. A message the radio refuses at once is marked Failed straight away. */
-    private fun transmit(address: String, body: String, subId: Int?, messageId: Long?) {
+    /** Hands the stored message to the radio. A message the radio refuses at once is marked Failed straight away. */
+    private fun transmit(address: String, body: String, subId: Int?, messageId: Long) {
         try {
             val manager = smsManager(subId)
             val parts = manager.divideMessage(body)
-            val sent = if (messageId == null) null else ArrayList(parts.indices.map { SmsSentReceiver.pendingIntent(context, messageId, it, parts.size) })
+            val sent = ArrayList(parts.indices.map { SmsSentReceiver.pendingIntent(context, messageId, it, parts.size) })
             if (parts.size <= 1) {
-                manager.sendTextMessage(address, null, body, sent?.firstOrNull(), null)
+                manager.sendTextMessage(address, null, body, sent.firstOrNull(), null)
             } else {
                 manager.sendMultipartTextMessage(address, null, parts, sent, null)
             }
         } catch (_: RuntimeException) {
             // An invalid number, no SIM, or a refused permission
-            if (messageId != null) update(messageId, ContentValues().apply { put(Telephony.Sms.TYPE, SmsType.Failed.providerValue) })
+            update(messageId, ContentValues().apply { put(Telephony.Sms.TYPE, SmsType.Failed.providerValue) })
         }
     }
 
@@ -106,6 +98,19 @@ class TelephonySmsSender(
             if (subId == null) SmsManager.getDefault() else SmsManager.getSmsManagerForSubscriptionId(subId)
         }
 }
+
+/**
+ * Sends one SMS per recipient (trimmed, blank ones and repeats of the same number dropped): each is
+ * first written ([write], the new row's id or null), and only a message that was written is handed
+ * to the radio ([transmit]). A message the system database refuses (Pigeon is not the default SMS
+ * app) is not sent at all: the screen then says it failed, and a second tap must not send it twice.
+ * Returns the written messages' ids.
+ */
+internal inline fun sendEach(recipients: List<String>, write: (String) -> Long?, transmit: (String, Long) -> Unit): List<Long> =
+    recipients.map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .distinctBy { PhoneNumbers.normalize(it) }
+        .mapNotNull { address -> write(address)?.also { id -> transmit(address, id) } }
 
 /** A message's row in the system database. */
 internal fun messageUri(id: Long) = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id)

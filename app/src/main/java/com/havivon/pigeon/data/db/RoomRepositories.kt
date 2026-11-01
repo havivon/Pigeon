@@ -89,6 +89,13 @@ class RoomRemindersRepository(db: PigeonDatabase, private val now: () -> Long = 
     private fun ReminderEntity.toReminder() = Reminder(id, threadId, messageId, text, triggerAtMillis, done)
 }
 
+/**
+ * The stored keys that are the same sender as [address]. The system writes one number in several
+ * ways ("+972525550123" on an incoming SMS, "0525550123" in the conversation it joined), so an exact
+ * key match would leave a verdict behind and "Not spam" would seem to do nothing.
+ */
+fun sameSender(keys: Collection<String>, address: String): List<String> = keys.filter { PhoneNumbers.same(it, address) }
+
 class RoomSpamRepository(db: PigeonDatabase, private val now: () -> Long = System::currentTimeMillis) : SpamRepository {
     private val dao = db.spam()
 
@@ -96,11 +103,12 @@ class RoomSpamRepository(db: PigeonDatabase, private val now: () -> Long = Syste
 
     override val notSpam: Flow<Set<String>> = dao.observeNotSpam().map { it.toSet() }
 
-    override suspend fun verdictFor(address: String): SpamVerdict? = dao.verdict(PhoneNumbers.normalize(address))?.toVerdict()
+    override suspend fun verdictFor(address: String): SpamVerdict? =
+        sameSender(dao.verdictAddresses(), address).firstOrNull()?.let { dao.verdict(it) }?.toVerdict()
 
     override suspend fun markSpam(address: String, threadId: Long, reasons: List<SpamReason>): Boolean {
         val key = PhoneNumbers.normalize(address)
-        if (key.isEmpty() || dao.isNotSpam(key)) return false
+        if (key.isEmpty() || isNotSpam(address)) return false
         dao.upsertVerdict(SpamVerdictEntity(key, threadId, SpamReasonCodec.encode(reasons), now()))
         return true
     }
@@ -110,9 +118,9 @@ class RoomSpamRepository(db: PigeonDatabase, private val now: () -> Long = Syste
         if (key.isNotEmpty()) dao.markNotSpam(NotSpamEntity(key, now()))
     }
 
-    override suspend fun isNotSpam(address: String): Boolean = dao.isNotSpam(PhoneNumbers.normalize(address))
+    override suspend fun isNotSpam(address: String): Boolean = sameSender(dao.notSpamAddresses(), address).isNotEmpty()
 
-    override suspend fun removeFromNotSpam(address: String) = dao.deleteNotSpam(PhoneNumbers.normalize(address))
+    override suspend fun removeFromNotSpam(address: String) = dao.removeNotSpam(address)
 
     private fun SpamVerdictEntity.toVerdict() = SpamVerdict(address, threadId, SpamReasonCodec.decode(reasons), judgedAtMillis)
 }

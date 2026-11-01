@@ -127,6 +127,12 @@ interface SpamDao {
     @Query("DELETE FROM spam_verdicts WHERE address = :address")
     suspend fun deleteVerdict(address: String)
 
+    @Query("SELECT address FROM spam_verdicts")
+    suspend fun verdictAddresses(): List<String>
+
+    @Query("SELECT address FROM not_spam")
+    suspend fun notSpamAddresses(): List<String>
+
     @Query("SELECT address FROM not_spam")
     fun observeNotSpam(): Flow<List<String>>
 
@@ -139,11 +145,20 @@ interface SpamDao {
     @Query("DELETE FROM not_spam WHERE address = :address")
     suspend fun deleteNotSpam(address: String)
 
-    /** "Not spam" in one step: the verdict goes and the sender joins the allow-list. */
+    /**
+     * "Not spam" in one step: the verdicts on this sender go (under every way its number was
+     * written, see [sameSender]) and the sender joins the allow-list.
+     */
     @Transaction
     suspend fun markNotSpam(entry: NotSpamEntity) {
-        deleteVerdict(entry.address)
+        sameSender(verdictAddresses(), entry.address).forEach { deleteVerdict(it) }
         insertNotSpam(entry)
+    }
+
+    /** Takes the sender off the allow-list, under every way its number was written. */
+    @Transaction
+    suspend fun removeNotSpam(address: String) {
+        sameSender(notSpamAddresses(), address).forEach { deleteNotSpam(it) }
     }
 }
 
