@@ -19,6 +19,7 @@ import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNDO_WINDOW_MILLIS
+import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNREAD_INBOX_LIMIT
 import com.havivon.pigeon.domain.repository.PinsRepository
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -107,6 +108,30 @@ class TelephonyMessageRepository(
             .combine(hidden) { list, h -> list.filter { it.threadId !in h.threads } }
             .flowOn(Dispatchers.IO)
             .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
+
+    /**
+     * Only the unread incoming rows, newest first: far lighter than the conversations, and kept for
+     * every screen the same way (and started over by [refresh] too).
+     */
+    override val unreadInbox: Flow<List<SmsMessage>> =
+        refresh.flatMapLatest { resolver.changes(Telephony.Sms.CONTENT_URI).mapNotNull { readUnreadInboxOrKeep() } }
+            .combine(hidden) { list, h -> list.filter { it.id !in h.messages && it.threadId !in h.threads } }
+            .flowOn(Dispatchers.IO)
+            .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
+
+    private fun readUnreadInbox(): List<SmsMessage> = queryMessages(
+        "${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue} AND ${Telephony.Sms.READ} = 0",
+        emptyArray(),
+        "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC LIMIT $UNREAD_INBOX_LIMIT",
+    )
+
+    /** The unread messages, or null (the last list stays) when a maker's provider failed in a way it should not. */
+    private fun readUnreadInboxOrKeep(): List<SmsMessage>? = try {
+        readUnreadInbox()
+    } catch (e: RuntimeException) {
+        Log.w("Pigeon", "Reading the unread messages failed: ${e.javaClass.name}")
+        null
+    }
 
     override fun messages(threadId: Long, limit: Int): Flow<List<SmsMessage>> =
         resolver.changes(Telephony.Sms.CONTENT_URI)

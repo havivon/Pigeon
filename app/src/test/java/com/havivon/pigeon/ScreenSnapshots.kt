@@ -28,6 +28,7 @@ import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.model.SendStatus
 import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.domain.model.ThreadItem
+import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.ui.app.DefaultAppAccess
 import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.components.EmptyState
@@ -57,6 +58,39 @@ import org.junit.Test
 private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
     val danny = sample.inbox.first { it.id == 2L }
     val noa = sample.inbox.first { it.id == 6L }
+
+    /** The Unread chip: messages, not conversations (two from Mom, a bank, a code, a locked chat, a long one cut at three lines). */
+    val unread: List<UnreadMessage> = run {
+        val mom = sample.inbox.first { it.id == 1L }
+        val bank = sample.inbox.first { it.id == 3L }
+        val verify = sample.inbox.first { it.id == 5L }
+        listOf(
+            UnreadMessage(101, mom.id, mom.name, if (hebrew) "תביא לחם בדרך הביתה ❤️" else "Pick up some bread on your way home ❤️", mom.time, mom.avatarArgb, ruleId = 3),
+            UnreadMessage(
+                102, mom.id, mom.name,
+                if (hebrew) "ותחזור לפני שבע, דני מגיע לארוחת ערב ואני רוצה שנהיה כולם ביחד" else "And be back before seven, Danny is coming for dinner and I want us all together",
+                if (hebrew) "12:38" else "12:38 PM", mom.avatarArgb, ruleId = 3,
+            ),
+            UnreadMessage(103, bank.id, bank.name, if (hebrew) "חיוב בכרטיס המסתיים ב-4821 בסך 249.90 ₪" else "Charge on the card ending in 4821 for $249.90", bank.time, bank.avatarArgb, ruleId = 1),
+            UnreadMessage(
+                104, verify.id, verify.name,
+                if (hebrew) "קוד האימות שלך הוא 482913. אל תשתף אותו עם אף אחד." else "Your verification code is 482913. Do not share it with anyone.",
+                verify.time, verify.avatarArgb, code = "482913",
+            ),
+            UnreadMessage(105, danny.id, danny.name, if (hebrew) "שיחה נעולה" else "Locked chat", if (hebrew) "08:20" else "8:20 AM", danny.avatarArgb, locked = true),
+            UnreadMessage(
+                106, noa.id, noa.name,
+                if (hebrew) {
+                    "היי, רציתי לספר לך על הטיול שלנו בסוף השבוע. מצאתי מקום מקסים ליד הים, יש בו בריכה, ארוחת בוקר כלולה ונוף מדהים לשקיעה. אם מתאים לך, אני סוגרת את זה עוד היום"
+                } else {
+                    "Hi, I wanted to tell you about our weekend trip. I found a lovely place by the sea with a pool, breakfast included and an amazing sunset view. If it suits you, I will book it today"
+                },
+                if (hebrew) "אתמול" else "Yesterday", noa.avatarArgb,
+            ),
+        )
+    }
+
+    val unreadCounts = sample.folderCounts + (Folder.Unread to unread.size)
 
     val search = SearchUiState(
         query = if (hebrew) "הרצל" else "Maple",
@@ -159,6 +193,10 @@ class NewScreensSnapshots {
         shot("66_inbox_unread_empty") {
             InboxScreen(emptyList(), s.sample.rules, s.sample.folderCounts - Folder.Unread, s.sample.dateLine, selectedFolder = Folder.Unread, emptyState = { InboxEmpty(Folder.Unread) })
         }
+        shot("67_inbox_unread") { InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread) }
+        shot("68_inbox_unread_dark", dark = true) {
+            InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread)
+        }
         shot("64_inbox_loading") { InboxScreen(emptyList(), s.sample.rules, emptyMap(), s.sample.dateLine, loading = true) }
         shot("65_conversation_loading") {
             ConversationScreen(placeholderConversation(2), emptyList(), rule = null, draft = "", onCall = null, loading = true)
@@ -191,6 +229,7 @@ class NewScreensSnapshotsEnglish {
         shot("45_en_conversation_states") {
             ConversationScreen(s.danny, s.states, rule = null, draft = "", subtitle = "555-0123")
         }
+        shot("69_en_inbox_unread") { InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread) }
     }
 }
 

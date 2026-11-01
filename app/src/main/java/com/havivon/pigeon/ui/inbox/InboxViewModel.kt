@@ -8,7 +8,9 @@ import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.SmsConversation
+import com.havivon.pigeon.domain.model.SmsMessage
 import com.havivon.pigeon.domain.model.SpamVerdict
+import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
@@ -34,6 +36,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -48,8 +52,13 @@ data class InboxUiState(
     val folder: Folder = Folder.All,
     val rules: List<ColorRule> = emptyList(),
     val dateLine: String = "",
+    /**
+     * The unread messages, newest first, one row each, while the Unread chip is chosen; empty under the
+     * other chips, and null while they are not read yet (a quiet loading sign meanwhile).
+     */
+    val unread: List<UnreadMessage>? = emptyList(),
 ) {
-    /** What the list shows for the chosen folder. */
+    /** What the list shows for the chosen folder (none under Unread: it shows [unread]). */
     val conversations: List<Conversation> get() = inFolder(all, folder)
     val folderCounts: Map<Folder, Int> get() = folderCounts(all)
 }
@@ -84,7 +93,10 @@ class InboxViewModel(
     // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
     private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
 
-    private val mapped: Flow<Pair<List<Conversation>, List<ColorRule>>> = combine(
+    /** The conversations as the screens draw them, with what the unread rows are mapped from. */
+    private class Mapped(val all: List<Conversation>, val sources: List<SmsConversation>, val rules: List<ColorRule>, val locked: Set<Long>)
+
+    private val mapped: Flow<Mapped> = combine(
         accessChanges.flatMapLatest { messages.conversations },
         rules.rules,
         pins.pinnedThreadIds,
@@ -93,12 +105,27 @@ class InboxViewModel(
     ) { conversations, ruleList, pinned, locked, verdicts ->
         if (!canWrite()) spamJudging.offer(conversations, verdicts)
         val t = now()
-        mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) } to ruleList
+        Mapped(mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) }, conversations, ruleList, locked)
     }.conflate()
 
-    val state: StateFlow<InboxUiState> = combine(mapped, folder) { (all, ruleList), f ->
-        InboxUiState(loaded = true, all = all, folder = f, rules = ruleList, dateLine = dateLine())
+    /** The unread incoming messages as the system has them; null until the first read. */
+    private val unreadMessages: Flow<List<SmsMessage>?> =
+        accessChanges.flatMapLatest { messages.unreadInbox }.map<List<SmsMessage>, List<SmsMessage>?> { it }.onStart { emit(null) }
+
+    val state: StateFlow<InboxUiState> = combine(mapped, unreadMessages, folder) { m, unread, f ->
+        InboxUiState(
+            loaded = true,
+            all = m.all,
+            folder = f,
+            rules = m.rules,
+            dateLine = dateLine(),
+            // Mapped only while shown: the rows of hundreds of messages are not made for a chip nobody chose
+            unread = if (f != Folder.Unread) emptyList() else unread?.let { mapUnread(it, m) },
+        )
     }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
+
+    private fun mapUnread(unread: List<SmsMessage>, m: Mapped): List<UnreadMessage> =
+        mapper.mapUnread(unread, m.all.associateBy { it.id }, m.sources.associateBy { it.threadId }, now(), m.rules, m.locked)
 
     /** Spam opens its own screen, so it is never the chosen chip. */
     fun selectFolder(value: Folder) {

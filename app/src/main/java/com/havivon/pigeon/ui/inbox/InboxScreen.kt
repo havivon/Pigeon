@@ -53,6 +53,7 @@ import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.CountBadge
 import com.havivon.pigeon.ui.components.GradientHeader
@@ -75,7 +76,11 @@ fun InboxScreen(
     onLongPress: (Conversation) -> Unit = {},
     onSearch: () -> Unit = {},
     onNewMessage: () -> Unit = {},
-    /** Shown instead of the list when there are no conversations; null shows nothing. */
+    /** The rows of the Unread chip: the unread messages themselves, newest first. Used instead of [conversations] while it is chosen. */
+    unreadMessages: List<UnreadMessage> = emptyList(),
+    onOpenMessage: (UnreadMessage) -> Unit = {},
+    onLongPressMessage: (UnreadMessage) -> Unit = {},
+    /** Shown instead of the list when there is nothing to list; null shows nothing. */
     emptyState: (@Composable () -> Unit)? = null,
     /** A line under the header (the "viewing only" banner); null for none. */
     banner: (@Composable () -> Unit)? = null,
@@ -84,15 +89,22 @@ fun InboxScreen(
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
+    val unreadMode = selectedFolder == Folder.Unread
+    val nothing = if (unreadMode) unreadMessages.isEmpty() else conversations.isEmpty()
     val pinned = conversations.filter { it.pinned }
     Box(Modifier.fillMaxSize().background(c.background)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
             item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) }
             if (banner != null) item { banner() }
-            if (conversations.isEmpty() && loading) {
+            if (nothing && loading) {
                 item { LoadingConversations() }
-            } else if (conversations.isEmpty() && emptyState != null) {
+            } else if (nothing && emptyState != null) {
                 item { emptyState() }
+            }
+            if (unreadMode) {
+                // No pinned row and no sections: just the messages
+                items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], onOpenMessage, onLongPressMessage) }
+                return@LazyColumn
             }
             if (pinned.isNotEmpty()) {
                 item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
@@ -305,6 +317,70 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
                         CountBadge(conv.unread)
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * One unread message in the Unread list: who and when on the first line, the text below (three lines
+ * at most), in the frame of the colour rule that matches it, with a copy button when it has a code.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, onOpen: (UnreadMessage) -> Unit, onLongPress: (UnreadMessage) -> Unit) {
+    val c = HebTheme.colors
+    val ruleColor = rule?.let { Color(it.argb) }
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        Modifier
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .fillMaxWidth()
+            .shadow(if (c.isDark) 0.dp else 2.dp, shape, spotColor = c.accent.copy(alpha = 0.25f))
+            .clip(shape)
+            .background(c.surface)
+            .then(if (ruleColor != null) Modifier.border(2.dp, ruleColor, shape) else Modifier)
+            .combinedClickable(onClick = { onOpen(msg) }, onLongClick = { onLongPress(msg) })
+            .padding(12.dp),
+    ) {
+        Avatar(msg.name, msg.avatarArgb)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    msg.name,
+                    color = c.onSurface,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (rule != null && ruleColor != null) {
+                    Spacer(Modifier.width(6.dp))
+                    RuleTag(rule.label, ruleColor)
+                }
+                Spacer(Modifier.weight(1f))
+                Text(msg.time, color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+            Spacer(Modifier.height(3.dp))
+            Row(verticalAlignment = Alignment.Top) {
+                if (msg.locked) {
+                    Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.onSurfaceMuted, modifier = Modifier.padding(top = 2.dp).size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
+                Text(
+                    msg.text,
+                    color = if (msg.locked) c.onSurfaceMuted else c.onSurface,
+                    fontSize = 14.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (msg.code != null) {
+                Spacer(Modifier.height(8.dp))
+                CopyCodeChip(msg.code)
             }
         }
     }

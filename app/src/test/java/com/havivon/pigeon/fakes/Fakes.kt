@@ -80,6 +80,11 @@ class FakeMessageRepository : MessageRepository {
     override suspend fun recentIncoming(limit: Int) =
         allMessages.value.filter { !it.type.outgoing }.sortedByDescending { it.dateMillis }.take(limit)
     override suspend fun unreadMessages(threadId: Long) = allMessages.value.filter { it.threadId == threadId && !it.read }
+    override val unreadInbox: Flow<List<SmsMessage>> = combine(allMessages, hiddenMessages, hiddenThreads) { list, hidden, ht ->
+        list.filter { !it.type.outgoing && !it.read && it.id !in hidden && it.threadId !in ht }
+            .sortedWith(compareByDescending<SmsMessage> { it.dateMillis }.thenByDescending { it.id })
+            .take(MessageRepository.UNREAD_INBOX_LIMIT)
+    }
     override suspend fun threadIdFor(addresses: List<String>): Long =
         threads.value.firstOrNull { c -> c.addresses.size == addresses.size && c.addresses.all { a -> addresses.any { PhoneNumbers.same(a, it) } } }?.threadId
             ?: nextThreadId

@@ -23,7 +23,8 @@ import com.havivon.pigeon.data.AppContainer
 /** The app's screens. Navigation is a plain back stack of these, held by [Navigator]. */
 sealed interface Screen {
     data object Inbox : Screen
-    data class Thread(val threadId: Long) : Screen
+    /** A conversation; with [messageId] it opens scrolled to that message (the Unread list). */
+    data class Thread(val threadId: Long, val messageId: Long? = null) : Screen
     data object Spam : Screen
     data object Search : Screen
     /** A new message; [recipients] and [body] come prefilled from an `sms:` link. */

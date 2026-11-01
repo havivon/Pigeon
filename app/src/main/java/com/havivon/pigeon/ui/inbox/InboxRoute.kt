@@ -55,7 +55,7 @@ import com.havivon.pigeon.ui.theme.HebTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
+fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessage: (threadId: Long, messageId: Long) -> Unit) {
     val context = LocalContext.current
     val locale = appLocale(context)
     val vm = pigeonViewModel { app ->
@@ -89,12 +89,16 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit) {
         selectedFolder = state.folder,
         onFolder = { if (it == Folder.Spam) navigate(Screen.Spam) else vm.selectFolder(it) },
         onOpen = { openThread(it.id) },
+        unreadMessages = state.unread.orEmpty(),
+        onOpenMessage = { openMessage(it.threadId, it.messageId) },
+        // The same sheet as for the message's conversation (gone by now: nothing to act on)
+        onLongPressMessage = { m -> state.all.firstOrNull { it.id == m.threadId }?.let { sheetFor = it } },
         onSettings = { navigate(Screen.Settings) },
         onLongPress = { sheetFor = it },
         onSearch = { navigate(Screen.Search) },
         onNewMessage = { navigate(Screen.NewMessage()) },
         emptyState = if (state.loaded) ({ InboxEmpty(state.folder) }) else null,
-        loading = !state.loaded,
+        loading = !state.loaded || (state.folder == Folder.Unread && state.unread == null),
         banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
 

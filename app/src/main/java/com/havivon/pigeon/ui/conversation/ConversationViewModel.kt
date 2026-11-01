@@ -62,6 +62,17 @@ const val FIRST_PAGE = 50
 /** How many older messages each scroll to the top adds. */
 const val OLDER_PAGE = 100
 
+/**
+ * How many of the newest messages to read next so that message [focusId] (a tap in the Unread list)
+ * is among them, or null when nothing more is needed: no message to reach, it is in [list] already,
+ * or the whole conversation is read ([list] shorter than the [limit] it was asked with) and it is not
+ * there (deleted). The page doubles each time, so even a message from months back takes a few reads.
+ */
+fun limitToReach(focusId: Long?, list: List<SmsMessage>, limit: Int): Int? {
+    if (focusId == null || limit == Int.MAX_VALUE || list.size < limit || list.any { it.id == focusId }) return null
+    return if (limit > Int.MAX_VALUE / 2) Int.MAX_VALUE else limit * 2
+}
+
 data class ConversationUiState(
     /** False until the first page of messages is read: the screen shows its frame and a quiet loading sign meanwhile. */
     val loaded: Boolean = false,
@@ -119,6 +130,8 @@ class ConversationViewModel(
      * since a long conversation is read again on every change.
      */
     work: CoroutineDispatcher = Dispatchers.Default,
+    /** The message to scroll to (opened from the Unread list): older pages are read until it is loaded. */
+    val focusMessageId: Long? = null,
 ) : ViewModel() {
 
     private val _draft = MutableStateFlow("")
@@ -176,6 +189,7 @@ class ConversationViewModel(
         latest = list
         latestConversation = sms
         val hasOlder = n != Int.MAX_VALUE && list.size >= n
+        limitToReach(focusMessageId, list, n)?.let { next -> limit.update { maxOf(it, next) } }
         if (selectAllWhenRead && !hasOlder) {
             selectAllWhenRead = false
             _selected.value = list.map { it.id }.filter { it >= 0 }.toSet()

@@ -17,6 +17,8 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.textclassifier.TextClassifier
 import android.widget.TextView
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,12 +75,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -155,6 +159,8 @@ fun ConversationScreen(
     loading: Boolean = false,
     /** The list was scrolled to its top: time to read older messages. */
     onNearTop: () -> Unit = {},
+    /** Opened from the Unread list: the message to scroll to (once it is loaded) and flash. */
+    focusMessageId: Long? = null,
 ) {
     val c = HebTheme.colors
     val selecting = selectedIds.isNotEmpty()
@@ -176,6 +182,26 @@ fun ConversationScreen(
             shownNewest = newest
         }
         shownCount = items.size
+    }
+    // Opened at one message: scroll to it as soon as it is loaded (the view model reads older pages until
+    // it is), once, then flash it. Only after the scroll to the newest above has finished, which would
+    // otherwise cancel this one and leave its bookkeeping undone
+    var focusScrolled by rememberSaveable(focusMessageId) { mutableStateOf(false) }
+    var flash by remember { mutableStateOf(false) }
+    val flashAlpha = remember { Animatable(0f) }
+    LaunchedEffect(focusMessageId, items, shownCount) {
+        if (focusMessageId == null || focusScrolled || shownCount == 0) return@LaunchedEffect
+        val index = items.indexOfFirst { it is ThreadItem.Msg && it.message.id == focusMessageId }
+        if (index < 0) return@LaunchedEffect
+        // A little below the top edge, so the message before it shows too
+        listState.scrollToItem(index, -(listState.layoutInfo.viewportSize.height / FOCUS_OFFSET_DIVISOR))
+        focusScrolled = true
+        flash = true
+    }
+    LaunchedEffect(flash) {
+        if (!flash) return@LaunchedEffect
+        flashAlpha.snapTo(1f)
+        flashAlpha.animateTo(0f, tween(FLASH_MILLIS))
     }
     val nearTop by remember { derivedStateOf { listState.firstVisibleItemIndex <= NEAR_TOP_ITEMS } }
     val loadOlder by rememberUpdatedState(onNearTop)
@@ -205,6 +231,7 @@ fun ConversationScreen(
                         previewSelection = previewSelection,
                         selectionMode = selecting,
                         selected = item.message.id in selectedIds,
+                        highlight = if (item.message.id == focusMessageId) ({ flashAlpha.value }) else null,
                         onTap = { onMessageTap(item.message) },
                         onLongPress = { onMessageLongPress(item.message) },
                         onSelectionActive = { active ->
@@ -227,6 +254,15 @@ fun ConversationScreen(
 
 /** How close to the top of the list the older messages start to be read. */
 private const val NEAR_TOP_ITEMS = 3
+
+/** The message scrolled to rests this fraction of the list's height below its top edge. */
+private const val FOCUS_OFFSET_DIVISOR = 4
+
+/** How long the message scrolled to takes to fade out of its highlight. */
+private const val FLASH_MILLIS = 1_500
+
+/** The strongest the highlight gets: the accent colour at this opacity. */
+private const val FLASH_ALPHA = 0.28f
 
 private fun itemKey(item: ThreadItem): Any = if (item is ThreadItem.Msg) item.message.id else "day:" + (item as ThreadItem.Day).label
 
@@ -355,6 +391,8 @@ private fun MessageRow(
     previewSelection: TextRange?,
     selectionMode: Boolean,
     selected: Boolean,
+    /** The message just scrolled to: how strongly its row is highlighted now (read while drawing, so the fade does not recompose). */
+    highlight: (() -> Float)?,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     onSelectionActive: (Boolean) -> Unit,
@@ -368,6 +406,7 @@ private fun MessageRow(
         Modifier
             .fillMaxWidth()
             .background(if (selected) c.accent.copy(alpha = 0.13f) else Color.Transparent)
+            .then(if (highlight == null) Modifier else Modifier.drawBehind { drawRect(c.accent.copy(alpha = FLASH_ALPHA * highlight())) })
             // Taps on the text itself are the TextView's; this covers the rest of the row
             .combinedClickable(onClick = { if (tapToScreen) onTap() }, onLongClick = onLongPress)
             .padding(horizontal = 12.dp, vertical = 3.dp),

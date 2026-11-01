@@ -52,7 +52,7 @@ import java.time.ZoneId
 /** The conversation screen on real data. [onClosed] leaves it (after delete or "mark as spam"). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) {
+fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit, onClosed: () -> Unit) {
     val context = LocalContext.current
     val me = stringResource(R.string.thread_sender_me)
     val vm = pigeonViewModel { app ->
@@ -67,6 +67,7 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
             cancelNotification = app.notifier::cancel,
             appScope = app.appScope,
             canWrite = app::canWrite,
+            focusMessageId = focusMessageId,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -176,6 +177,7 @@ fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) 
         selectedIds = selected,
         subtitle = conversation.addresses.joinToString(", ") { ltr(it) }.takeIf { it.isNotEmpty() && it != conversation.name },
         loading = !state.loaded,
+        focusMessageId = focusMessageId,
         onNearTop = vm::loadOlder,
         onBack = onBack,
         onMessageTap = { m ->

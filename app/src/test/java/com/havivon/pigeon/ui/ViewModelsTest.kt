@@ -7,9 +7,11 @@ import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.domain.model.SearchResults
 import com.havivon.pigeon.domain.model.SendStatus
+import com.havivon.pigeon.domain.model.SmsMessage
 import com.havivon.pigeon.domain.model.SmsType
 import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.domain.model.ThreadItem
+import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.fakes.FakeContacts
 import com.havivon.pigeon.fakes.FakeFavorites
 import com.havivon.pigeon.fakes.FakeLocks
@@ -34,6 +36,7 @@ import com.havivon.pigeon.ui.compose.Suggestion
 import com.havivon.pigeon.ui.conversation.ConversationEvent
 import com.havivon.pigeon.ui.conversation.ConversationViewModel
 import com.havivon.pigeon.ui.conversation.FIRST_PAGE
+import com.havivon.pigeon.ui.conversation.limitToReach
 import com.havivon.pigeon.ui.inbox.InboxViewModel
 import com.havivon.pigeon.ui.search.DateRange
 import com.havivon.pigeon.ui.search.SearchFilters
@@ -43,6 +46,7 @@ import com.havivon.pigeon.ui.search.senderOptions
 import com.havivon.pigeon.ui.spam.SpamViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -83,9 +87,10 @@ class ViewModelsTest {
 
     private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher)
 
-    private fun TestScope.thread(threadId: Long = 1) = ConversationViewModel(
+    private fun TestScope.thread(threadId: Long = 1, focusMessageId: Long? = null) = ConversationViewModel(
         threadId, messages, sender, rules, favorites, reminders, scheduler, spam, locks, pins, mapper, labels, Utc,
         me = "Me", cancelNotification = { cancelled += it }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher,
+        focusMessageId = focusMessageId,
     )
 
     private fun seedInbox() {
@@ -129,18 +134,84 @@ class ViewModelsTest {
         assertEquals(4, vm.state.value.conversations.size)
     }
 
+    /** The unread messages behind [seedInbox]'s counts (Mom 2, Leumi 1, Verify 1, the spam sender 1), and a read one and a sent one. */
+    private fun seedUnreadMessages() {
+        messages.allMessages.value = listOf(
+            sms(10, 1, "Bring bread", millis(2026, 11, 1, 10, 30), "0525550100", read = false),
+            sms(11, 1, "and a bottle of milk", millis(2026, 11, 1, 11, 0), "0525550100", read = false),
+            sms(12, 2, "Charge of 249.90 on the card ending 4821", millis(2026, 11, 1, 10, 0), "Leumi", read = false),
+            sms(13, 3, "Your verification code is 482913", millis(2026, 11, 1, 9, 0), "Verify", read = false),
+            sms(14, 4, "You won! bit.ly/x7Kq9", millis(2026, 11, 1, 8, 0), "+972551234567", read = false),
+            sms(15, 1, "An old one", millis(2026, 10, 31, 8, 0), "0525550100", read = true),
+            sms(16, 1, "On my way", millis(2026, 11, 1, 11, 5), "0525550100", type = SmsType.Sent, read = false),
+        )
+    }
+
     @Test
-    fun `the unread chip shows the unread conversations and lets go of one once it is read`() = runTest {
+    fun `the unread chip lists the unread messages, newest first, and lets go of a conversation's once it is read`() = runTest {
         seedInbox()
+        seedUnreadMessages()
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
         val vm = inbox()
         collect(vm.state)
+        // Mapped only while the chip is chosen
+        assertEquals(emptyList<Any>(), vm.state.value.unread)
         vm.selectFolder(Folder.Unread)
-        assertEquals(listOf(1L, 2L, 3L), vm.state.value.conversations.map { it.id })
-        assertEquals(3, vm.state.value.folderCounts[Folder.Unread])
-        vm.markRead(vm.state.value.conversations.first { it.id == 2L })
-        assertEquals(listOf(1L, 3L), vm.state.value.conversations.map { it.id })
+        assertEquals(emptyList<Any>(), vm.state.value.conversations)
+        assertEquals(listOf(11L, 10L, 12L, 13L), vm.state.value.unread!!.map { it.messageId })
+        assertEquals(listOf("Mom", "Mom", "Leumi", "Verify"), vm.state.value.unread!!.map { it.name })
+        assertEquals("482913", vm.state.value.unread!!.last().code)
+        // The chip counts messages, spam's left out: as many as the rows
+        assertEquals(4, vm.state.value.folderCounts[Folder.Unread])
+        vm.markRead(vm.state.value.all.first { it.id == 1L })
+        assertEquals(listOf(12L, 13L), vm.state.value.unread!!.map { it.messageId })
         assertEquals(2, vm.state.value.folderCounts[Folder.Unread])
+        vm.selectFolder(Folder.All)
+        assertEquals(emptyList<Any>(), vm.state.value.unread)
+    }
+
+    @Test
+    fun `a new message arrives in the unread list, and a deleted conversation's leave it with undo`() = runTest {
+        seedInbox()
+        seedUnreadMessages()
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectFolder(Folder.Unread)
+        messages.allMessages.value += sms(20, 2, "Another charge of 15.00", millis(2026, 11, 1, 11, 30), "Leumi", read = false)
+        assertEquals(20L, vm.state.value.unread!!.first().messageId)
+        val deletion = vm.delete(vm.state.value.all.first { it.id == 2L })!!
+        assertEquals(listOf(11L, 10L, 13L, 14L), vm.state.value.unread!!.map { it.messageId })
+        assertTrue(deletion.undo())
+        assertEquals(listOf(20L, 11L, 10L, 12L, 13L, 14L), vm.state.value.unread!!.map { it.messageId })
+    }
+
+    @Test
+    fun `a locked conversation's unread messages show the locked line`() = runTest {
+        seedInbox()
+        seedUnreadMessages()
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectFolder(Folder.Unread)
+        vm.lock(vm.state.value.all.first { it.id == 3L })
+        val verify = vm.state.value.unread!!.first { it.messageId == 13L }
+        assertTrue(verify.locked)
+        assertEquals("Locked chat", verify.text)
+        assertNull(verify.code)
+    }
+
+    @Test
+    fun `the unread list waits for its first read, not showing an empty list meanwhile`() = runTest {
+        seedInbox()
+        val vm = InboxViewModel(
+            object : MessageRepository by messages {
+                override val unreadInbox = MutableSharedFlow<List<SmsMessage>>()
+            },
+            rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher,
+        )
+        collect(vm.state)
+        vm.selectFolder(Folder.Unread)
+        assertTrue(vm.state.value.loaded)
+        assertNull(vm.state.value.unread)
     }
 
     @Test
@@ -214,6 +285,61 @@ class ViewModelsTest {
         assertEquals(1L, vm.state.value.messages.first().id)
         vm.loadOlder()
         assertEquals(120, vm.state.value.messages.size)
+    }
+
+    private fun seedLongThread(count: Int = 400) {
+        messages.threads.value = listOf(conversation(1, "Shop", snippet = "Sale $count", dateMillis = millis(2026, 11, 1, 11, 0)))
+        messages.allMessages.value = (1..count).map { i -> sms(i.toLong(), 1, "Sale $i", millis(2026, 10, 1, 8, 0) + i * 60_000L, address = "Shop") }
+    }
+
+    @Test
+    fun `a message on the first page is there at once, with no more reading`() = runTest {
+        seedLongThread()
+        val vm = thread(focusMessageId = 380)
+        collect(vm.state)
+        assertEquals(FIRST_PAGE, vm.state.value.messages.size)
+        assertTrue(vm.state.value.messages.any { it.id == 380L })
+    }
+
+    @Test
+    fun `a message older than the first page is paged back to until it is loaded`() = runTest {
+        seedLongThread()
+        val vm = thread(focusMessageId = 250)
+        collect(vm.state)
+        // 50, then 100, 200: the first page that holds it
+        assertEquals(200, vm.state.value.messages.size)
+        assertTrue(vm.state.value.messages.any { it.id == 250L })
+        assertTrue(vm.state.value.hasOlder)
+        assertTrue(vm.state.value.loaded)
+    }
+
+    @Test
+    fun `a message that is gone stops the paging at the start of the conversation`() = runTest {
+        seedLongThread(count = 130)
+        val vm = thread(focusMessageId = 9_999)
+        collect(vm.state)
+        assertEquals(130, vm.state.value.messages.size)
+        assertFalse(vm.state.value.hasOlder)
+    }
+
+    @Test
+    fun `without a message to reach, a conversation reads only its first page`() = runTest {
+        seedLongThread()
+        val vm = thread()
+        collect(vm.state)
+        assertEquals(FIRST_PAGE, vm.state.value.messages.size)
+    }
+
+    @Test
+    fun `the next page to read doubles until the message is in it`() {
+        val page = (51L..100L).map { sms(it, 1, "x", it) }
+        assertNull(limitToReach(null, page, 50))
+        assertNull(limitToReach(60, page, 50))
+        assertEquals(100, limitToReach(5, page, 50))
+        assertEquals(400, limitToReach(5, (1L..200L).map { sms(it + 1000, 1, "x", it) }, 200))
+        // Everything is read and it is not there: stop
+        assertNull(limitToReach(5, page.take(30), 50))
+        assertNull(limitToReach(5, page, Int.MAX_VALUE))
     }
 
     @Test

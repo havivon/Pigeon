@@ -131,10 +131,11 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
     val scope = rememberCoroutineScope()
 
     /** Opens a conversation, after the fingerprint or screen lock when it is locked. */
-    fun openThread(threadId: Long, replaceTop: Boolean = false) {
+    fun openThread(threadId: Long, replaceTop: Boolean = false, messageId: Long? = null) {
         scope.launch {
             val go = {
-                if (replaceTop) navigator.replaceTop(Screen.Thread(threadId)) else navigator.push(Screen.Thread(threadId))
+                val screen = Screen.Thread(threadId, messageId)
+                if (replaceTop) navigator.replaceTop(screen) else navigator.push(screen)
             }
             if (container.locks.isLocked(threadId)) authenticator.authenticate { ok -> if (ok) go() } else go()
         }
@@ -157,8 +158,12 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
 
     ScreenHost(navigator) { screen ->
         when (screen) {
-            Screen.Inbox -> InboxRoute(navigate = navigator::push, openThread = { openThread(it) })
-            is Screen.Thread -> ConversationRoute(screen.threadId, onBack = { navigator.pop() }, onClosed = { navigator.pop() })
+            Screen.Inbox -> InboxRoute(
+                navigate = navigator::push,
+                openThread = { openThread(it) },
+                openMessage = { threadId, messageId -> openThread(threadId, messageId = messageId) },
+            )
+            is Screen.Thread -> ConversationRoute(screen.threadId, screen.messageId, onBack = { navigator.pop() }, onClosed = { navigator.pop() })
             Screen.Spam -> SpamRoute(onBack = { navigator.pop() }, openThread = { openThread(it) })
             Screen.Search -> SearchRoute(onBack = { navigator.pop() }, openThread = { openThread(it) })
             is Screen.NewMessage -> NewMessageRoute(

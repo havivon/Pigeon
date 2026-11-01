@@ -7,8 +7,8 @@ enum class Folder(@StringRes val labelRes: Int) {
     All(R.string.common_folder_all),
 
     /**
-     * A filter rather than a folder: the conversations with unread messages, whatever their folder
-     * (spam aside). No conversation is ever classified into it.
+     * A filter rather than a folder: the unread messages themselves (see [UnreadMessage]), whatever
+     * their conversation's folder (spam aside). No conversation is ever classified into it.
      */
     Unread(R.string.common_folder_unread),
     Personal(R.string.common_folder_personal),
@@ -70,6 +70,26 @@ data class Conversation(
 ) {
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }
+
+/** One unread incoming message, as a row of the inbox's Unread list: the message, not its whole conversation. */
+data class UnreadMessage(
+    /** The system message id. */
+    val messageId: Long,
+    /** The conversation it belongs to (a tap opens it at this message). */
+    val threadId: Long,
+    /** The contact's name, otherwise the number. */
+    val name: String,
+    /** The message text; the "locked chat" line for a locked conversation. */
+    val text: String,
+    val time: String,
+    val avatarArgb: Long,
+    /** The first colour rule that matches the sender or the message text. */
+    val ruleId: Int? = null,
+    /** A one-time code found in the text, offered as a copy button. */
+    val code: String? = null,
+    /** Behind fingerprint or screen lock: no text, no code. */
+    val locked: Boolean = false,
+)
 
 data class Message(
     /** The system message id. */
