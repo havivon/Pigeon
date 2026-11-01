@@ -51,7 +51,6 @@
     <string name="common_cancel">Cancel</string>
 
     <!-- inbox_ -->
-    <string name="inbox_title">Messages</string>
     <string name="inbox_settings_description">Settings</string>
     <string name="inbox_search_hint">Search messages, senders and codes</string>
     <string name="inbox_pinned">Pinned</string>

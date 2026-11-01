@@ -51,7 +51,6 @@
     <string name="common_cancel">ביטול</string>
 
     <!-- inbox_ -->
-    <string name="inbox_title">הודעות</string>
     <string name="inbox_settings_description">הגדרות</string>
     <string name="inbox_search_hint">חיפוש בהודעות, שולחים וקודים</string>
     <string name="inbox_pinned">מוצמדות</string>

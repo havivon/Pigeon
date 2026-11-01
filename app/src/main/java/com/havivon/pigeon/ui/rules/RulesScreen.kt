@@ -57,6 +57,7 @@ import androidx.compose.ui.zIndex
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.RuleMatch
+import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
@@ -95,12 +96,9 @@ fun RulesScreen(
     val currentOrder by rememberUpdatedState(order)
     val currentOnReorder by rememberUpdatedState(onReorder)
 
-    LazyColumn(
+    FixedHeaderLayout(
         Modifier.fillMaxSize().background(c.background),
-        state = listState,
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        item(key = "header") {
+        header = {
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
@@ -110,52 +108,59 @@ fun RulesScreen(
                     }
                 }
             }
-        }
-        item(key = "yours") { SectionLabel(stringResource(R.string.rules_section_yours)) }
-        if (order.isEmpty()) item(key = "none") { NoRules() }
-        items(order, key = { it.id }) { rule ->
-            val lifted = drag.draggingId == rule.id || previewDragging == rule.id
-            RuleCard(
-                rule,
-                lifted = lifted,
-                onClick = { onEdit(rule) },
-                onToggle = { on -> onToggle(rule, on) },
-                modifier = if (drag.draggingId == rule.id) {
-                    Modifier.zIndex(1f).graphicsLayer { translationY = drag.translationOf(rule.id) }
-                } else {
-                    Modifier.animateItemPlacement()
-                },
-                handle = { grip ->
-                    grip.pointerInput(rule.id) {
-                        detectDragGestures(
-                            onDragStart = { drag.begin(rule.id) },
-                            onDrag = { change, amount ->
-                                change.consume()
-                                drag.dragBy(amount.y, currentOrder)?.let { order = it }
-                            },
-                            onDragEnd = {
-                                drag.release()
-                                val ids = currentOrder.map { it.id }
-                                if (ids != currentRules.map { it.id }) currentOnReorder(ids)
-                            },
-                            onDragCancel = {
-                                drag.release()
-                                order = currentRules
-                            },
-                        )
-                    }
-                },
-            )
-        }
-        item(key = "spam") { SpamRuleCard() }
-        item(key = "add") {
-            PillButton(
-                stringResource(R.string.rules_add),
-                Modifier.padding(horizontal = 12.dp, vertical = 16.dp).fillMaxWidth(),
-                icon = Icons.Rounded.Add,
-                filled = true,
-                onClick = onAdd,
-            )
+        },
+    ) { top ->
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = PaddingValues(top = top, bottom = 24.dp),
+        ) {
+            item(key = "yours") { SectionLabel(stringResource(R.string.rules_section_yours)) }
+            if (order.isEmpty()) item(key = "none") { NoRules() }
+            items(order, key = { it.id }) { rule ->
+                val lifted = drag.draggingId == rule.id || previewDragging == rule.id
+                RuleCard(
+                    rule,
+                    lifted = lifted,
+                    onClick = { onEdit(rule) },
+                    onToggle = { on -> onToggle(rule, on) },
+                    modifier = if (drag.draggingId == rule.id) {
+                        Modifier.zIndex(1f).graphicsLayer { translationY = drag.translationOf(rule.id) }
+                    } else {
+                        Modifier.animateItemPlacement()
+                    },
+                    handle = { grip ->
+                        grip.pointerInput(rule.id) {
+                            detectDragGestures(
+                                onDragStart = { drag.begin(rule.id) },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    drag.dragBy(amount.y, currentOrder)?.let { order = it }
+                                },
+                                onDragEnd = {
+                                    drag.release()
+                                    val ids = currentOrder.map { it.id }
+                                    if (ids != currentRules.map { it.id }) currentOnReorder(ids)
+                                },
+                                onDragCancel = {
+                                    drag.release()
+                                    order = currentRules
+                                },
+                            )
+                        }
+                    },
+                )
+            }
+            item(key = "spam") { SpamRuleCard() }
+            item(key = "add") {
+                PillButton(
+                    stringResource(R.string.rules_add),
+                    Modifier.padding(horizontal = 12.dp, vertical = 16.dp).fillMaxWidth(),
+                    icon = Icons.Rounded.Add,
+                    filled = true,
+                    onClick = onAdd,
+                )
+            }
         }
     }
 }

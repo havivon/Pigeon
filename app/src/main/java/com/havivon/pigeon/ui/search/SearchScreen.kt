@@ -63,6 +63,7 @@ import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.EmptyState
+import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderChip
 import com.havivon.pigeon.ui.components.HeaderIcon
@@ -86,31 +87,32 @@ fun SearchScreen(
     autoFocus: Boolean = true,
 ) {
     val c = HebTheme.colors
-    LazyColumn(
+    FixedHeaderLayout(
         Modifier.fillMaxSize().background(c.background).imePadding(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        item { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus) }
-        when {
-            state.query.isBlank() && !state.filters.any -> item {
-                EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
+        header = { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus) },
+    ) { top ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = 24.dp)) {
+            when {
+                state.query.isBlank() && !state.filters.any -> item {
+                    EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
+                }
+                state.isEmpty && !state.searching -> item {
+                    EmptyState(
+                        Icons.Rounded.SearchOff,
+                        // Nothing typed: the filters alone found nothing
+                        if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
+                        stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
+                    )
+                }
             }
-            state.isEmpty && !state.searching -> item {
-                EmptyState(
-                    Icons.Rounded.SearchOff,
-                    // Nothing typed: the filters alone found nothing
-                    if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
-                    stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
-                )
+            if (state.conversations.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
+                items(state.conversations, key = { "c" + it.id }) { ConversationHit(it, state.query) { onOpenConversation(it.id) } }
             }
-        }
-        if (state.conversations.isNotEmpty()) {
-            item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
-            items(state.conversations, key = { "c" + it.id }) { ConversationHit(it, state.query) { onOpenConversation(it.id) } }
-        }
-        if (state.messages.isNotEmpty()) {
-            item { SectionLabel(stringResource(R.string.search_section_messages), Icons.Rounded.Search) }
-            items(state.messages, key = { "m" + it.messageId }) { MessageHit(it, state.query) { onOpenConversation(it.threadId) } }
+            if (state.messages.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.search_section_messages), Icons.Rounded.Search) }
+                items(state.messages, key = { "m" + it.messageId }) { MessageHit(it, state.query) { onOpenConversation(it.threadId) } }
+            }
         }
     }
 }

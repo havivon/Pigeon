@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
@@ -56,6 +57,7 @@ import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.CountBadge
+import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.RuleTag
@@ -93,39 +95,62 @@ fun InboxScreen(
     val nothing = if (unreadMode) unreadMessages.isEmpty() else conversations.isEmpty()
     val pinned = conversations.filter { it.pinned }
     Box(Modifier.fillMaxSize().background(c.background)) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
-            item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) }
-            if (banner != null) item { banner() }
-            if (nothing && loading) {
-                item { LoadingConversations() }
-            } else if (nothing && emptyState != null) {
-                item { emptyState() }
-            }
-            if (unreadMode) {
-                // No pinned row and no sections: just the messages
-                items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], onOpenMessage, onLongPressMessage) }
-                return@LazyColumn
-            }
-            if (pinned.isNotEmpty()) {
-                item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
-                item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress) }
-                    }
+        // The header (title, search, folder chips) stays; the banner, the pinned row and the sections scroll under it
+        FixedHeaderLayout(
+            Modifier.fillMaxSize(),
+            header = { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) },
+        ) { top -> InboxList(top, conversations, pinned, ruleById, unreadMode, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
+        NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
+    }
+}
+
+@Composable
+private fun InboxList(
+    top: Dp,
+    conversations: List<Conversation>,
+    pinned: List<Conversation>,
+    ruleById: Map<Int, ColorRule>,
+    unreadMode: Boolean,
+    nothing: Boolean,
+    loading: Boolean,
+    emptyState: (@Composable () -> Unit)?,
+    banner: (@Composable () -> Unit)?,
+    unreadMessages: List<UnreadMessage>,
+    onOpen: (Conversation) -> Unit,
+    onLongPress: (Conversation) -> Unit,
+    onOpenMessage: (UnreadMessage) -> Unit,
+    onLongPressMessage: (UnreadMessage) -> Unit,
+) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = 110.dp)) {
+        if (banner != null) item { banner() }
+        if (nothing && loading) {
+            item { LoadingConversations() }
+        } else if (nothing && emptyState != null) {
+            item { emptyState() }
+        }
+        if (unreadMode) {
+            // No pinned row and no sections: just the messages
+            items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], onOpenMessage, onLongPressMessage) }
+            return@LazyColumn
+        }
+        if (pinned.isNotEmpty()) {
+            item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress) }
                 }
             }
-            val rest = conversations.filterNot { it.pinned }
-            if (rest.isNotEmpty()) {
-                item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
-            }
-            items(rest, key = { it.id }) {
-                ConversationCard(it, ruleById[it.ruleId], onOpen, onLongPress)
-            }
         }
-        NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
+        val rest = conversations.filterNot { it.pinned }
+        if (rest.isNotEmpty()) {
+            item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
+        }
+        items(rest, key = { it.id }) {
+            ConversationCard(it, ruleById[it.ruleId], onOpen, onLongPress)
+        }
     }
 }
 
@@ -149,7 +174,7 @@ private fun InboxHeader(
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.inbox_title), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+                Text(stringResource(R.string.app_name), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
                 Text(dateLine, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
             }
             HeaderIcon(Icons.Rounded.Settings, stringResource(R.string.inbox_settings_description), onSettings)
@@ -184,7 +209,6 @@ private fun InboxHeader(
 @Composable
 private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: () -> Unit) {
     val c = HebTheme.colors
-    val isSpam = folder == Folder.Spam
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
@@ -205,12 +229,12 @@ private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: (
                 Modifier
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(if (isSpam) c.spam else if (selected) c.accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.25f)),
+                    .background(if (selected) c.accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     "$count",
-                    color = if (isSpam || !selected) Color.White else c.accent,
+                    color = if (!selected) Color.White else c.accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                 )

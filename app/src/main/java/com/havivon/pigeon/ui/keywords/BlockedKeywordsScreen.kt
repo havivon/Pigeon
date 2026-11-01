@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.model.BlockedKeyword
+import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.LabeledTextField
@@ -57,8 +58,9 @@ fun BlockedKeywordsScreen(
     onBack: () -> Unit = {},
 ) {
     val c = HebTheme.colors
-    LazyColumn(Modifier.fillMaxSize().background(c.background), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item {
+    FixedHeaderLayout(
+        Modifier.fillMaxSize().background(c.background),
+        header = {
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
@@ -68,26 +70,32 @@ fun BlockedKeywordsScreen(
                     }
                 }
             }
-        }
-        item { AddWordCard(draft, duplicate, onDraft, onAdd) }
-        item {
-            SectionLabel(
-                if (keywords.isEmpty()) stringResource(R.string.keywords_section_empty)
-                else pluralStringResource(R.plurals.keywords_section, keywords.size, keywords.size),
-            )
-        }
-        if (keywords.isEmpty()) {
+        },
+    ) { top ->
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = top, bottom = 24.dp),
+        ) {
+            item { AddWordCard(draft, duplicate, onDraft, onAdd) }
             item {
-                Text(
-                    stringResource(R.string.keywords_none),
-                    color = c.onSurfaceMuted,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                SectionLabel(
+                    if (keywords.isEmpty()) stringResource(R.string.keywords_section_empty)
+                    else pluralStringResource(R.plurals.keywords_section, keywords.size, keywords.size),
                 )
             }
+            if (keywords.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.keywords_none),
+                        color = c.onSurfaceMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            items(keywords, key = { it.id }) { WordRow(it) { onDelete(it) } }
         }
-        items(keywords, key = { it.id }) { WordRow(it) { onDelete(it) } }
     }
 }
 

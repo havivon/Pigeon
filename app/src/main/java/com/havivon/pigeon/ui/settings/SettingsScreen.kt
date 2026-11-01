@@ -63,6 +63,7 @@ import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.SmsAccess
+import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
@@ -109,11 +110,9 @@ data class SettingsActions(
 fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: SettingsActions) {
     val c = HebTheme.colors
     val s = state.settings
-    LazyColumn(
+    FixedHeaderLayout(
         Modifier.fillMaxSize().background(c.background),
-        contentPadding = PaddingValues(bottom = 32.dp),
-    ) {
-        item {
+        header = {
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), actions.onBack)
@@ -123,167 +122,172 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                     }
                 }
             }
-        }
-
-        item { SectionLabel(stringResource(R.string.settings_section_appearance), Icons.Rounded.Palette) }
-        item {
-            SettingsCard {
-                ChoiceRow(
-                    Icons.Rounded.Language,
-                    stringResource(R.string.settings_language),
-                    listOf(
-                        stringResource(R.string.settings_by_phone) to AppLanguage.System,
-                        stringResource(R.string.settings_language_hebrew) to AppLanguage.Hebrew,
-                        stringResource(R.string.settings_language_english) to AppLanguage.English,
-                    ),
-                    s.language,
-                    actions.onLanguage,
-                )
-                RowDivider()
-                ChoiceRow(
-                    Icons.Rounded.DarkMode,
-                    stringResource(R.string.settings_theme),
-                    listOf(
-                        stringResource(R.string.settings_by_phone) to AppTheme.System,
-                        stringResource(R.string.settings_theme_light) to AppTheme.Light,
-                        stringResource(R.string.settings_theme_dark) to AppTheme.Dark,
-                    ),
-                    s.theme,
-                    actions.onTheme,
-                )
-            }
-        }
-        item { SectionLabel(stringResource(R.string.rules_app_icon)) }
-        item { AppIconPicker(state.appIcon, actions.onAppIcon) }
-
-        item { SectionLabel(stringResource(R.string.settings_section_messages), Icons.Rounded.Sms) }
-        item {
-            SettingsCard {
-                NavRow(
-                    Icons.Rounded.Palette,
-                    stringResource(R.string.settings_color_rules),
-                    pluralStringResource(R.plurals.settings_rules_count, state.ruleCount, state.ruleCount),
-                    actions.onOpenRules,
-                )
-                RowDivider()
-                NavRow(
-                    Icons.Rounded.Block,
-                    stringResource(R.string.settings_blocked_words),
-                    pluralStringResource(R.plurals.settings_words_count, state.keywordCount, state.keywordCount),
-                    actions.onOpenKeywords,
-                )
-                RowDivider()
-                SwitchRow(
-                    Icons.Rounded.AutoDelete,
-                    stringResource(R.string.settings_auto_delete),
-                    stringResource(R.string.settings_auto_delete_note),
-                    s.autoDeleteCodes,
-                    onChange = actions.onAutoDeleteCodes,
-                )
-            }
-        }
-
-        item { SectionLabel(stringResource(R.string.settings_section_notifications), Icons.Rounded.Notifications) }
-        item {
-            SettingsCard {
-                SwitchRow(
-                    Icons.Rounded.ScreenLockPortrait,
-                    stringResource(R.string.settings_lock_screen_text),
-                    stringResource(R.string.settings_lock_screen_text_note),
-                    s.lockScreenText,
-                    onChange = actions.onLockScreenText,
-                )
-                RowDivider()
-                NavRow(
-                    Icons.Rounded.Tune,
-                    stringResource(R.string.settings_system_notifications),
-                    stringResource(R.string.settings_system_notifications_note),
-                    actions.onSystemNotifications,
-                )
-                if (env.exactAlarmsAllowed == false) {
+        },
+    ) { top ->
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = top, bottom = 32.dp),
+        ) {
+            item { SectionLabel(stringResource(R.string.settings_section_appearance), Icons.Rounded.Palette) }
+            item {
+                SettingsCard {
+                    ChoiceRow(
+                        Icons.Rounded.Language,
+                        stringResource(R.string.settings_language),
+                        listOf(
+                            stringResource(R.string.settings_by_phone) to AppLanguage.System,
+                            stringResource(R.string.settings_language_hebrew) to AppLanguage.Hebrew,
+                            stringResource(R.string.settings_language_english) to AppLanguage.English,
+                        ),
+                        s.language,
+                        actions.onLanguage,
+                    )
                     RowDivider()
-                    NavRow(
-                        Icons.Rounded.Alarm,
-                        stringResource(R.string.settings_exact_alarms),
-                        stringResource(R.string.settings_exact_alarms_note),
-                        actions.onAllowExactAlarms,
+                    ChoiceRow(
+                        Icons.Rounded.DarkMode,
+                        stringResource(R.string.settings_theme),
+                        listOf(
+                            stringResource(R.string.settings_by_phone) to AppTheme.System,
+                            stringResource(R.string.settings_theme_light) to AppTheme.Light,
+                            stringResource(R.string.settings_theme_dark) to AppTheme.Dark,
+                        ),
+                        s.theme,
+                        actions.onTheme,
                     )
                 }
             }
-        }
+            item { SectionLabel(stringResource(R.string.rules_app_icon)) }
+            item { AppIconPicker(state.appIcon, actions.onAppIcon) }
 
-        item { SectionLabel(stringResource(R.string.settings_section_privacy), Icons.Rounded.Shield) }
-        item {
-            SettingsCard {
-                SwitchRow(
-                    Icons.Rounded.PhoneAndroid,
-                    stringResource(R.string.settings_block_screenshots),
-                    stringResource(R.string.settings_block_screenshots_note),
-                    s.blockScreenshots,
-                    onChange = actions.onBlockScreenshots,
-                )
-                RowDivider()
-                // Turning it off is always possible, even if the phone's screen lock was removed since
-                SwitchRow(
-                    Icons.Rounded.Fingerprint,
-                    stringResource(R.string.settings_app_lock),
-                    stringResource(if (env.canLock || s.appLock) R.string.settings_app_lock_note else R.string.settings_app_lock_unavailable),
-                    s.appLock,
-                    enabled = env.canLock || s.appLock,
-                    onChange = actions.onAppLock,
-                )
-                RowDivider()
-                PermissionRow(
-                    Icons.Rounded.Contacts,
-                    stringResource(R.string.settings_permission_contacts),
-                    stringResource(R.string.settings_permission_contacts_note),
-                    env.contactsAllowed,
-                    actions.onContactsPermission,
-                )
-                RowDivider()
-                PermissionRow(
-                    Icons.Rounded.Notifications,
-                    stringResource(R.string.settings_permission_notifications),
-                    stringResource(R.string.settings_permission_notifications_note),
-                    env.notificationsAllowed,
-                    actions.onNotificationsPermission,
+            item { SectionLabel(stringResource(R.string.settings_section_messages), Icons.Rounded.Sms) }
+            item {
+                SettingsCard {
+                    NavRow(
+                        Icons.Rounded.Palette,
+                        stringResource(R.string.settings_color_rules),
+                        pluralStringResource(R.plurals.settings_rules_count, state.ruleCount, state.ruleCount),
+                        actions.onOpenRules,
+                    )
+                    RowDivider()
+                    NavRow(
+                        Icons.Rounded.Block,
+                        stringResource(R.string.settings_blocked_words),
+                        pluralStringResource(R.plurals.settings_words_count, state.keywordCount, state.keywordCount),
+                        actions.onOpenKeywords,
+                    )
+                    RowDivider()
+                    SwitchRow(
+                        Icons.Rounded.AutoDelete,
+                        stringResource(R.string.settings_auto_delete),
+                        stringResource(R.string.settings_auto_delete_note),
+                        s.autoDeleteCodes,
+                        onChange = actions.onAutoDeleteCodes,
+                    )
+                }
+            }
+
+            item { SectionLabel(stringResource(R.string.settings_section_notifications), Icons.Rounded.Notifications) }
+            item {
+                SettingsCard {
+                    SwitchRow(
+                        Icons.Rounded.ScreenLockPortrait,
+                        stringResource(R.string.settings_lock_screen_text),
+                        stringResource(R.string.settings_lock_screen_text_note),
+                        s.lockScreenText,
+                        onChange = actions.onLockScreenText,
+                    )
+                    RowDivider()
+                    NavRow(
+                        Icons.Rounded.Tune,
+                        stringResource(R.string.settings_system_notifications),
+                        stringResource(R.string.settings_system_notifications_note),
+                        actions.onSystemNotifications,
+                    )
+                    if (env.exactAlarmsAllowed == false) {
+                        RowDivider()
+                        NavRow(
+                            Icons.Rounded.Alarm,
+                            stringResource(R.string.settings_exact_alarms),
+                            stringResource(R.string.settings_exact_alarms_note),
+                            actions.onAllowExactAlarms,
+                        )
+                    }
+                }
+            }
+
+            item { SectionLabel(stringResource(R.string.settings_section_privacy), Icons.Rounded.Shield) }
+            item {
+                SettingsCard {
+                    SwitchRow(
+                        Icons.Rounded.PhoneAndroid,
+                        stringResource(R.string.settings_block_screenshots),
+                        stringResource(R.string.settings_block_screenshots_note),
+                        s.blockScreenshots,
+                        onChange = actions.onBlockScreenshots,
+                    )
+                    RowDivider()
+                    // Turning it off is always possible, even if the phone's screen lock was removed since
+                    SwitchRow(
+                        Icons.Rounded.Fingerprint,
+                        stringResource(R.string.settings_app_lock),
+                        stringResource(if (env.canLock || s.appLock) R.string.settings_app_lock_note else R.string.settings_app_lock_unavailable),
+                        s.appLock,
+                        enabled = env.canLock || s.appLock,
+                        onChange = actions.onAppLock,
+                    )
+                    RowDivider()
+                    PermissionRow(
+                        Icons.Rounded.Contacts,
+                        stringResource(R.string.settings_permission_contacts),
+                        stringResource(R.string.settings_permission_contacts_note),
+                        env.contactsAllowed,
+                        actions.onContactsPermission,
+                    )
+                    RowDivider()
+                    PermissionRow(
+                        Icons.Rounded.Notifications,
+                        stringResource(R.string.settings_permission_notifications),
+                        stringResource(R.string.settings_permission_notifications_note),
+                        env.notificationsAllowed,
+                        actions.onNotificationsPermission,
+                    )
+                }
+            }
+
+            item { SectionLabel(stringResource(R.string.settings_section_widgets), Icons.Rounded.Widgets) }
+            item {
+                SettingsCard {
+                    SwitchRow(
+                        Icons.Rounded.Widgets,
+                        stringResource(R.string.settings_widgets_text),
+                        stringResource(R.string.settings_widgets_text_note),
+                        s.widgetsShowText,
+                        onChange = actions.onWidgetsShowText,
+                    )
+                }
+            }
+
+            item { SectionLabel(stringResource(R.string.settings_section_default), Icons.Rounded.Sms) }
+            item { DefaultAppCard(env.smsAccess, actions.onDefaultApp, actions.onViewOnly) }
+
+            item { SectionLabel(stringResource(R.string.settings_section_about)) }
+            item {
+                SettingsCard {
+                    InfoRow(Icons.Rounded.PhoneAndroid, stringResource(R.string.app_name), stringResource(R.string.settings_version, env.versionName))
+                    RowDivider()
+                    InfoRow(Icons.Rounded.Lock, stringResource(R.string.settings_no_internet_title), stringResource(R.string.settings_no_internet))
+                }
+            }
+            // The credit every one of the user's apps carries, as in HebReminder
+            item {
+                Text(
+                    stringResource(R.string.credit_line),
+                    color = HebTheme.colors.onSurfaceMuted,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
                 )
             }
-        }
-
-        item { SectionLabel(stringResource(R.string.settings_section_widgets), Icons.Rounded.Widgets) }
-        item {
-            SettingsCard {
-                SwitchRow(
-                    Icons.Rounded.Widgets,
-                    stringResource(R.string.settings_widgets_text),
-                    stringResource(R.string.settings_widgets_text_note),
-                    s.widgetsShowText,
-                    onChange = actions.onWidgetsShowText,
-                )
-            }
-        }
-
-        item { SectionLabel(stringResource(R.string.settings_section_default), Icons.Rounded.Sms) }
-        item { DefaultAppCard(env.smsAccess, actions.onDefaultApp, actions.onViewOnly) }
-
-        item { SectionLabel(stringResource(R.string.settings_section_about)) }
-        item {
-            SettingsCard {
-                InfoRow(Icons.Rounded.PhoneAndroid, stringResource(R.string.app_name), stringResource(R.string.settings_version, env.versionName))
-                RowDivider()
-                InfoRow(Icons.Rounded.Lock, stringResource(R.string.settings_no_internet_title), stringResource(R.string.settings_no_internet))
-            }
-        }
-        // The credit every one of the user's apps carries, as in HebReminder
-        item {
-            Text(
-                stringResource(R.string.credit_line),
-                color = HebTheme.colors.onSurfaceMuted,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
-            )
         }
     }
 }
