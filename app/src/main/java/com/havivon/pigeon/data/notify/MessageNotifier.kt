@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
+import androidx.core.graphics.drawable.IconCompat
 import com.havivon.pigeon.MainActivity
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.LaunchRequests
@@ -112,7 +113,9 @@ class MessageNotifier(
         val address = (lines.lastOrNull { !it.type.outgoing } ?: lines.last()).address
         val title = contacts.displayName(address) ?: address
         val me = Person.Builder().setName(context.getString(R.string.thread_sender_me)).build()
-        val sender = Person.Builder().setName(title).setKey(address).build()
+        // No contact photos are read: the sender's picture is the whole Pigeon icon, not the grey silhouette
+        val appIcon = AppIconBitmap.bitmap(context)
+        val sender = Person.Builder().setName(title).setKey(address).setIcon(IconCompat.createWithBitmap(appIcon)).build()
         val style = NotificationCompat.MessagingStyle(me)
         for (m in lines) style.addMessage(NotificationCompat.MessagingStyle.Message(m.body, m.dateMillis, if (m.type.outgoing) null else sender))
 
@@ -134,6 +137,8 @@ class MessageNotifier(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setNumber(unreadCount)
+            // The colourful app icon as the big picture; the status-bar icon above stays monochrome
+            .setLargeIcon(AppIconBitmap.bitmap(context))
             // Hidden on the lock screen when the phone hides sensitive content; the hidden-text channel forces it
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion(channel, unreadCount))

@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.havivon.pigeon.MainActivity
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.LaunchRequests
+import com.havivon.pigeon.data.notify.AppIconBitmap
 import com.havivon.pigeon.data.notify.NotificationChannels
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.reminders.ReminderPlan
@@ -107,6 +108,8 @@ class ReminderNotifier(
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(ACCENT)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            // The colourful app icon as the big picture; the status-bar icon stays monochrome
+            .setLargeIcon(AppIconBitmap.bitmap(context))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
