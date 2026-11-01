@@ -40,7 +40,8 @@ Baseline, always on, never a setting:
   other apps cannot reach it. It reads nothing from the intent (the alarms come from the database). No exported ContentProvider. Everything
   else `exported="false"`.
   Glance's WorkManager merges in WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED and
-  FOREGROUND_SERVICE; they are harmless without INTERNET and stay.
+  FOREGROUND_SERVICE; they are harmless without INTERNET and stay. WorkManager's diagnostics
+  receiver and profileinstaller's receiver are exported but guarded by `DUMP` (system/adb only).
 - **Reminders** use `SCHEDULE_EXACT_ALARM` (exact when the user allows it, otherwise a few minutes
   late); `USE_EXACT_ALARM` is for alarm-clock and calendar apps and is not used.
 - **Never send silently.** An `sms:`/`smsto:` intent from another app only opens a draft; sending
