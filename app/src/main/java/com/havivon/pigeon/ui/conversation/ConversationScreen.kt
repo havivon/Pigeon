@@ -498,7 +498,10 @@ private fun SelectableMessageText(
                             }
                             if (isTap && !hasSelection()) {
                                 tapSelects = true
-                                post { performLongClick() }
+                                // Now, before this ACTION_UP reaches the TextView: the editor then gets the finger-up while
+                                // it is in word-drag mode, which is what makes it show the toolbar (after the up, it waits
+                                // for another one, so the menu only came with a second tap)
+                                performLongClick()
                             }
                         }
                     }
