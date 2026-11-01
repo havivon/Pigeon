@@ -7,6 +7,7 @@ import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.fakes.FakeBlockedKeywords
+import com.havivon.pigeon.fakes.FakeFolders
 import com.havivon.pigeon.fakes.FakeRules
 import com.havivon.pigeon.fakes.FakeSettings
 import com.havivon.pigeon.fakes.MainDispatcherRule
@@ -262,7 +263,7 @@ class SettingsViewModelTest {
     private val keywords = FakeBlockedKeywords(listOf("loan", "prize"))
     private val appliedIcons = mutableListOf<AppIcon>()
 
-    private fun TestScope.vm() = SettingsViewModel(settings, rules, keywords, AppIcon.Envelope) { appliedIcons += it }.also { vm ->
+    private fun TestScope.vm() = SettingsViewModel(settings, rules, keywords, FakeFolders(), AppIcon.Envelope) { appliedIcons += it }.also { vm ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { } }
     }
 

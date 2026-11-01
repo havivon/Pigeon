@@ -2,14 +2,19 @@ package com.havivon.pigeon.ui.inbox
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.havivon.pigeon.domain.folders.FolderMoves
+import com.havivon.pigeon.domain.folders.FolderNameProblem
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.SmsConversation
 import com.havivon.pigeon.domain.model.SpamVerdict
 import com.havivon.pigeon.domain.model.UnreadMessage
+import com.havivon.pigeon.domain.repository.FoldersRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
@@ -20,9 +25,11 @@ import com.havivon.pigeon.domain.seam.ReminderScheduler
 import com.havivon.pigeon.ui.common.ConversationMapper
 import com.havivon.pigeon.ui.common.JUDGE_AFTER_MILLIS
 import com.havivon.pigeon.ui.common.SpamJudging
+import com.havivon.pigeon.ui.common.customFolderCounts
 import com.havivon.pigeon.ui.common.folderCounts
 import com.havivon.pigeon.ui.common.inFolder
 import com.havivon.pigeon.ui.common.mapAll
+import com.havivon.pigeon.ui.common.overrideFor
 import com.havivon.pigeon.ui.common.verdictFor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +54,12 @@ data class InboxUiState(
     val loaded: Boolean = false,
     /** Every conversation, spam included, newest first. */
     val all: List<Conversation> = emptyList(),
+    /** The chosen built-in chip; [Folder.All] while one of the user's categories ([customFolder]) is chosen. */
     val folder: Folder = Folder.All,
+    /** The chosen chip of the user's own categories, or null for a built-in one ([folder]). */
+    val customFolder: Long? = null,
+    /** The user's categories, in their order: their chips come after the built-in ones. */
+    val customFolders: List<CustomFolder> = emptyList(),
     /** The "Unread" side of the toggle under the chips is on: the list shows [unread] instead of [conversations]. */
     val unreadOnly: Boolean = false,
     val rules: List<ColorRule> = emptyList(),
@@ -58,12 +70,21 @@ data class InboxUiState(
      */
     val unread: List<UnreadMessage>? = emptyList(),
 ) {
+    /** The chosen chip, built-in or the user's. */
+    val choice: FolderChoice get() = customFolder?.let { FolderChoice.Custom(it) } ?: FolderChoice.BuiltIn(folder)
+
     /** What the list shows for the chosen folder when the toggle is off. */
-    val conversations: List<Conversation> get() = inFolder(all, folder)
+    val conversations: List<Conversation> get() = inFolder(all, choice)
     val folderCounts: Map<Folder, Int> get() = folderCounts(all)
 
+    /** The numbers on the chips of the user's categories, by id. */
+    val customFolderCounts: Map<Long, Int> get() = customFolderCounts(all, customFolders)
+
+    /** The name of the chosen category of the user's, for its empty state; null for a built-in folder. */
+    val customFolderName: String? get() = customFolder?.let { id -> customFolders.firstOrNull { it.id == id }?.name }
+
     /** The number on the toggle's "Unread": the unread messages of the chosen folder (as on its chip). */
-    val unreadCount: Int get() = inFolder(all, folder).sumOf { it.unread }
+    val unreadCount: Int get() = inFolder(all, choice).sumOf { it.unread }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -73,6 +94,9 @@ class InboxViewModel(
     private val pins: PinsRepository,
     private val locks: LocksRepository,
     spam: SpamRepository,
+    folders: FoldersRepository,
+    /** "Move to category" ([FolderMoves]): the sheet's moves and new categories. */
+    private val moves: FolderMoves,
     private val reminders: RemindersRepository,
     private val scheduler: ReminderScheduler,
     private val mapper: ConversationMapper,
@@ -92,7 +116,7 @@ class InboxViewModel(
 ) : ViewModel() {
 
     // Both outlive a rotation with the view model, and stay as the user switches folders
-    private val folder = MutableStateFlow(Folder.All)
+    private val folder = MutableStateFlow<FolderChoice>(FolderChoice.BuiltIn(Folder.All))
     private val unreadOnly = MutableStateFlow(false)
 
     // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
@@ -106,29 +130,36 @@ class InboxViewModel(
         rules.rules,
         pins.pinnedThreadIds,
         locks.lockedThreadIds,
-        spam.verdicts,
-    ) { conversations, ruleList, pinned, locked, verdicts ->
+        combine(spam.verdicts, folders.overrides, ::Pair),
+    ) { conversations, ruleList, pinned, locked, (verdicts, overrides) ->
         spamJudging.offer(conversations, verdicts)
         val t = now()
-        Mapped(mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) }, conversations, ruleList, locked)
+        val all = mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts), overrideFor(it, overrides)) }
+        Mapped(all, conversations, ruleList, locked)
     }.conflate()
 
     /** The unread incoming messages as the system has them; null until the first read. */
     /** The folder and the rows of the Unread list last shown, or null while it is off. */
     @Volatile
-    private var shown: Pair<Folder, List<UnreadMessage>>? = null
+    private var shown: Pair<FolderChoice, List<UnreadMessage>>? = null
 
     /**
      * The inbox as shown. The Unread list is read from the very conversations the count is made of (their
      * [SmsConversation.unreadIds]), never from a query of its own: a folder's number and its list always agree.
      * It is read only while shown, and while it is read again after a change the previous list stays.
      */
-    val state: StateFlow<InboxUiState> = combine(mapped, folder, unreadOnly) { m, f, only -> Triple(m, f, only) }
-        .transformLatest { (m, f, only) ->
+    val state: StateFlow<InboxUiState> = combine(mapped, folder, unreadOnly, folders.folders) { m, chosen, only, custom ->
+        // A category deleted while it was chosen: back to All
+        val f = chosen.takeIf { c -> c !is FolderChoice.Custom || custom.any { it.id == c.id } } ?: FolderChoice.BuiltIn(Folder.All)
+        Selection(m, f, only, custom)
+    }
+        .transformLatest { (m, f, only, custom) ->
             fun state(unread: List<UnreadMessage>?) = InboxUiState(
                 loaded = true,
                 all = m.all,
-                folder = f,
+                folder = (f as? FolderChoice.BuiltIn)?.folder ?: Folder.All,
+                customFolder = (f as? FolderChoice.Custom)?.id,
+                customFolders = custom,
                 unreadOnly = only,
                 rules = m.rules,
                 dateLine = dateLine(),
@@ -148,17 +179,40 @@ class InboxViewModel(
         }
         .flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
 
-    private suspend fun mapUnread(m: Mapped, folder: Folder): List<UnreadMessage> {
+    private data class Selection(val m: Mapped, val folder: FolderChoice, val unreadOnly: Boolean, val custom: List<CustomFolder>)
+
+    private suspend fun mapUnread(m: Mapped, folder: FolderChoice): List<UnreadMessage> {
         val sources = m.sources.associateBy { it.threadId }
         val ids = inFolder(m.all, folder).flatMap { sources[it.id]?.unreadIds.orEmpty() }
         val unread = if (ids.isEmpty()) emptyList() else messages.messagesById(ids)
-        return mapper.mapUnread(unread, m.all.associateBy { it.id }, sources, now(), m.rules, m.locked, folder)
+        val builtIn = (folder as? FolderChoice.BuiltIn)?.folder ?: Folder.All
+        return mapper.mapUnread(unread, m.all.associateBy { it.id }, sources, now(), m.rules, m.locked, builtIn, (folder as? FolderChoice.Custom)?.id)
     }
 
     /** Spam opens its own screen, so it is never the chosen chip. */
     fun selectFolder(value: Folder) {
-        if (value != Folder.Spam) folder.value = value
+        if (value != Folder.Spam) folder.value = FolderChoice.BuiltIn(value)
     }
+
+    /** The chip of one of the user's categories. */
+    fun selectCustomFolder(id: Long) {
+        folder.value = FolderChoice.Custom(id)
+    }
+
+    /**
+     * "Move to category" from the long-press sheet: to a built-in folder, one of the user's categories, Spam
+     * ("Mark as spam"), or null for the automatic sorting. The sender's later messages follow it.
+     */
+    fun moveTo(c: Conversation, target: FolderChoice?) {
+        viewModelScope.launch { moves.move(c.id, c.addresses, c.isSpam, target) }
+    }
+
+    /** Why [name] cannot be a new category's, or null when it can. */
+    fun folderNameProblem(name: String): FolderNameProblem? = moves.problem(name, state.value.customFolders)
+
+    /** "New category…": makes it and moves [c] into it; false (nothing made) when the name cannot be used. */
+    suspend fun createFolderAndMove(c: Conversation, name: String): Boolean =
+        moves.createAndMove(name, c.id, c.addresses, c.isSpam) != null
 
     /** The toggle under the chips: every message of the folder (false) or only the unread ones (true). It applies to every folder. */
     fun selectUnreadOnly(value: Boolean) {

@@ -2,6 +2,8 @@ package com.havivon.pigeon.ui
 
 import com.havivon.pigeon.domain.model.SmsType
 import com.havivon.pigeon.fakes.FakeFavorites
+import com.havivon.pigeon.fakes.FakeFolders
+import com.havivon.pigeon.fakes.testMoves
 import com.havivon.pigeon.fakes.FakeLocks
 import com.havivon.pigeon.fakes.FakeMessageRepository
 import com.havivon.pigeon.fakes.FakePins
@@ -55,12 +57,13 @@ class RemindMeTest {
     }
 
     private fun TestScope.thread() = ConversationViewModel(
-        1, messages, FakeSmsSender(messages), FakeRules(), FakeFavorites(), reminders, scheduler, FakeSpam(), locks, FakePins(), mapper, labels, Utc,
+        1, messages, FakeSmsSender(messages), FakeRules(), FakeFavorites(), reminders, scheduler, FakeSpam(), locks, FakePins(),
+        FakeFolders(), testMoves(FakeFolders(), FakeSpam()), mapper, labels, Utc,
         me = "Me", cancelNotification = { }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher,
     )
 
     private fun inbox() = InboxViewModel(
-        messages, FakeRules(), FakePins(), locks, FakeSpam(), reminders, scheduler, mapper, MutableStateFlow(0), { "" }, { }, now = { Now }, work = main.dispatcher,
+        messages, FakeRules(), FakePins(), locks, FakeSpam(), FakeFolders(), testMoves(FakeFolders(), FakeSpam()), reminders, scheduler, mapper, MutableStateFlow(0), { "" }, { }, now = { Now }, work = main.dispatcher,
     )
 
     private fun seedThread() {

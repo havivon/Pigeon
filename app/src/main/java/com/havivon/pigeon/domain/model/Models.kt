@@ -13,6 +13,19 @@ enum class Folder(@StringRes val labelRes: Int) {
     Spam(R.string.common_folder_spam),
 }
 
+/** A category the user made ("Work", "Family"): a chip after the built-in folders, in the user's order. */
+data class CustomFolder(val id: Long, val name: String)
+
+/**
+ * Where the user put a conversation by hand ("Move to category"), ahead of the automatic sorting: one of
+ * the built-in folders (never [Folder.All] or [Folder.Spam]: spam is the spam verdict), or one of theirs.
+ * The inbox also uses it for the chosen chip, where [Folder.All] is a choice like any other.
+ */
+sealed interface FolderChoice {
+    data class BuiltIn(val folder: Folder) : FolderChoice
+    data class Custom(val id: Long) : FolderChoice
+}
+
 /** Why the spam filter flagged a conversation. The UI turns each reason into text. */
 sealed interface SpamReason {
     data object UnknownSender : SpamReason
@@ -82,6 +95,10 @@ data class Conversation(
     val locked: Boolean = false,
     /** How many messages came in (the Spam folder counts a sender's messages). */
     val messageCount: Int = 0,
+    /** The user's own category it was moved to; its [folder] is then [Folder.All] (no built-in one). */
+    val customFolderId: Long? = null,
+    /** The user moved it by hand ([folder] or [customFolderId] is theirs, not the automatic sorting's). */
+    val folderOverridden: Boolean = false,
 ) {
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }

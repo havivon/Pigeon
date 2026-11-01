@@ -14,6 +14,8 @@ import com.havivon.pigeon.domain.model.ThreadItem
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.fakes.FakeContacts
 import com.havivon.pigeon.fakes.FakeFavorites
+import com.havivon.pigeon.fakes.FakeFolders
+import com.havivon.pigeon.fakes.testMoves
 import com.havivon.pigeon.fakes.FakeLocks
 import com.havivon.pigeon.fakes.FakeMessageRepository
 import com.havivon.pigeon.fakes.FakePins
@@ -79,6 +81,8 @@ class ViewModelsTest {
     private val reminders = FakeReminders()
     private val scheduler = FakeScheduler()
     private val sender = FakeSmsSender(messages)
+    private val folders = FakeFolders()
+    private val moves = testMoves(folders, spam)
     private val cancelled = mutableListOf<Long>()
 
     /** Keeps a StateFlow subscribed for the test, as a screen would. */
@@ -86,10 +90,10 @@ class ViewModelsTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect { } }
     }
 
-    private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher)
+    private fun inbox() = InboxViewModel(messages, rules, pins, locks, spam, folders, moves, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher)
 
     private fun TestScope.thread(threadId: Long = 1, focusMessageId: Long? = null) = ConversationViewModel(
-        threadId, messages, sender, rules, favorites, reminders, scheduler, spam, locks, pins, mapper, labels, Utc,
+        threadId, messages, sender, rules, favorites, reminders, scheduler, spam, locks, pins, folders, moves, mapper, labels, Utc,
         me = "Me", cancelNotification = { cancelled += it }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)), now = { Now }, work = main.dispatcher,
         focusMessageId = focusMessageId,
     )
@@ -288,7 +292,7 @@ class ViewModelsTest {
             object : MessageRepository by messages {
                 override suspend fun messagesById(ids: Collection<Long>): List<SmsMessage> = kotlinx.coroutines.awaitCancellation()
             },
-            rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher,
+            rules, pins, locks, spam, folders, moves, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher,
         )
         collect(vm.state)
         vm.selectUnreadOnly(true)

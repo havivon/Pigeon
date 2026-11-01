@@ -2,7 +2,9 @@ package com.havivon.pigeon.domain.repository
 
 import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.ColorRule
+import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Favorite
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.domain.model.SpamReason
@@ -102,4 +104,36 @@ interface BlockedKeywordsRepository {
     suspend fun add(word: String): Boolean
 
     suspend fun delete(id: Long)
+}
+
+/**
+ * The user's own categories and the conversations moved by hand ("Move to category"). A move is kept by
+ * the conversation's key ([com.havivon.pigeon.domain.folders.FolderKeys]: the sender, or the thread of a
+ * group), so the sender's future messages follow it. Nothing here touches Android's SMS database.
+ */
+interface FoldersRepository {
+    /** The user's categories, in their order. */
+    val folders: Flow<List<CustomFolder>>
+
+    /** Every move by hand, by conversation key. */
+    val overrides: Flow<Map<String, FolderChoice>>
+
+    /** Adds a category at the end of the list and returns its id. The name is checked by the caller (`FolderNames`). */
+    suspend fun add(name: String): Long
+
+    suspend fun rename(id: Long, name: String)
+
+    /** Deletes a category; the conversations in it go back to the automatic sorting. */
+    suspend fun delete(id: Long)
+
+    /** Puts the categories in this order (after a drag). Those not listed keep their relative order, after the listed ones. */
+    suspend fun reorder(idsInOrder: List<Long>)
+
+    suspend fun overrideFor(key: String): FolderChoice?
+
+    /** Moves the conversation with [key] by hand; [FolderChoice.BuiltIn] of All or Spam is ignored. */
+    suspend fun setOverride(key: String, choice: FolderChoice)
+
+    /** Back to the automatic sorting. */
+    suspend fun clearOverride(key: String)
 }

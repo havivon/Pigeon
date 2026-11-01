@@ -2,10 +2,13 @@ package com.havivon.pigeon.ui.common
 
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.DateTimeExtractor
+import com.havivon.pigeon.domain.folders.FolderKeys
 import com.havivon.pigeon.domain.analysis.RuleMatcher
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.Message
 import com.havivon.pigeon.domain.model.SendStatus
 import com.havivon.pigeon.domain.model.SmsConversation
@@ -27,7 +30,7 @@ import kotlinx.coroutines.coroutineScope
 
 /**
  * Turns the platform's records ([SmsConversation], [SmsMessage]) and the app's own data (rules,
- * pins, locks, spam verdicts) into the models the screens draw ([Conversation], [Message]).
+ * pins, locks, spam verdicts, moves by hand) into the models the screens draw ([Conversation], [Message]).
  */
 class ConversationMapper(
     private val labels: DateLabels,
@@ -55,6 +58,11 @@ class ConversationMapper(
         pinned: Set<Long> = emptySet(),
         locked: Set<Long> = emptySet(),
         verdict: SpamVerdict? = null,
+        /**
+         * Where the user moved it by hand ([overrideFor]): ahead of the automatic folder, but not of a spam
+         * [verdict] (marking spam drops the move, and a filed sender is not judged again).
+         */
+        override: FolderChoice? = null,
     ): Conversation {
         val isLocked = c.threadId in locked
         val address = c.addresses.firstOrNull().orEmpty()
@@ -62,6 +70,7 @@ class ConversationMapper(
         val body = if (isLocked) "" else c.snippet
         val spam = verdict != null
         val analysis = analysis(c, address)
+        val moved = override?.takeIf { !spam }
         return Conversation(
             id = c.threadId,
             name = title(c),
@@ -71,13 +80,21 @@ class ConversationMapper(
             unread = c.unreadCount,
             pinned = c.threadId in pinned,
             ruleId = if (spam) null else RuleMatcher.firstMatch(rules, c.contactName, address, body)?.id,
-            folder = if (spam) Folder.Spam else analysis.folder,
+            folder = when {
+                spam -> Folder.Spam
+                moved is FolderChoice.BuiltIn -> moved.folder
+                // In one of the user's categories: no built-in folder (it shows under All and its category)
+                moved is FolderChoice.Custom -> Folder.All
+                else -> analysis.folder
+            },
             code = if (isLocked || spam) null else analysis.code,
             // A verdict always shows at least one reason, so the screens can tell it is spam
             spamReasons = verdict?.reasons?.ifEmpty { listOf(SpamReason.MarkedByUser) }.orEmpty(),
             addresses = c.addresses,
             locked = isLocked,
             messageCount = c.incomingCount,
+            customFolderId = (moved as? FolderChoice.Custom)?.id,
+            folderOverridden = moved != null,
         )
     }
 
@@ -93,7 +110,8 @@ class ConversationMapper(
      * left out; those of a locked one show only [lockedSnippet], no code and no keyword colour. A message
      * whose conversation is not in [conversations] yet (it just arrived) shows its number, under
      * [Folder.All] only: it has no folder yet. [sources] are the conversations as the system gave them:
-     * the contact's name is what a sender rule matches.
+     * the contact's name is what a sender rule matches. With [customFolder], the rows of that category of the
+     * user's instead of [folder].
      */
     fun mapUnread(
         unread: List<SmsMessage>,
@@ -103,13 +121,18 @@ class ConversationMapper(
         rules: List<ColorRule> = emptyList(),
         locked: Set<Long> = emptySet(),
         folder: Folder = Folder.All,
+        customFolder: Long? = null,
     ): List<UnreadMessage> {
         val rows = unread
             .sortedWith(compareByDescending<SmsMessage> { it.dateMillis }.thenByDescending { it.id })
             .mapNotNull { m ->
                 val conversation = conversations[m.threadId]
                 if (conversation?.isSpam == true) return@mapNotNull null
-                if (folder != Folder.All && conversation?.folder != folder) return@mapNotNull null
+                if (customFolder != null) {
+                    if (conversation?.customFolderId != customFolder) return@mapNotNull null
+                } else if (folder != Folder.All && conversation?.folder != folder) {
+                    return@mapNotNull null
+                }
                 val isLocked = m.threadId in locked
                 val code = if (isLocked) null else unreadCodes.getOrPut(m.id) { codeFinder.find(m.body).orEmpty() }.ifEmpty { null }
                 UnreadMessage(
@@ -154,11 +177,36 @@ suspend fun <T, R> mapAll(items: List<T>, map: (T) -> R): List<R> =
 fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? =
     verdicts.firstOrNull { v -> c.addresses.any { PhoneNumbers.same(it, v.address) } }
 
+/** Where the user moved [c] by hand, by its [FolderKeys] key; null when it is sorted automatically. */
+fun overrideFor(c: SmsConversation, overrides: Map<String, FolderChoice>): FolderChoice? =
+    if (overrides.isEmpty()) null else overrides[FolderKeys.of(c.threadId, c.addresses)]
+
 /** The conversations a folder chip shows: spam only under Spam, and only there. */
 fun inFolder(all: List<Conversation>, folder: Folder): List<Conversation> = when (folder) {
     Folder.All -> all.filter { !it.isSpam }
     Folder.Spam -> all.filter { it.isSpam }
     else -> all.filter { !it.isSpam && it.folder == folder }
+}
+
+/** The conversations a chip shows: a built-in folder ([inFolder]) or one of the user's categories (never spam). */
+fun inFolder(all: List<Conversation>, choice: FolderChoice): List<Conversation> = when (choice) {
+    is FolderChoice.BuiltIn -> inFolder(all, choice.folder)
+    is FolderChoice.Custom -> all.filter { !it.isSpam && it.customFolderId == choice.id }
+}
+
+/** The numbers on the chips of the user's categories: their unread messages, as on the built-in ones. */
+fun customFolderCounts(all: List<Conversation>, folders: List<CustomFolder>): Map<Long, Int> =
+    folders.associate { f -> f.id to inFolder(all, FolderChoice.Custom(f.id)).sumOf { it.unread } }
+
+/**
+ * Where a conversation is now, as "Move to category" checks it: Spam, the user's category, or its folder
+ * (the automatic one, or the one it was moved to); null when it is in no folder but All.
+ */
+fun currentFolder(c: Conversation): FolderChoice? = when {
+    c.isSpam -> FolderChoice.BuiltIn(Folder.Spam)
+    c.customFolderId != null -> FolderChoice.Custom(c.customFolderId)
+    c.folder == Folder.All -> null
+    else -> FolderChoice.BuiltIn(c.folder)
 }
 
 /**

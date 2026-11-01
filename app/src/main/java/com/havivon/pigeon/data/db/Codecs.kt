@@ -1,6 +1,8 @@
 package com.havivon.pigeon.data.db
 
 import com.havivon.pigeon.domain.model.ColorRule
+import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.domain.model.SpamReason
 
@@ -101,12 +103,32 @@ fun ColorRule.toEntity(position: Int): ColorRuleEntity = ColorRuleEntity(
 )
 
 /**
- * The positions after a drag: [idsInOrder] first, in that order, then every other rule in its
+ * The positions after a drag: [idsInOrder] first, in that order, then every other rule (or category) in its
  * current order. Unknown ids are ignored. Returns id → new position.
  */
-fun reorderedPositions(currentInOrder: List<Int>, idsInOrder: List<Int>): Map<Int, Int> {
+fun <K> reorderedPositions(currentInOrder: List<K>, idsInOrder: List<K>): Map<K, Int> {
     val known = currentInOrder.toSet()
     val listed = idsInOrder.filter { it in known }.distinct()
     val rest = currentInOrder.filter { it !in listed.toSet() }
     return (listed + rest).withIndex().associate { (index, id) -> id to index }
+}
+
+/**
+ * A move by hand as two columns: the built-in folder's name, or the user's category id. Null for a value
+ * this version does not know (a folder a later version added), which then counts as no move.
+ */
+object FolderChoiceCodec {
+    fun decode(builtIn: String?, customFolderId: Long?): FolderChoice? = when {
+        customFolderId != null -> FolderChoice.Custom(customFolderId)
+        builtIn != null -> Folder.entries.firstOrNull { it.name == builtIn && it.isMoveTarget }?.let { FolderChoice.BuiltIn(it) }
+        else -> null
+    }
+
+    /** The two columns, or null for a choice that is not kept (All, Spam). */
+    fun encode(choice: FolderChoice): Pair<String?, Long?>? = when (choice) {
+        is FolderChoice.Custom -> null to choice.id
+        is FolderChoice.BuiltIn -> if (choice.folder.isMoveTarget) choice.folder.name to null else null
+    }
+
+    private val Folder.isMoveTarget get() = this != Folder.All && this != Folder.Spam
 }

@@ -9,6 +9,7 @@ import com.havivon.pigeon.data.db.PigeonDatabase
 import com.havivon.pigeon.data.db.RoomBinRepository
 import com.havivon.pigeon.data.db.RoomBlockedKeywordsRepository
 import com.havivon.pigeon.data.db.RoomFavoritesRepository
+import com.havivon.pigeon.data.db.RoomFoldersRepository
 import com.havivon.pigeon.data.db.RoomLocksRepository
 import com.havivon.pigeon.data.db.RoomPinsRepository
 import com.havivon.pigeon.data.db.RoomRemindersRepository
@@ -30,6 +31,7 @@ import com.havivon.pigeon.domain.bin.RecycleBin
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.FavoritesRepository
+import com.havivon.pigeon.domain.repository.FoldersRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
@@ -88,6 +90,8 @@ class AppContainer(
     val locks: LocksRepository by lazy { RoomLocksRepository(database) }
     val blockedKeywords: BlockedKeywordsRepository by lazy { RoomBlockedKeywordsRepository(database) }
     val pins: PinsRepository by lazy { RoomPinsRepository(database) }
+    /** The user's categories and the conversations moved by hand ("Move to category"). */
+    val folders: FoldersRepository by lazy { RoomFoldersRepository(database) }
 
     /** The recycle bin: a database file of its own, left out of backups (it holds message content). */
     private val binDatabase: BinDatabase by lazy { BinDatabase.build(app) }

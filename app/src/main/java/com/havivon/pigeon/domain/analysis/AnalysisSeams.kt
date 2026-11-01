@@ -49,6 +49,11 @@ class SpamFilterHook(
     private val spam: SpamRepository,
     private val blockedKeywords: BlockedKeywordsRepository,
     /**
+     * Whether the user moved this sender to a folder or category by hand ("Move to category"): they filed it, so
+     * it is never spam, like a sender marked "Not spam" (only "Mark as spam", which drops the move, makes it spam).
+     */
+    private val filedByUser: suspend (address: String) -> Boolean = { false },
+    /**
      * Whether the user ever wrote in this conversation. Someone you write to is treated like a
      * contact and is never spam: without the contacts permission (or for a number not saved yet)
      * a friend's "click here" with a link would otherwise go to spam without a notification.
@@ -58,6 +63,7 @@ class SpamFilterHook(
 
     override suspend fun onStored(message: StoredIncomingSms): IncomingVerdict {
         if (message.threadId > 0 && userWroteIn(message.threadId)) return IncomingVerdict.Notify
+        if (filedByUser(message.address)) return IncomingVerdict.Notify
         val name = contacts.displayName(message.address)
         val verdict = SpamScorer.score(
             IncomingSms(

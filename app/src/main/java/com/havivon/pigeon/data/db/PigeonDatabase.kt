@@ -20,11 +20,14 @@ import androidx.room.RoomDatabase
         NotSpamEntity::class,
         BlockedKeywordEntity::class,
         PinnedThreadEntity::class,
+        CustomFolderEntity::class,
+        FolderOverrideEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     // 2: pinned conversations (a new table, nothing else changes)
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    // 3: the user's categories and the conversations moved by hand (two new tables)
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class PigeonDatabase : RoomDatabase() {
     abstract fun colorRules(): ColorRuleDao
@@ -34,6 +37,7 @@ abstract class PigeonDatabase : RoomDatabase() {
     abstract fun spam(): SpamDao
     abstract fun blockedKeywords(): BlockedKeywordDao
     abstract fun pinnedThreads(): PinnedThreadDao
+    abstract fun folders(): FolderDao
 
     companion object {
         private const val NAME = "pigeon.db"

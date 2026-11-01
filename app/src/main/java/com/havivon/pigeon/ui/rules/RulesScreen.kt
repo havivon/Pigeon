@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -34,9 +33,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -61,6 +58,7 @@ import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
+import com.havivon.pigeon.ui.components.ReorderDragState
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
@@ -90,7 +88,7 @@ fun RulesScreen(
 ) {
     val c = HebTheme.colors
     val listState = rememberLazyListState()
-    val drag = remember { RuleDragState(listState) }
+    val drag = remember { ReorderDragState(listState) { it is Int } }
     // The order on screen while dragging; the repository's order again as soon as it changes
     var order by remember(rules) { mutableStateOf(rules) }
     val currentRules by rememberUpdatedState(rules)
@@ -119,13 +117,13 @@ fun RulesScreen(
             item(key = "yours") { SectionLabel(stringResource(R.string.rules_section_yours)) }
             if (order.isEmpty()) item(key = "none") { NoRules() }
             items(order, key = { it.id }) { rule ->
-                val lifted = drag.draggingId == rule.id || previewDragging == rule.id
+                val lifted = drag.draggingKey == rule.id || previewDragging == rule.id
                 RuleCard(
                     rule,
                     lifted = lifted,
                     onClick = { onEdit(rule) },
                     onToggle = { on -> onToggle(rule, on) },
-                    modifier = if (drag.draggingId == rule.id) {
+                    modifier = if (drag.draggingKey == rule.id) {
                         Modifier.zIndex(1f).graphicsLayer { translationY = drag.translationOf(rule.id) }
                     } else {
                         Modifier.animateItemPlacement()
@@ -136,7 +134,7 @@ fun RulesScreen(
                                 onDragStart = { drag.begin(rule.id) },
                                 onDrag = { change, amount ->
                                     change.consume()
-                                    drag.dragBy(amount.y, currentOrder)?.let { order = it }
+                                    drag.dragBy(amount.y, currentOrder) { it.id }?.let { order = it }
                                 },
                                 onDragEnd = {
                                     drag.release()
@@ -163,57 +161,6 @@ fun RulesScreen(
                 )
             }
         }
-    }
-}
-
-/**
- * Drag-to-reorder for the rule list. The dragged card follows the finger by its offset from where it
- * would sit; when its middle crosses a neighbour the two swap places in the order (one swap at a
- * time, until the list has laid out again).
- */
-@Stable
-private class RuleDragState(private val list: LazyListState) {
-    var draggingId by mutableStateOf<Int?>(null)
-        private set
-    private var distance by mutableFloatStateOf(0f)
-    private var startOffset = 0f
-    private var awaitingLayoutFrom: Int? = null
-
-    fun begin(id: Int) {
-        val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == id } ?: return
-        draggingId = id
-        startOffset = info.offset.toFloat()
-        distance = 0f
-        awaitingLayoutFrom = null
-    }
-
-    /** How far the dragged card is from its place in the list right now. */
-    fun translationOf(id: Int): Float {
-        val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == id } ?: return 0f
-        return startOffset + distance - info.offset
-    }
-
-    /** The order after moving the finger by [delta] pixels, or null when no neighbour was crossed. */
-    fun dragBy(delta: Float, order: List<ColorRule>): List<ColorRule>? {
-        val id = draggingId ?: return null
-        distance += delta
-        val visible = list.layoutInfo.visibleItemsInfo
-        val me = visible.firstOrNull { it.key == id } ?: return null
-        if (awaitingLayoutFrom == me.index) return null
-        awaitingLayoutFrom = null
-        val middle = startOffset + distance + me.size / 2f
-        val target = visible.firstOrNull { it.key is Int && it.key != id && middle >= it.offset && middle <= it.offset + it.size } ?: return null
-        val from = order.indexOfFirst { it.id == id }
-        val to = order.indexOfFirst { it.id == target.key }
-        if (from < 0 || to < 0 || from == to) return null
-        awaitingLayoutFrom = me.index
-        return order.toMutableList().apply { add(to, removeAt(from)) }
-    }
-
-    fun release() {
-        draggingId = null
-        distance = 0f
-        awaitingLayoutFrom = null
     }
 }
 

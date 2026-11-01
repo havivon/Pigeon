@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
@@ -34,7 +35,10 @@ import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.LinkInfo
+import com.havivon.pigeon.domain.folders.FolderMoves
+import com.havivon.pigeon.domain.folders.FolderNames
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.SendStatus
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
@@ -44,6 +48,8 @@ import com.havivon.pigeon.ui.common.avatarColor
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.ltr
+import com.havivon.pigeon.ui.common.reservedFolderNames
+import com.havivon.pigeon.ui.folders.MoveToFolderFlow
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
 import com.havivon.pigeon.ui.reminders.ReminderSheet
 import com.havivon.pigeon.ui.theme.HebTheme
@@ -59,7 +65,8 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
         val labels = dateLabels(context)
         ConversationViewModel(
             threadId, app.messages, app.smsSender, app.rules, app.favorites, app.reminders, app.reminderScheduler,
-            app.spam, app.locks, app.pins,
+            app.spam, app.locks, app.pins, app.folders,
+            FolderMoves(app.folders, app.spam, reservedFolderNames(context)),
             mapper = conversationMapper(context, app, labels),
             labels = labels,
             zone = ZoneId.systemDefault(),
@@ -78,6 +85,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
     var textSelectionId by rememberSaveable { mutableStateOf<Long?>(null) }
     var link by remember { mutableStateOf<LinkInfo?>(null) }
     var remindSheet by rememberSaveable { mutableStateOf(false) }
+    var moveSheet by rememberSaveable { mutableStateOf(false) }
 
     // While it is on the screen its messages count as read and are not notified
     val container = remember { AppContainer.from(context) }
@@ -108,6 +116,9 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
     val reminderRemoved = stringResource(R.string.thread_reminder_removed)
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val backToInbox = stringResource(R.string.spam_back_to_inbox)
+    val movedTo = stringResource(R.string.move_folder_moved)
+    val backToAutomatic = stringResource(R.string.move_folder_automatic_done)
+    val customFolders by rememberUpdatedState(state.customFolders)
     val reminderCreatedFormat = stringResource(R.string.thread_reminder_created)
     val needsDefault = rememberNeedsDefaultNotice()
     // The events are collected once: read the access as it is when one comes
@@ -127,6 +138,14 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
                     onClosed()
                 }
                 ConversationEvent.NotSpam -> notices.show(backToInbox)
+                is ConversationEvent.Moved -> notices.show(
+                    when (val t = e.target) {
+                        null -> backToAutomatic
+                        is FolderChoice.BuiltIn -> String.format(movedTo, context.getString(t.folder.labelRes))
+                        is FolderChoice.Custom -> String.format(movedTo, customFolders.firstOrNull { it.id == t.id }?.name.orEmpty())
+                    },
+                )
+                is ConversationEvent.MovedToNew -> notices.show(String.format(movedTo, FolderNames.clean(e.name)))
             }
         }
     }
@@ -155,6 +174,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
                 else -> notices.show(needsScreenLock)
             }
         },
+        ThreadMenuItem(stringResource(R.string.action_move_to_folder), Icons.AutoMirrored.Rounded.DriveFileMove) { moveSheet = true },
         if (conversation.isSpam) {
             ThreadMenuItem(stringResource(R.string.spam_not_spam), Icons.Rounded.VerifiedUser) { vm.markNotSpam() }
         } else {
@@ -231,6 +251,17 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
         onLink = { link = it },
         onNotSpam = vm::markNotSpam,
     )
+
+    if (moveSheet && known != null) {
+        MoveToFolderFlow(
+            known,
+            state.customFolders,
+            problemOf = vm::folderNameProblem,
+            onMove = vm::moveTo,
+            onCreate = vm::createFolderAndMove,
+            onDismiss = { moveSheet = false },
+        )
+    }
 
     if (remindSheet) {
         ReminderSheet(

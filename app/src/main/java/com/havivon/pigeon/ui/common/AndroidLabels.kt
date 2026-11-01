@@ -7,6 +7,7 @@ import android.icu.util.ULocale
 import android.text.format.DateFormat as AndroidDateFormat
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.AppContainer
+import com.havivon.pigeon.domain.model.Folder
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -26,6 +27,18 @@ fun dateLabels(context: Context): DateLabels = DateLabels(
 
 fun conversationMapper(context: Context, container: AppContainer, labels: DateLabels = dateLabels(context)): ConversationMapper =
     ConversationMapper(labels, container.codeFinder, container.folderClassifier, context.getString(R.string.inbox_locked_snippet))
+
+/**
+ * The built-in folders' names in both of the app's languages ("Banks" and "בנקים", "All" and "הכל"): a category
+ * of the user's may take none of them, whichever language is on now.
+ */
+fun reservedFolderNames(context: Context): Set<String> {
+    val config = context.resources.configuration
+    return listOf(Locale.ENGLISH, Locale("iw")).flatMapTo(LinkedHashSet()) { locale ->
+        val localized = context.createConfigurationContext(android.content.res.Configuration(config).apply { setLocale(locale) })
+        Folder.entries.map { localized.getString(it.labelRes) }
+    }
+}
 
 /**
  * The inbox header's date line: today in the Hebrew calendar and in the Gregorian one,

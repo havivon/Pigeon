@@ -39,6 +39,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +59,7 @@ import com.havivon.pigeon.R
 import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.ui.components.Avatar
@@ -97,6 +101,12 @@ fun InboxScreen(
     banner: (@Composable () -> Unit)? = null,
     /** The conversations are still being read: a quiet loading sign where the list will be. */
     loading: Boolean = false,
+    /** The user's own categories: chips after the built-in ones, with [customCounts] as their numbers. */
+    customFolders: List<CustomFolder> = emptyList(),
+    customCounts: Map<Long, Int> = emptyMap(),
+    /** The chosen category of the user's; while one is, no built-in chip is chosen. */
+    selectedCustom: Long? = null,
+    onCustomFolder: (CustomFolder) -> Unit = {},
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
@@ -106,7 +116,10 @@ fun InboxScreen(
         // The header (title, search, folder chips, the All / Unread toggle) stays; the banner, the pinned row and the sections scroll under it
         FixedHeaderLayout(
             Modifier.fillMaxSize(),
-            header = { InboxHeader(dateLine, selectedFolder, folderCounts, unreadOnly, unreadCount, onFolder, onUnreadOnly, onSettings, onSearch) },
+            header = {
+                val chips = FolderChips(selectedFolder, folderCounts, customFolders, customCounts, selectedCustom, onFolder, onCustomFolder)
+                InboxHeader(dateLine, chips, unreadOnly, unreadCount, onUnreadOnly, onSettings, onSearch)
+            },
         ) { top -> InboxList(top, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
         NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
     }
@@ -170,14 +183,23 @@ private fun LoadingConversations() {
     }
 }
 
+/** What the row of chips shows: the built-in folders, then the user's categories, and which one is chosen. */
+private class FolderChips(
+    val selected: Folder,
+    val counts: Map<Folder, Int>,
+    val custom: List<CustomFolder>,
+    val customCounts: Map<Long, Int>,
+    val selectedCustom: Long?,
+    val onFolder: (Folder) -> Unit,
+    val onCustom: (CustomFolder) -> Unit,
+)
+
 @Composable
 private fun InboxHeader(
     dateLine: String,
-    selected: Folder,
-    counts: Map<Folder, Int>,
+    chips: FolderChips,
     unreadOnly: Boolean,
     unreadCount: Int,
-    onFolder: (Folder) -> Unit,
     onUnreadOnly: (Boolean) -> Unit,
     onSettings: () -> Unit,
     onSearch: () -> Unit,
@@ -205,12 +227,25 @@ private fun InboxHeader(
             Text(stringResource(R.string.inbox_search_hint), color = Color.White.copy(alpha = 0.88f), fontSize = 14.sp)
         }
         Spacer(Modifier.height(12.dp))
+        // The user's categories are the last chips: a chosen one is kept in sight (shown at once, and after a change)
+        val chipScroll = rememberScrollState(if (chips.selectedCustom != null) Int.MAX_VALUE else 0)
+        LaunchedEffect(chips.selectedCustom) {
+            if (chips.selectedCustom != null) {
+                snapshotFlow { chipScroll.maxValue }.first { it in 1 until Int.MAX_VALUE }
+                chipScroll.scrollTo(chipScroll.maxValue)
+            }
+        }
         Row(
-            Modifier.horizontalScroll(rememberScrollState()),
+            Modifier.horizontalScroll(chipScroll),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Folder.entries.forEach { folder ->
-                FolderChip(folder, counts[folder] ?: 0, folder == selected) { onFolder(folder) }
+                val selected = chips.selectedCustom == null && folder == chips.selected
+                FolderChip(stringResource(folder.labelRes), chips.counts[folder] ?: 0, selected) { chips.onFolder(folder) }
+            }
+            // The user's own categories, after the built-in ones, in their order
+            chips.custom.forEach { f ->
+                FolderChip(f.name, chips.customCounts[f.id] ?: 0, f.id == chips.selectedCustom) { chips.onCustom(f) }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -280,7 +315,7 @@ private fun CountDot(count: Int, selected: Boolean) {
 }
 
 @Composable
-private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: () -> Unit) {
+private fun FolderChip(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
     val c = HebTheme.colors
     Row(
         Modifier
@@ -291,10 +326,11 @@ private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: (
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            stringResource(folder.labelRes),
+            label,
             color = if (!selected) Color.White else if (c.isDark) Color(0xFF3A2596) else c.accent,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
         )
         if (count > 0) {
             Spacer(Modifier.width(6.dp))

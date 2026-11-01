@@ -21,8 +21,10 @@ import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.BlockedKeyword
+import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.reminders.QuickReminder
+import com.havivon.pigeon.ui.folders.FoldersScreen
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.keywords.BlockedKeywordsScreen
 import com.havivon.pigeon.ui.reminders.ReminderChooser
@@ -56,6 +58,7 @@ private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
         appIcon = AppIcon.Envelope,
         ruleCount = sample.rules.size,
         keywordCount = 3,
+        folderCount = 3,
     )
 
     /** Notifications not allowed yet and exact alarms off, so the rows that ask for them show. */
@@ -86,6 +89,12 @@ private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
         text = if (hebrew) "הבנק" else "Bank",
         label = if (hebrew) "בנק" else "Bank",
         argb = RuleSwatches[0],
+    )
+
+    val folders = listOf(
+        CustomFolder(1, if (hebrew) "עבודה" else "Work"),
+        CustomFolder(2, if (hebrew) "ועד בית" else "Building committee"),
+        CustomFolder(3, if (hebrew) "חוג כדורסל" else "Basketball club"),
     )
 
     val reminderTimes = mapOf(
@@ -158,6 +167,9 @@ class EditingSnapshots {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
             Sheet { ReminderChooser(s.reminderTimes, {}, {}) }
         }
+        shot("93_categories") { FoldersScreen(s.folders) }
+        shot("94_categories_reordering_dark", dark = true) { FoldersScreen(s.folders, previewDragging = 2) }
+        shot("95_categories_empty") { FoldersScreen(emptyList()) }
     }
 }
 
@@ -206,5 +218,6 @@ class EditingSnapshotsEnglish {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
             Sheet { ReminderChooser(s.reminderTimes, {}, {}) }
         }
+        shot("96_en_categories") { FoldersScreen(s.folders) }
     }
 }

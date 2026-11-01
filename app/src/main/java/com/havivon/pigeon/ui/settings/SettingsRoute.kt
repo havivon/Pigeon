@@ -45,7 +45,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
     val container = remember { AppContainer.from(context) }
     val vm = pigeonViewModel { app ->
         val appContext = context.applicationContext
-        SettingsViewModel(app.settings, app.rules, app.blockedKeywords, AppIconSwitcher.current(appContext)) { AppIconSwitcher.set(appContext, it) }
+        SettingsViewModel(app.settings, app.rules, app.blockedKeywords, app.folders, AppIconSwitcher.current(appContext)) { AppIconSwitcher.set(appContext, it) }
     }
     val state by vm.state.collectAsStateWithLifecycle()
     val auth = LocalAuthenticator.current
@@ -93,6 +93,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onAppIcon = vm::setAppIcon,
             onOpenRules = { navigate(Screen.Rules) },
             onOpenKeywords = { navigate(Screen.BlockedKeywords) },
+            onOpenFolders = { navigate(Screen.Folders) },
             onOpenRecycleBin = { navigate(Screen.RecycleBin) },
             // Deleting needs the default SMS app; turning it off always works
             onAutoDeleteCodes = { on -> if (on && !defaultApp.isDefault) needsDefault() else vm.setAutoDeleteCodes(on) },

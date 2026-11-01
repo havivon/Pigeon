@@ -21,6 +21,11 @@ import com.havivon.pigeon.domain.model.SpamVerdict
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.FavoritesRepository
+import com.havivon.pigeon.domain.repository.FoldersRepository
+import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
+import com.havivon.pigeon.domain.folders.FolderMoves
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
@@ -292,3 +297,40 @@ class FakeSettings(initial: AppSettings = AppSettings()) : SettingsRepository {
     override suspend fun setWelcomeDone(value: Boolean) = state.update { it.copy(welcomeDone = value) }
     override suspend fun setPermissionsAsked(value: Boolean) = state.update { it.copy(permissionsAsked = value) }
 }
+
+/** The user's categories and moves by hand, in memory, as the Room repository keeps them. */
+class FakeFolders(initial: List<CustomFolder> = emptyList()) : FoldersRepository {
+    val folderState = MutableStateFlow(initial)
+    val overrideState = MutableStateFlow<Map<String, FolderChoice>>(emptyMap())
+    private var nextId = (initial.maxOfOrNull { it.id } ?: 0) + 1
+    override val folders: Flow<List<CustomFolder>> = folderState
+    override val overrides: Flow<Map<String, FolderChoice>> = overrideState
+    override suspend fun add(name: String): Long {
+        val id = nextId++
+        folderState.update { it + CustomFolder(id, name) }
+        return id
+    }
+    override suspend fun rename(id: Long, name: String) = folderState.update { list -> list.map { if (it.id == id) it.copy(name = name) else it } }
+    override suspend fun delete(id: Long) {
+        overrideState.update { map -> map.filterValues { it != FolderChoice.Custom(id) } }
+        folderState.update { list -> list.filter { it.id != id } }
+    }
+    override suspend fun reorder(idsInOrder: List<Long>) = folderState.update { list ->
+        val listed = idsInOrder.mapNotNull { id -> list.firstOrNull { it.id == id } }.distinct()
+        listed + list.filter { it !in listed }
+    }
+    override suspend fun overrideFor(key: String): FolderChoice? = overrideState.value[key]
+    override suspend fun setOverride(key: String, choice: FolderChoice) {
+        if (choice == FolderChoice.BuiltIn(Folder.All) || choice == FolderChoice.BuiltIn(Folder.Spam)) return
+        overrideState.update { it + (key to choice) }
+    }
+    override suspend fun clearOverride(key: String) = overrideState.update { it - key }
+}
+
+/** The built-in folders' names in English and Hebrew, as `reservedFolderNames` reads them from the resources. */
+val ReservedFolderNames = setOf(
+    "All", "Personal", "Banks", "Insurance", "Codes", "Deliveries", "Spam",
+    "הכל", "אישי", "בנקים", "ביטוח", "קודים", "משלוחים", "ספאם",
+)
+
+fun testMoves(folders: FoldersRepository, spam: com.havivon.pigeon.domain.repository.SpamRepository) = FolderMoves(folders, spam, ReservedFolderNames)

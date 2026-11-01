@@ -4,17 +4,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.RuleMatcher
+import com.havivon.pigeon.domain.folders.FolderMoves
+import com.havivon.pigeon.domain.folders.FolderNameProblem
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.Message
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.domain.model.SmsConversation
 import com.havivon.pigeon.domain.model.SmsMessage
-import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.domain.model.ThreadItem
 import com.havivon.pigeon.domain.repository.FavoritesRepository
+import com.havivon.pigeon.domain.repository.FoldersRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
@@ -28,6 +33,7 @@ import com.havivon.pigeon.ui.common.DateLabels
 import com.havivon.pigeon.ui.common.ReminderMatch
 import com.havivon.pigeon.ui.common.findReminder
 import com.havivon.pigeon.ui.common.formatForCopy
+import com.havivon.pigeon.ui.common.overrideFor
 import com.havivon.pigeon.ui.common.sendStatus
 import com.havivon.pigeon.ui.common.threadItems
 import com.havivon.pigeon.ui.common.verdictFor
@@ -83,6 +89,8 @@ data class ConversationUiState(
     val rule: ColorRule? = null,
     /** Older messages exist that are not read yet (a scroll to the top reads them). */
     val hasOlder: Boolean = false,
+    /** The user's categories, for "Move to category". */
+    val customFolders: List<CustomFolder> = emptyList(),
 ) {
     val messages: List<Message> get() = items.filterIsInstance<ThreadItem.Msg>().map { it.message }
 }
@@ -97,6 +105,12 @@ sealed interface ConversationEvent {
     data object ReminderRemoved : ConversationEvent
     data object MovedToSpam : ConversationEvent
     data object NotSpam : ConversationEvent
+
+    /** Moved by hand ("Move to category"): to [target], or back to the automatic sorting (null). */
+    data class Moved(val target: FolderChoice?) : ConversationEvent
+
+    /** "New category…": made, and the conversation moved into it. */
+    data class MovedToNew(val name: String) : ConversationEvent
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -111,6 +125,9 @@ class ConversationViewModel(
     private val spam: SpamRepository,
     private val locks: LocksRepository,
     private val pins: PinsRepository,
+    private val folders: FoldersRepository,
+    /** "Move to category" and "Mark as spam" ([FolderMoves]). */
+    private val moves: FolderMoves,
     private val mapper: ConversationMapper,
     private val labels: DateLabels,
     private val zone: ZoneId,
@@ -171,11 +188,11 @@ class ConversationViewModel(
         messages.conversations,
         pins.pinnedThreadIds,
         locks.lockedThreadIds,
-        spam.verdicts,
+        combine(spam.verdicts, folders.overrides, ::Pair),
         rules.rules,
-    ) { list, pinned, locked, verdicts, ruleList ->
+    ) { list, pinned, locked, (verdicts, overrides), ruleList ->
         val c = list.firstOrNull { it.threadId == threadId }
-        c to c?.let { mapper.map(it, now(), ruleList, pinned, locked, verdictFor(it, verdicts)) }
+        c to c?.let { mapper.map(it, now(), ruleList, pinned, locked, verdictFor(it, verdicts), overrideFor(it, overrides)) }
     }.onStart<Pair<SmsConversation?, Conversation?>?> { emit(null) }
 
     val state: StateFlow<ConversationUiState> = combine(
@@ -183,8 +200,8 @@ class ConversationViewModel(
         header,
         rules.rules,
         favorites.favoriteMessageIds,
-        reminders.pending,
-    ) { (list, n), known, ruleList, starred, pending ->
+        combine(reminders.pending, folders.folders, ::Pair),
+    ) { (list, n), known, ruleList, starred, (pending, customFolders) ->
         val sms = known?.first
         latest = list
         latestConversation = sms
@@ -202,7 +219,7 @@ class ConversationViewModel(
         val conversation = if (known == null) null else known.second ?: fallbackConversation(list, t)
         val threadRule = ruleList.firstOrNull { it.id == conversation?.ruleId }?.takeIf { it.match is RuleMatch.Sender }
         val items = threadItems(list, labels, t) { m -> toMessage(m, t, contactName, ruleList, starred, withReminder) }
-        ConversationUiState(loaded = true, conversation = conversation, items = items, rule = threadRule, hasOlder = hasOlder)
+        ConversationUiState(loaded = true, conversation = conversation, items = items, rule = threadRule, hasOlder = hasOlder, customFolders = customFolders)
     }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConversationUiState())
 
     init {
@@ -410,15 +427,38 @@ class ConversationViewModel(
     private fun addresses(): List<String> =
         state.value.conversation?.addresses?.takeIf { it.isNotEmpty() } ?: latest.map { it.address }.distinctBy { PhoneNumbers.normalize(it) }
 
+    /** "Mark as spam": the same as moving it to Spam (a move by hand to a folder is dropped). */
     fun markSpam() {
         val list = addresses()
         appScope.launch {
-            for (a in list) {
-                // The user's own mark overrides an earlier "not spam"
-                spam.removeFromNotSpam(a)
-                spam.markSpam(a, threadId, listOf(SpamReason.MarkedByUser))
-            }
+            moves.move(threadId, list, isSpam = false, FolderChoice.BuiltIn(Folder.Spam))
             events.trySend(ConversationEvent.MovedToSpam)
+        }
+    }
+
+    /**
+     * "Move to category" from the menu: to a built-in folder, a category of the user's, Spam (as "Mark as spam",
+     * which closes the screen), or null for the automatic sorting. A spam conversation moved out is "Not spam".
+     */
+    fun moveTo(target: FolderChoice?) {
+        if (target == FolderChoice.BuiltIn(Folder.Spam)) return markSpam()
+        val list = addresses()
+        val wasSpam = state.value.conversation?.isSpam == true
+        appScope.launch {
+            moves.move(threadId, list, wasSpam, target)
+            events.trySend(ConversationEvent.Moved(target))
+        }
+    }
+
+    /** Why [name] cannot be a new category's, or null when it can. */
+    fun folderNameProblem(name: String): FolderNameProblem? = moves.problem(name, state.value.customFolders)
+
+    /** "New category…": makes it and moves the conversation into it; nothing happens for a name that cannot be used. */
+    fun createFolderAndMove(name: String) {
+        val list = addresses()
+        val wasSpam = state.value.conversation?.isSpam == true
+        appScope.launch {
+            if (moves.createAndMove(name, threadId, list, wasSpam) != null) events.trySend(ConversationEvent.MovedToNew(name))
         }
     }
 

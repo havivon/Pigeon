@@ -8,6 +8,7 @@ import com.havivon.pigeon.data.work.BinPurgeWorker
 import com.havivon.pigeon.data.work.CodeCleanupWorker
 import com.havivon.pigeon.domain.analysis.AnalysisSeams
 import com.havivon.pigeon.domain.analysis.SpamFilterHook
+import com.havivon.pigeon.domain.folders.FolderKeys
 import kotlinx.coroutines.launch
 
 /** How far back a conversation is read for a message the user wrote (which makes the sender known). */
@@ -22,7 +23,8 @@ class PigeonApp : Application() {
             codeFinder = AnalysisSeams.codeFinder,
             folderClassifier = AnalysisSeams.folderClassifier,
             incomingHook = { app ->
-                SpamFilterHook(app.contacts, app.spam, app.blockedKeywords) { threadId ->
+                val filed: suspend (String) -> Boolean = { address -> FolderKeys.sender(address)?.let { app.folders.overrideFor(it) } != null }
+                SpamFilterHook(app.contacts, app.spam, app.blockedKeywords, filed) { threadId ->
                     app.messages.recentMessages(threadId, KNOWN_SENDER_DEPTH).any { it.type.outgoing }
                 }
             },

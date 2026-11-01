@@ -174,3 +174,54 @@ interface BlockedKeywordDao {
     @Query("DELETE FROM blocked_keywords WHERE id = :id")
     suspend fun delete(id: Long)
 }
+
+@Dao
+interface FolderDao {
+    @Query("SELECT * FROM custom_folders ORDER BY position, id")
+    fun observeFolders(): Flow<List<CustomFolderEntity>>
+
+    @Query("SELECT * FROM custom_folders ORDER BY position, id")
+    suspend fun folders(): List<CustomFolderEntity>
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM custom_folders")
+    suspend fun nextPosition(): Int
+
+    @Insert
+    suspend fun insertFolder(folder: CustomFolderEntity): Long
+
+    @Query("UPDATE custom_folders SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
+    @Query("UPDATE custom_folders SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Int)
+
+    @Query("DELETE FROM custom_folders WHERE id = :id")
+    suspend fun deleteFolder(id: Long)
+
+    @Query("DELETE FROM folder_overrides WHERE customFolderId = :folderId")
+    suspend fun deleteOverridesOf(folderId: Long)
+
+    /** A category and the moves into it, together: its conversations go back to the automatic sorting. */
+    @Transaction
+    suspend fun deleteFolderAndOverrides(id: Long) {
+        deleteOverridesOf(id)
+        deleteFolder(id)
+    }
+
+    @Transaction
+    suspend fun setPositions(positions: Map<Long, Int>) {
+        for ((id, position) in positions) setPosition(id, position)
+    }
+
+    @Query("SELECT * FROM folder_overrides")
+    fun observeOverrides(): Flow<List<FolderOverrideEntity>>
+
+    @Query("SELECT * FROM folder_overrides WHERE `key` = :key")
+    suspend fun override(key: String): FolderOverrideEntity?
+
+    @Upsert
+    suspend fun upsertOverride(entry: FolderOverrideEntity)
+
+    @Query("DELETE FROM folder_overrides WHERE `key` = :key")
+    suspend fun deleteOverride(key: String)
+}

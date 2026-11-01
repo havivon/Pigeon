@@ -7,6 +7,7 @@ import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
+import com.havivon.pigeon.domain.repository.FoldersRepository
 import com.havivon.pigeon.domain.repository.RulesRepository
 import com.havivon.pigeon.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,8 @@ data class SettingsUiState(
     val ruleCount: Int = 0,
     /** For the "Blocked words" row. */
     val keywordCount: Int = 0,
+    /** For the "Categories" row: how many of their own the user made. */
+    val folderCount: Int = 0,
 )
 
 /**
@@ -34,6 +37,7 @@ class SettingsViewModel(
     private val settings: SettingsRepository,
     rules: RulesRepository,
     keywords: BlockedKeywordsRepository,
+    folders: FoldersRepository,
     currentIcon: AppIcon,
     /** Switches the launcher entry (`AppIconSwitcher`). */
     private val applyIcon: (AppIcon) -> Unit,
@@ -41,8 +45,8 @@ class SettingsViewModel(
 
     private val icon = MutableStateFlow(currentIcon)
 
-    val state: StateFlow<SettingsUiState> = combine(settings.settings, icon, rules.rules, keywords.keywords) { s, i, r, k ->
-        SettingsUiState(s, i, r.size, k.size)
+    val state: StateFlow<SettingsUiState> = combine(settings.settings, icon, rules.rules, keywords.keywords, folders.folders) { s, i, r, k, f ->
+        SettingsUiState(s, i, r.size, k.size, f.size)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(appIcon = currentIcon))
 
     fun setLanguage(value: AppLanguage) = launch { settings.setLanguage(value) }

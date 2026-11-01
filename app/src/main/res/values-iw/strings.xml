@@ -63,7 +63,7 @@
     <string name="inbox_empty_folder_title">אין כלום ב%1$s</string>
     <string name="inbox_empty_folder_body">שיחות מתאימות ממוינות לכאן אוטומטית.</string>
     <string name="inbox_empty_unread_title">אין כאן הודעות שלא נקראו</string>
-    <string name="inbox_empty_unread_body">הודעות חדשות בתיקייה הזו מופיעות כאן עד שקוראים אותן.</string>
+    <string name="inbox_empty_unread_body">הודעות חדשות בקטגוריה הזו מופיעות כאן עד שקוראים אותן.</string>
     <string name="inbox_filter_all">הכל</string>
     <string name="inbox_filter_unread">לא נקראו</string>
     <string name="inbox_empty_not_default">ההודעות שלך יופיעו כאן ברגע ש-Pigeon תהיה אפליקציית ההודעות שלך, או כשתאפשר לה להציג אותן.</string>
@@ -454,4 +454,43 @@
     </plurals>
     <string name="bin_restore_failed">לא ניתן היה לשחזר את ההודעות. נסו שוב.</string>
     <string name="bin_deleted_forever">נמחק לצמיתות</string>
+    <!-- Categories: "Move to category" and the user's own (the code calls them folders) -->
+    <string name="action_move_to_folder">העבר לקטגוריה</string>
+    <string name="move_folder_sender">כל ההודעות מ%1$s, גם בעתיד</string>
+    <string name="move_folder_group">כל השיחה הזו, גם בעתיד</string>
+    <string name="move_folder_automatic">החזר למיון האוטומטי</string>
+    <string name="move_folder_new">קטגוריה חדשה…</string>
+    <string name="move_folder_current">נוכחית</string>
+    <string name="move_folder_moved">הועבר ל%1$s</string>
+    <string name="move_folder_automatic_done">חזר למיון האוטומטי</string>
+    <string name="folder_new_title">קטגוריה חדשה</string>
+    <string name="folder_rename_title">שינוי שם הקטגוריה</string>
+    <string name="folder_name_label">שם</string>
+    <string name="folder_name_hint">עבודה, משפחה, ועד בית</string>
+    <string name="folder_name_taken">כבר יש קטגוריה בשם הזה</string>
+    <plurals name="folder_name_too_long">
+        <item quantity="one">עד תו אחד</item>
+        <item quantity="two">עד %1$d תווים</item>
+        <item quantity="other">עד %1$d תווים</item>
+    </plurals>
+    <string name="folder_create">צור והעבר</string>
+    <string name="folder_save">שמור</string>
+    <string name="folders_title">קטגוריות</string>
+    <string name="folders_subtitle">שלך, אחרי המובנות · גוררים כדי לסדר</string>
+    <string name="folders_section">הקטגוריות שלך</string>
+    <string name="folders_none">אין עדיין קטגוריות משלך. לוחצים לחיצה ארוכה על שיחה, בוחרים „העבר לקטגוריה” ואז „קטגוריה חדשה…”.</string>
+    <string name="folders_rename">שינוי השם של %1$s</string>
+    <string name="folders_delete">מחיקת %1$s</string>
+    <string name="folders_delete_title">למחוק את „%1$s”?</string>
+    <string name="folders_delete_body">השיחות שבה יחזרו למיון האוטומטי. אף הודעה לא תימחק.</string>
+    <string name="folders_delete_confirm">מחק</string>
+    <string name="folders_deleted">הקטגוריה נמחקה</string>
+    <string name="settings_folders">קטגוריות</string>
+    <string name="settings_folders_none">משלך, מלבד אישי, בנקים וכל השאר</string>
+    <plurals name="settings_folders_count">
+        <item quantity="one">קטגוריה אחת</item>
+        <item quantity="two">%1$d קטגוריות</item>
+        <item quantity="other">%1$d קטגוריות</item>
+    </plurals>
+    <string name="inbox_empty_custom_body">לוחצים לחיצה ארוכה על שיחה ובוחרים „העבר לקטגוריה”.</string>
 </resources>

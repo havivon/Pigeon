@@ -37,6 +37,9 @@ sealed interface Screen {
     /** The blocked words, opened from the settings. */
     data object BlockedKeywords : Screen
 
+    /** The user's own categories, opened from the settings. */
+    data object Folders : Screen
+
     /** The recycle bin, opened from the settings only. */
     data object RecycleBin : Screen
 }

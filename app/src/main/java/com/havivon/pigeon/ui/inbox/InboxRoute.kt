@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DoneAll
@@ -30,8 +31,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.domain.folders.FolderMoves
+import com.havivon.pigeon.domain.folders.FolderNames
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
 import com.havivon.pigeon.ui.app.LocalNotices
@@ -42,6 +46,8 @@ import com.havivon.pigeon.ui.common.appLocale
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.inboxDateLine
+import com.havivon.pigeon.ui.common.reservedFolderNames
+import com.havivon.pigeon.ui.folders.MoveToFolderFlow
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.EmptyState
 import com.havivon.pigeon.ui.components.PillButton
@@ -60,7 +66,9 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
     val locale = appLocale(context)
     val vm = pigeonViewModel { app ->
         InboxViewModel(
-            app.messages, app.rules, app.pins, app.locks, app.spam, app.reminders, app.reminderScheduler,
+            app.messages, app.rules, app.pins, app.locks, app.spam, app.folders,
+            FolderMoves(app.folders, app.spam, reservedFolderNames(context)),
+            app.reminders, app.reminderScheduler,
             mapper = conversationMapper(context, app),
             accessChanges = app.accessChanges,
             dateLine = { inboxDateLine(locale) },
@@ -74,10 +82,14 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
     val auth = LocalAuthenticator.current
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
     var remindFor by remember { mutableStateOf<Conversation?>(null) }
+    var moveFor by remember { mutableStateOf<Conversation?>(null) }
     val scope = rememberCoroutineScope()
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val deleted = stringResource(R.string.inbox_conversation_deleted)
     val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
+    val movedToSpam = stringResource(R.string.thread_moved_to_spam)
+    val movedTo = stringResource(R.string.move_folder_moved)
+    val backToAutomatic = stringResource(R.string.move_folder_automatic_done)
     val needsDefault = rememberNeedsDefaultNotice()
     val access = LocalDefaultApp.current
 
@@ -88,6 +100,10 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         dateLine = state.dateLine,
         selectedFolder = state.folder,
         onFolder = { if (it == Folder.Spam) navigate(Screen.Spam) else vm.selectFolder(it) },
+        customFolders = state.customFolders,
+        customCounts = state.customFolderCounts,
+        selectedCustom = state.customFolder,
+        onCustomFolder = { vm.selectCustomFolder(it.id) },
         onOpen = { openThread(it.id) },
         unreadOnly = state.unreadOnly,
         unreadCount = state.unreadCount,
@@ -100,7 +116,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         onLongPress = { sheetFor = it },
         onSearch = { navigate(Screen.Search) },
         onNewMessage = { navigate(Screen.NewMessage()) },
-        emptyState = if (state.loaded) ({ InboxEmpty(state.folder, state.unreadOnly) }) else null,
+        emptyState = if (state.loaded) ({ InboxEmpty(state.folder, state.unreadOnly, state.customFolderName) }) else null,
         loading = !state.loaded || (state.unreadOnly && state.unread == null),
         banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
@@ -122,6 +138,10 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
                     done()
                     remindFor = conv
                 },
+                onMove = {
+                    done()
+                    moveFor = conv
+                },
                 onLock = {
                     done()
                     when {
@@ -136,6 +156,28 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
                 },
             )
         }
+    }
+
+    moveFor?.let { conv ->
+        val folders = state.customFolders
+        MoveToFolderFlow(
+            conv,
+            folders,
+            problemOf = vm::folderNameProblem,
+            onMove = { target ->
+                vm.moveTo(conv, target)
+                notices.show(
+                    when (target) {
+                        null -> backToAutomatic
+                        FolderChoice.BuiltIn(Folder.Spam) -> movedToSpam
+                        is FolderChoice.BuiltIn -> String.format(movedTo, context.getString(target.folder.labelRes))
+                        is FolderChoice.Custom -> String.format(movedTo, folders.firstOrNull { it.id == target.id }?.name.orEmpty())
+                    },
+                )
+            },
+            onCreate = { name -> scope.launch { if (vm.createFolderAndMove(conv, name)) notices.show(String.format(movedTo, FolderNames.clean(name))) } },
+            onDismiss = { moveFor = null },
+        )
     }
 
     remindFor?.let { conv ->
@@ -158,6 +200,7 @@ internal fun ConversationActions(
     onPin: () -> Unit,
     onMarkRead: () -> Unit,
     onRemind: () -> Unit,
+    onMove: () -> Unit,
     onLock: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -167,6 +210,7 @@ internal fun ConversationActions(
         SheetAction(Icons.Rounded.PushPin, stringResource(if (conv.pinned) R.string.action_unpin else R.string.action_pin), onClick = onPin)
         if (conv.unread > 0) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
         SheetAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind)
+        SheetAction(Icons.AutoMirrored.Rounded.DriveFileMove, stringResource(R.string.action_move_to_folder), onClick = onMove)
         SheetAction(
             if (conv.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
             stringResource(if (conv.locked) R.string.action_unlock_chat else R.string.action_lock_chat),
@@ -178,10 +222,11 @@ internal fun ConversationActions(
 
 /**
  * No conversations (or, with [unreadOnly], no unread messages): until Pigeon may see the messages, the
- * reason and the two ways to fix it; then a plain "No messages yet".
+ * reason and the two ways to fix it; then a plain "No messages yet". [customName] is the name of the chosen
+ * category of the user's, which fills only by hand.
  */
 @Composable
-internal fun InboxEmpty(folder: Folder, unreadOnly: Boolean = false) {
+internal fun InboxEmpty(folder: Folder, unreadOnly: Boolean = false, customName: String? = null) {
     val access = LocalDefaultApp.current
     when {
         access.mode == SmsAccess.None -> EmptyState(
@@ -196,6 +241,11 @@ internal fun InboxEmpty(folder: Folder, unreadOnly: Boolean = false) {
             }
         }
         unreadOnly -> EmptyState(Icons.Rounded.DoneAll, stringResource(R.string.inbox_empty_unread_title), stringResource(R.string.inbox_empty_unread_body))
+        customName != null -> EmptyState(
+            Icons.Rounded.Forum,
+            stringResource(R.string.inbox_empty_folder_title, customName),
+            stringResource(R.string.inbox_empty_custom_body),
+        )
         folder == Folder.All -> EmptyState(Icons.Rounded.Forum, stringResource(R.string.inbox_empty_title), stringResource(R.string.inbox_empty_body))
         else -> EmptyState(
             Icons.Rounded.Forum,

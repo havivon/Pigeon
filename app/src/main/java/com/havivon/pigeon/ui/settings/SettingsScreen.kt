@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.AutoDelete
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.DarkMode
@@ -93,6 +94,7 @@ data class SettingsActions(
     val onAppIcon: (AppIcon) -> Unit = {},
     val onOpenRules: () -> Unit = {},
     val onOpenKeywords: () -> Unit = {},
+    val onOpenFolders: () -> Unit = {},
     val onOpenRecycleBin: () -> Unit = {},
     val onAutoDeleteCodes: (Boolean) -> Unit = {},
     val onLockScreenText: (Boolean) -> Unit = {},
@@ -177,6 +179,14 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         stringResource(R.string.settings_blocked_words),
                         pluralStringResource(R.plurals.settings_words_count, state.keywordCount, state.keywordCount),
                         actions.onOpenKeywords,
+                    )
+                    RowDivider()
+                    NavRow(
+                        Icons.Rounded.Category,
+                        stringResource(R.string.settings_folders),
+                        if (state.folderCount == 0) stringResource(R.string.settings_folders_none)
+                        else pluralStringResource(R.plurals.settings_folders_count, state.folderCount, state.folderCount),
+                        actions.onOpenFolders,
                     )
                     RowDivider()
                     NavRow(

@@ -21,7 +21,9 @@ import app.cash.paparazzi.Paparazzi
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
 import com.havivon.pigeon.domain.analysis.LinkAnalyzer
+import com.havivon.pigeon.domain.folders.FolderNameProblem
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.Message
 import com.havivon.pigeon.domain.model.SmsAccess
@@ -39,6 +41,8 @@ import com.havivon.pigeon.ui.compose.Suggestion
 import com.havivon.pigeon.ui.conversation.ConversationScreen
 import com.havivon.pigeon.ui.conversation.LinkDetails
 import com.havivon.pigeon.ui.conversation.placeholderConversation
+import com.havivon.pigeon.ui.folders.FolderNameDialogContent
+import com.havivon.pigeon.ui.folders.MoveToFolderContent
 import com.havivon.pigeon.ui.inbox.ConversationActions
 import com.havivon.pigeon.ui.inbox.InboxEmpty
 import com.havivon.pigeon.ui.inbox.InboxScreen
@@ -68,7 +72,7 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
     /** The unread list: messages, not conversations (two from Mom, two from the bank, a code, a locked chat, a long one cut at three lines). */
     val unread: List<UnreadMessage> = run {
         val mom = sample.inbox.first { it.id == 1L }
-        val bank = sample.inbox.first { it.id == 3L }
+        val bank = sample.inbox.first { it.id == 3L }.copy(addresses = listOf("Bank"))
         val verify = sample.inbox.first { it.id == 5L }
         listOf(
             UnreadMessage(101, mom.id, mom.name, if (hebrew) "תביא לחם בדרך הביתה ❤️" else "Pick up some bread on your way home ❤️", mom.time, mom.avatarArgb, ruleId = 3),
@@ -193,6 +197,17 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
         ),
     )
 
+    /** The user's own categories: two, the first holding Danny and Noa (moved by hand). */
+    val customFolders = listOf(CustomFolder(1, if (hebrew) "עבודה" else "Work"), CustomFolder(2, if (hebrew) "ועד בית" else "Building committee"))
+    val inWork: List<Conversation> = sample.inbox.filter { it.id == 2L || it.id == 6L }
+        .map { it.copy(folder = Folder.All, customFolderId = 1, folderOverridden = true, addresses = listOf("052-555-01${it.id}0"), unread = if (it.id == 6L) 2 else it.unread) }
+    val customCounts = mapOf(1L to inWork.sumOf { it.unread }, 2L to 0)
+    val bank = sample.inbox.first { it.id == 3L }.copy(addresses = listOf("Bank"))
+
+    /** "New category" with a name typed, and with one already taken (a built-in folder's). */
+    val newFolderName = if (hebrew) "חוג כדורסל" else "Basketball club"
+    val takenFolderName = if (hebrew) "בנקים" else "banks"
+
     /** The Spam folder by sender, the first sender opened to show its two messages. */
     val spamGroups = groupSpam(sample.spam)
     val spamOpened: Map<String, List<SpamMessage>> = run {
@@ -225,7 +240,7 @@ class NewScreensSnapshots {
     fun screens() {
         shot("30_inbox_actions_sheet") {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
-            Sheet { ConversationActions(s.sample.inbox.first(), {}, {}, {}, {}, {}) }
+            Sheet { ConversationActions(s.sample.inbox.first(), {}, {}, {}, {}, {}, {}) }
         }
         shot("31_search") { SearchScreen(s.search, autoFocus = false) }
         shot("32_new_message") { NewMessageScreen(s.newMessage, autoFocus = false) }
@@ -278,6 +293,39 @@ class NewScreensSnapshots {
             InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size, unreadMessages = s.unread)
         }
         shot("64_inbox_loading") { InboxScreen(emptyList(), s.sample.rules, emptyMap(), s.sample.dateLine, loading = true) }
+        shot("84_move_to_category") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
+            Sheet { MoveToFolderContent(s.inWork.first(), s.customFolders, {}, {}) }
+        }
+        shot("85_move_to_category_dark", dark = true) {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
+            Sheet { MoveToFolderContent(s.bank, s.customFolders, {}, {}) }
+        }
+        shot("86_new_category") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
+            Scrim { FolderNameDialogContent(stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.newFolderName, null, {}, {}, {}) }
+        }
+        shot("87_new_category_taken_dark", dark = true) {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
+            Scrim {
+                FolderNameDialogContent(
+                    stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.takenFolderName, FolderNameProblem.Taken, {}, {}, {},
+                )
+            }
+        }
+        shot("88_inbox_category") {
+            InboxScreen(
+                s.inWork, s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
+                customFolders = s.customFolders, customCounts = s.customCounts, selectedCustom = 1,
+            )
+        }
+        shot("89_inbox_category_empty") {
+            InboxScreen(
+                emptyList(), s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
+                customFolders = s.customFolders, customCounts = s.customCounts, selectedCustom = 2,
+                emptyState = { InboxEmpty(Folder.All, customName = s.customFolders[1].name) },
+            )
+        }
         shot("65_conversation_loading") {
             ConversationScreen(placeholderConversation(2), emptyList(), rule = null, draft = "", onCall = null, loading = true)
         }
@@ -314,6 +362,20 @@ class NewScreensSnapshotsEnglish {
         shot("81_en_spam_selection") { SpamScreen(s.spamGroups, selected = setOf(s.spamGroups[0].key, s.spamGroups[2].key)) }
         shot("82_en_recycle_bin") { BinScreen(s.bin, expanded = setOf(s.bin.first().key)) }
         shot("83_en_recycle_bin_selection") { BinScreen(s.bin, selected = setOf(s.bin[0].key, s.bin[1].key)) }
+        shot("90_en_move_to_category") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
+            Sheet { MoveToFolderContent(s.inWork.first(), s.customFolders, {}, {}) }
+        }
+        shot("91_en_new_category") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
+            Scrim { FolderNameDialogContent(stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.newFolderName, null, {}, {}, {}) }
+        }
+        shot("92_en_inbox_category") {
+            InboxScreen(
+                s.inWork, s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
+                customFolders = s.customFolders, customCounts = s.customCounts, selectedCustom = 1,
+            )
+        }
         shot("69_en_inbox_unread") {
             InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size, unreadMessages = s.unread)
         }

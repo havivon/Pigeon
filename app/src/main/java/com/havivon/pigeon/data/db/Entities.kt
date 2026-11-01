@@ -90,3 +90,24 @@ data class BlockedKeywordEntity(
     val normalized: String,
     val addedAtMillis: Long,
 )
+
+/** A category the user made ("Move to category", then "New category"). */
+@Entity(tableName = "custom_folders")
+data class CustomFolderEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Its place among the chips, after the built-in folders; lower comes first. */
+    val position: Int,
+    val createdAtMillis: Long,
+)
+
+/** A conversation the user moved by hand: exactly one of [builtIn] and [customFolderId] is set (see `FolderChoiceCodec`). */
+@Entity(tableName = "folder_overrides", indices = [Index("customFolderId")])
+data class FolderOverrideEntity(
+    /** `FolderKeys`: the sender's lookup key, or "thread:<id>" for a group. */
+    @PrimaryKey val key: String,
+    /** A built-in folder's enum name ("Banks"). */
+    val builtIn: String?,
+    val customFolderId: Long?,
+    val setAtMillis: Long,
+)

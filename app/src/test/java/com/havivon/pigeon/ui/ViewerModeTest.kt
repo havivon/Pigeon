@@ -4,6 +4,8 @@ import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.model.SmsType
 import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.fakes.FakeFavorites
+import com.havivon.pigeon.fakes.FakeFolders
+import com.havivon.pigeon.fakes.testMoves
 import com.havivon.pigeon.fakes.FakeLocks
 import com.havivon.pigeon.fakes.FakeMessageRepository
 import com.havivon.pigeon.fakes.FakePins
@@ -60,13 +62,14 @@ class ViewerModeTest {
     private val cancelled = mutableListOf<Long>()
     private val judged = mutableListOf<Int>()
     private var canWrite = false
+    private val folders = FakeFolders()
 
     private fun TestScope.collect(flow: kotlinx.coroutines.flow.Flow<*>) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect { } }
     }
 
     private fun inbox() = InboxViewModel(
-        messages, FakeRules(), FakePins(), locks, spam, FakeReminders(), FakeScheduler(), mapper, MutableStateFlow(0), { "date line" }, { cancelled += it },
+        messages, FakeRules(), FakePins(), locks, spam, folders, testMoves(folders, spam), FakeReminders(), FakeScheduler(), mapper, MutableStateFlow(0), { "date line" }, { cancelled += it },
         canWrite = { canWrite }, judgeSpam = { list, _ -> judged += list.size }, now = { Now }, work = main.dispatcher,
     )
 
@@ -76,7 +79,8 @@ class ViewerModeTest {
     )
 
     private fun TestScope.thread() = ConversationViewModel(
-        1, messages, sender, FakeRules(), FakeFavorites(), FakeReminders(), FakeScheduler(), spam, locks, FakePins(), mapper, labels, Utc,
+        1, messages, sender, FakeRules(), FakeFavorites(), FakeReminders(), FakeScheduler(), spam, locks, FakePins(),
+        folders, testMoves(folders, spam), mapper, labels, Utc,
         me = "Me", cancelNotification = { cancelled += it }, appScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
         canWrite = { canWrite }, now = { Now }, work = main.dispatcher,
     )

@@ -63,7 +63,7 @@
     <string name="inbox_empty_folder_title">Nothing in %1$s</string>
     <string name="inbox_empty_folder_body">Conversations are sorted here automatically when they fit.</string>
     <string name="inbox_empty_unread_title">No unread messages here</string>
-    <string name="inbox_empty_unread_body">New messages in this folder show up here until you read them.</string>
+    <string name="inbox_empty_unread_body">New messages in this category show up here until you read them.</string>
     <string name="inbox_filter_all">All</string>
     <string name="inbox_filter_unread">Unread</string>
     <string name="inbox_empty_not_default">Your messages show up here once Pigeon is your messaging app, or once you let it view them.</string>
@@ -434,4 +434,41 @@
     </plurals>
     <string name="bin_restore_failed">The messages could not be restored. Try again.</string>
     <string name="bin_deleted_forever">Deleted for good</string>
+    <!-- Categories: "Move to category" and the user's own (the code calls them folders) -->
+    <string name="action_move_to_folder">Move to category</string>
+    <string name="move_folder_sender">All messages from %1$s, now and later</string>
+    <string name="move_folder_group">This whole conversation, now and later</string>
+    <string name="move_folder_automatic">Back to automatic sorting</string>
+    <string name="move_folder_new">New category…</string>
+    <string name="move_folder_current">Current</string>
+    <string name="move_folder_moved">Moved to %1$s</string>
+    <string name="move_folder_automatic_done">Back to automatic sorting</string>
+    <string name="folder_new_title">New category</string>
+    <string name="folder_rename_title">Rename category</string>
+    <string name="folder_name_label">Name</string>
+    <string name="folder_name_hint">Work, Family, Building committee</string>
+    <string name="folder_name_taken">There is already a category with this name</string>
+    <plurals name="folder_name_too_long">
+        <item quantity="one">Up to %1$d character</item>
+        <item quantity="other">Up to %1$d characters</item>
+    </plurals>
+    <string name="folder_create">Create and move</string>
+    <string name="folder_save">Save</string>
+    <string name="folders_title">Categories</string>
+    <string name="folders_subtitle">Yours, after the built-in ones · drag to reorder</string>
+    <string name="folders_section">Your categories</string>
+    <string name="folders_none">No categories of your own yet. Long-press a conversation, choose Move to category, then New category.</string>
+    <string name="folders_rename">Rename %1$s</string>
+    <string name="folders_delete">Delete %1$s</string>
+    <string name="folders_delete_title">Delete “%1$s”?</string>
+    <string name="folders_delete_body">Its conversations go back to automatic sorting. No message is deleted.</string>
+    <string name="folders_delete_confirm">Delete</string>
+    <string name="folders_deleted">Category deleted</string>
+    <string name="settings_folders">Categories</string>
+    <string name="settings_folders_none">Your own, besides Personal, Banks and the rest</string>
+    <plurals name="settings_folders_count">
+        <item quantity="one">%1$d category</item>
+        <item quantity="other">%1$d categories</item>
+    </plurals>
+    <string name="inbox_empty_custom_body">Long-press a conversation and choose Move to category.</string>
 </resources>
