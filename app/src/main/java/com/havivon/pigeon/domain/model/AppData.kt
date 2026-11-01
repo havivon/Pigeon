@@ -68,7 +68,7 @@ data class AppSettings(
     val widgetsShowText: Boolean = true,
     val blockScreenshots: Boolean = false,
     val appLock: Boolean = false,
-    val autoDeleteCodes: Boolean = true,
+    val autoDeleteCodes: Boolean = false,
     /**
      * When auto-delete started counting, or null before its first run. Only codes received after
      * it are deleted, so turning the feature on never wipes the user's existing history.

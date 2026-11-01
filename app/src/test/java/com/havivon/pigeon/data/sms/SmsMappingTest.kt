@@ -44,55 +44,75 @@ class SmsMappingTest {
         assertTrue(joinParts(emptyList()).isEmpty())
     }
 
-    @Test
-    fun `recipient ids are space separated`() {
-        assertEquals(listOf(3L, 14L), parseRecipientIds("3 14"))
-        assertEquals(listOf(7L), parseRecipientIds(" 7  x "))
-        assertTrue(parseRecipientIds(null).isEmpty())
-    }
+    private fun row(id: Long, thread: Long, address: String, date: Long, type: SmsType = SmsType.Inbox, read: Boolean = true) =
+        SmsSummaryRow(id, thread, address, date, read, type)
 
+    // Unsorted on purpose: the provider's order must not matter
     private val rows = listOf(
-        ThreadRow(id = 1, dateMillis = 100, snippet = "old", recipientIds = listOf(10), messageCount = 2),
-        ThreadRow(id = 2, dateMillis = 300, snippet = "new", recipientIds = listOf(20), messageCount = 1),
-        ThreadRow(id = 3, dateMillis = 200, snippet = "group", recipientIds = listOf(10, 30), messageCount = 4),
-        ThreadRow(id = 4, dateMillis = 400, snippet = "", recipientIds = listOf(20), messageCount = 0),
+        row(1, thread = 1, address = "+15555550100", date = 100, type = SmsType.Failed),
+        row(2, thread = 2, address = "Leumi", date = 300, read = false),
+        row(3, thread = 2, address = "Leumi", date = 250, read = false),
+        row(4, thread = 2, address = "Leumi", date = 260, type = SmsType.Sent),
+        row(5, thread = 3, address = "+15555550100", date = 200),
+        row(6, thread = 3, address = "+15555550111", date = 150),
+        row(7, thread = 1, address = "+15555550100", date = 90, read = false),
+        row(8, thread = 4, address = "+15555550122", date = 500, type = SmsType.Draft),
+        row(9, thread = 0, address = "+15555550133", date = 600),
     )
-    private val canonical = mapOf(10L to "+15555550100", 20L to "Leumi", 30L to "+15555550111")
 
     @Test
-    fun `conversations are assembled newest first, without empty threads`() {
-        val list = assembleConversations(rows, canonical, mapOf(2L to 3), setOf(1L), mapOf("+15555550100" to "Dana"))
+    fun `conversations come from the SMS rows, newest first, without drafts or thread-less rows`() {
+        val list = summarizeThreads(rows)
         assertEquals(listOf(2L, 3L, 1L), list.map { it.threadId })
 
         val leumi = list[0]
+        assertEquals(2L, leumi.latestId)
         assertEquals(listOf("Leumi"), leumi.addresses)
-        assertNull(leumi.contactName)
-        assertEquals("Leumi", leumi.title)
-        assertEquals(3, leumi.unreadCount)
+        assertEquals(300L, leumi.dateMillis)
+        // Only unread incoming messages count; the sent one does not
+        assertEquals(2, leumi.unreadCount)
         assertFalse(leumi.hasFailed)
 
         val dana = list[2]
-        assertEquals("Dana", dana.contactName)
+        assertEquals(1L, dana.latestId)
         assertTrue(dana.hasFailed)
-        assertEquals(0, dana.unreadCount)
+        assertEquals(1, dana.unreadCount)
+    }
+
+    @Test
+    fun `a thread with several numbers lists them newest first, once each`() {
+        val group = summarizeThreads(rows).first { it.threadId == 3L }
+        assertEquals(listOf("+15555550100", "+15555550111"), group.addresses)
     }
 
     @Test
     fun `a group shows names where known and numbers for the rest`() {
-        val group = assembleConversations(rows, canonical, emptyMap(), emptySet(), mapOf("+15555550100" to "Dana")).first { it.threadId == 3L }
+        val group = summarizeThreads(rows).first { it.threadId == 3L }.toConversation("hi", mapOf("+15555550100" to "Dana"))
         assertEquals("Dana, +15555550111", group.contactName)
+        assertEquals("hi", group.snippet)
+    }
+
+    @Test
+    fun `no known names leaves the title to the number`() {
+        val leumi = summarizeThreads(rows).first().toConversation("charge", emptyMap())
+        assertNull(leumi.contactName)
+        assertEquals("Leumi", leumi.title)
     }
 
     @Test
     fun `hidden threads are left out`() {
-        val list = assembleConversations(rows, canonical, emptyMap(), emptySet(), emptyMap(), hidden = setOf(2L))
-        assertEquals(listOf(3L, 1L), list.map { it.threadId })
+        assertEquals(listOf(3L, 1L), summarizeThreads(rows, hidden = setOf(2L)).map { it.threadId })
     }
 
     @Test
-    fun `a recipient missing from the canonical table is skipped`() {
-        val list = assembleConversations(listOf(ThreadRow(9, 1, "x", listOf(99, 10), 1)), canonical, emptyMap(), emptySet(), emptyMap())
-        assertEquals(listOf("+15555550100"), list.single().addresses)
+    fun `the same date picks the higher id as the newest`() {
+        val tie = summarizeThreads(listOf(row(10, 5, "A", 100), row(11, 5, "A", 100))).single()
+        assertEquals(11L, tie.latestId)
+    }
+
+    @Test
+    fun `no rows, no conversations`() {
+        assertTrue(summarizeThreads(emptyList()).isEmpty())
     }
 
     @Test

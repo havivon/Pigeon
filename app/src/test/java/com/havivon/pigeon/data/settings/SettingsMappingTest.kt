@@ -25,7 +25,7 @@ class SettingsMappingTest {
         assertTrue(s.widgetsShowText)
         assertFalse(s.blockScreenshots)
         assertFalse(s.appLock)
-        assertTrue(s.autoDeleteCodes)
+        assertFalse(s.autoDeleteCodes)
         assertNull(s.autoDeleteCodesSinceMillis)
         assertFalse(s.welcomeDone)
     }

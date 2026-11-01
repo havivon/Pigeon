@@ -31,11 +31,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
 
-/** The threads table, without the per-message join the full conversations URI does. */
-private val THREADS_URI: Uri = Telephony.Threads.CONTENT_URI.buildUpon().appendQueryParameter("simple", "true").build()
-
-/** Recipient id → address, for the threads table's recipient_ids. No public constant exists. */
-private val CANONICAL_ADDRESSES_URI: Uri = Uri.parse("content://mms-sms/canonical-addresses")
+/** Snippet bodies are read in batches of this many ids, under SQLite's argument limit. */
+private const val SNIPPET_CHUNK = 500
 
 private const val SEARCH_LIMIT = 200
 
@@ -170,33 +167,32 @@ class TelephonyMessageRepository(
     }
 
     private suspend fun readConversations(): List<SmsConversation> {
+        // Every SMS without its body (light), then only the newest body of each conversation
         val rows = resolver.queryList(
-            THREADS_URI,
-            arrayOf(Telephony.Threads._ID, Telephony.Threads.DATE, Telephony.Threads.SNIPPET, Telephony.Threads.RECIPIENT_IDS, Telephony.Threads.MESSAGE_COUNT),
-            sortOrder = "${Telephony.Threads.DATE} DESC",
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE, Telephony.Sms.READ, Telephony.Sms.TYPE),
         ) { c ->
-            ThreadRow(
-                id = c.long(Telephony.Threads._ID),
-                dateMillis = c.long(Telephony.Threads.DATE),
-                snippet = c.string(Telephony.Threads.SNIPPET),
-                recipientIds = parseRecipientIds(c.string(Telephony.Threads.RECIPIENT_IDS)),
-                messageCount = c.int(Telephony.Threads.MESSAGE_COUNT),
+            SmsSummaryRow(
+                id = c.long(Telephony.Sms._ID),
+                threadId = c.long(Telephony.Sms.THREAD_ID),
+                address = c.string(Telephony.Sms.ADDRESS),
+                dateMillis = c.long(Telephony.Sms.DATE),
+                read = c.int(Telephony.Sms.READ) != 0,
+                type = SmsType.fromProvider(c.int(Telephony.Sms.TYPE)),
             )
         }
-        if (rows.isEmpty()) return emptyList()
-        val canonical = resolver.queryList(CANONICAL_ADDRESSES_URI, arrayOf("_id", "address")) { c -> c.long("_id") to c.string("address") }.toMap()
-        val unread = resolver.queryList(
-            Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms.THREAD_ID),
-            "${Telephony.Sms.READ} = 0 AND ${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue}",
-        ) { it.long(Telephony.Sms.THREAD_ID) }.groupingBy { it }.eachCount()
-        val failed = resolver.queryList(
-            Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms.THREAD_ID),
-            "${Telephony.Sms.TYPE} = ${SmsType.Failed.providerValue}",
-        ) { it.long(Telephony.Sms.THREAD_ID) }.toSet()
-        val names = rows.flatMap { r -> r.recipientIds.mapNotNull { canonical[it] } }.distinct().associateWith { contacts.displayName(it) }
-        return assembleConversations(rows, canonical, unread, failed, names)
+        val summaries = summarizeThreads(rows)
+        if (summaries.isEmpty()) return emptyList()
+        val snippets = summaries.map { it.latestId }.chunked(SNIPPET_CHUNK).flatMap { ids ->
+            resolver.queryList(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID, Telephony.Sms.BODY),
+                "${Telephony.Sms._ID} IN (${placeholders(ids.size)})",
+                ids.map { it.toString() }.toTypedArray(),
+            ) { it.long(Telephony.Sms._ID) to it.string(Telephony.Sms.BODY) }
+        }.toMap()
+        val names = summaries.flatMap { it.addresses }.distinct().associateWith { contacts.displayName(it) }
+        return summaries.map { it.toConversation(snippets[it.latestId].orEmpty(), names) }
     }
 
     private fun queryMessages(selection: String?, args: Array<String>, sortOrder: String?): List<SmsMessage> {

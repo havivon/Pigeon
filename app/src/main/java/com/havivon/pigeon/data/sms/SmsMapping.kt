@@ -25,50 +25,62 @@ fun joinParts(parts: List<PduPart>): List<IncomingSms> =
         IncomingSms(address = address, body = group.joinToString("") { it.body }, dateSentMillis = group.first().timestampMillis)
     }
 
-/** A row of the system's threads table (`content://mms-sms/conversations?simple=true`). */
-data class ThreadRow(
+/** A row of the SMS table without its body: enough to build the inbox list. */
+data class SmsSummaryRow(
     val id: Long,
+    val threadId: Long,
+    val address: String,
     val dateMillis: Long,
-    val snippet: String,
-    val recipientIds: List<Long>,
-    val messageCount: Int,
+    val read: Boolean,
+    val type: SmsType,
 )
 
-/** The threads table keeps recipients as space-separated ids into the canonical addresses table. */
-fun parseRecipientIds(value: String?): List<Long> =
-    value.orEmpty().split(' ').mapNotNull { it.trim().toLongOrNull() }
+/** One conversation as the SMS table describes it; [latestId] is the message whose body is the snippet. */
+data class ThreadSummary(
+    val threadId: Long,
+    val latestId: Long,
+    val addresses: List<String>,
+    val dateMillis: Long,
+    val unreadCount: Int,
+    val hasFailed: Boolean,
+)
 
 /**
- * Builds the inbox list from the provider's rows: addresses through the canonical addresses table,
- * names from [names] (by address), unread counts and failures by thread. Empty threads (left
- * behind when every message was deleted) and [hidden] ones (deleted, waiting for undo) are left out.
+ * The inbox list from the SMS table itself, newest conversation first. The threads table
+ * (`mms-sms/conversations`) is not used: phone makers keep it differently (Samsung, for one, does
+ * not maintain its message count), and an SMS-only app has everything it needs in the SMS rows.
+ * Drafts and rows without a thread are skipped; [hidden] threads (deleted, waiting for undo) too.
  */
-fun assembleConversations(
-    rows: List<ThreadRow>,
-    canonicalAddresses: Map<Long, String>,
-    unreadByThread: Map<Long, Int>,
-    failedThreads: Set<Long>,
-    names: Map<String, String?>,
-    hidden: Set<Long> = emptySet(),
-): List<SmsConversation> =
+fun summarizeThreads(rows: List<SmsSummaryRow>, hidden: Set<Long> = emptySet()): List<ThreadSummary> =
     rows.asSequence()
-        .filter { it.messageCount > 0 && it.id !in hidden }
-        .map { row ->
-            val addresses = row.recipientIds.mapNotNull { canonicalAddresses[it] }
-            val known = addresses.map { names[it] }
-            SmsConversation(
-                threadId = row.id,
-                addresses = addresses,
-                // A group shows names where there are any, numbers for the rest
-                contactName = if (known.all { it == null }) null else addresses.zip(known).joinToString(", ") { (a, n) -> n ?: a },
-                snippet = row.snippet,
-                dateMillis = row.dateMillis,
-                unreadCount = unreadByThread[row.id] ?: 0,
-                hasFailed = row.id in failedThreads,
+        .filter { it.threadId > 0 && it.type != SmsType.Draft && it.threadId !in hidden }
+        .groupBy { it.threadId }
+        .map { (threadId, messages) ->
+            val newestFirst = messages.sortedWith(compareByDescending<SmsSummaryRow> { it.dateMillis }.thenByDescending { it.id })
+            ThreadSummary(
+                threadId = threadId,
+                latestId = newestFirst.first().id,
+                addresses = newestFirst.map { it.address.trim() }.filter { it.isNotEmpty() }.distinct(),
+                dateMillis = newestFirst.first().dateMillis,
+                unreadCount = messages.count { it.type == SmsType.Inbox && !it.read },
+                hasFailed = messages.any { it.type == SmsType.Failed },
             )
         }
         .sortedByDescending { it.dateMillis }
-        .toList()
+
+/** A summary with its snippet and contact names (by address); a group shows names where known, numbers for the rest. */
+fun ThreadSummary.toConversation(snippet: String, names: Map<String, String?>): SmsConversation {
+    val known = addresses.map { names[it] }
+    return SmsConversation(
+        threadId = threadId,
+        addresses = addresses,
+        contactName = if (known.all { it == null }) null else addresses.zip(known).joinToString(", ") { (a, n) -> n ?: a },
+        snippet = snippet,
+        dateMillis = dateMillis,
+        unreadCount = unreadCount,
+        hasFailed = hasFailed,
+    )
+}
 
 /**
  * The message's new type after the radio reports one part's result, or null to leave it. A long
