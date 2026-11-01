@@ -15,6 +15,7 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.textclassifier.TextClassifier
 import android.widget.TextView
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -464,6 +465,9 @@ private fun SelectableMessageText(
                 textSize = 16f
                 if (Build.VERSION.SDK_INT >= 28) lineHeight = lineHeightPx
                 setTextIsSelectable(true)
+                // Smart selection classifies the text before the toolbar shows (a second or more on some
+                // phones); without it Copy / Share appear at once
+                setTextClassifier(TextClassifier.NO_OP)
                 highlightColor = ColorUtils.setAlphaComponent(accent, 0x59)
                 if (Build.VERSION.SDK_INT >= 29) {
                     listOfNotNull(textSelectHandle, textSelectHandleLeft, textSelectHandleRight).forEach { it.setTint(accent) }
