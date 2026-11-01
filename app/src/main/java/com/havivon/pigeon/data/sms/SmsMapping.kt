@@ -43,6 +43,8 @@ data class ThreadSummary(
     val dateMillis: Long,
     val unreadCount: Int,
     val hasFailed: Boolean,
+    val incomingCount: Int = 0,
+    val userWrote: Boolean = false,
 )
 
 /**
@@ -64,6 +66,8 @@ fun summarizeThreads(rows: List<SmsSummaryRow>, hidden: Set<Long> = emptySet()):
                 dateMillis = newestFirst.first().dateMillis,
                 unreadCount = messages.count { it.type == SmsType.Inbox && !it.read },
                 hasFailed = messages.any { it.type == SmsType.Failed },
+                incomingCount = messages.count { it.type == SmsType.Inbox },
+                userWrote = messages.any { it.type.outgoing },
             )
         }
         .sortedByDescending { it.dateMillis }
@@ -79,6 +83,8 @@ fun ThreadSummary.toConversation(snippet: String, names: Map<String, String?>): 
         dateMillis = dateMillis,
         unreadCount = unreadCount,
         hasFailed = hasFailed,
+        incomingCount = incomingCount,
+        userWrote = userWrote,
     )
 }
 

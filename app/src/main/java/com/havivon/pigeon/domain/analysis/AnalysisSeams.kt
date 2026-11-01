@@ -30,6 +30,7 @@ object AnalysisSeams {
             senderName = c.contactName,
             body = c.snippet,
             isContact = c.contactName != null,
+            userWrote = c.userWrote,
         )
         return FolderClassifier.classify(sms, spam = NOT_SPAM)
     }

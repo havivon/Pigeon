@@ -106,7 +106,11 @@ class AppContainer(
     private val hook: IncomingMessageHook by lazy { incomingHook(this) }
     val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(ProviderSmsStore(app), hook, notifier) }
 
-    /** Spam for the messages a viewer reads (they never pass through [incomingSms]); the screens call it while Pigeon is not the default. */
+    /**
+     * Spam for the messages already on the phone: a viewer's (they never pass through [incomingSms]), and,
+     * when the rules change ([com.havivon.pigeon.domain.analysis.SpamScorer.VERSION]), everyone's. The
+     * screens call it with every new list; what was judged is remembered, so it is judged once.
+     */
     val spamOnRead: SpamOnRead by lazy {
         SpamOnRead(hook, SpamOnReadMemory(app)) { threadId ->
             // Someone the user wrote to is never spam: no need to judge at all

@@ -13,6 +13,7 @@ enum class Folder(@StringRes val labelRes: Int) {
     Unread(R.string.common_folder_unread),
     Personal(R.string.common_folder_personal),
     Banks(R.string.common_folder_banks),
+    Insurance(R.string.common_folder_insurance),
     Codes(R.string.common_folder_codes),
     Deliveries(R.string.common_folder_deliveries),
     Spam(R.string.common_folder_spam),
@@ -32,6 +33,8 @@ sealed interface SpamReason {
     data object BrandSender : SpamReason
     /** The user moved it to spam by hand ("Mark as spam"). */
     data object MarkedByUser : SpamReason
+    /** A poll or a political campaign: "סקר", "לאיזו מפלגה", "השיבו 1", "election", "reply 1". */
+    data object Poll : SpamReason
 }
 
 sealed interface RuleMatch {

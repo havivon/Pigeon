@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 const val JUDGE_AFTER_MILLIS = 1_500L
 
 /**
- * Runs a viewer's spam-on-read ([com.havivon.pigeon.domain.analysis.SpamOnRead]) for a screen: once per
+ * Runs spam-on-read ([com.havivon.pigeon.domain.analysis.SpamOnRead]) for a screen: once per
  * new list of conversations (a new message, a new conversation), not on every emission of the screen's
  * state, of which its own verdicts are one; off the main thread and after [delayMillis]. A newer list
  * replaces a run that has not finished: what was judged is remembered there, so nothing is judged twice.

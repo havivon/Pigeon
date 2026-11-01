@@ -91,11 +91,12 @@ class SpamOnReadTest {
         assertTrue(spam.verdictState.value.isEmpty())
     }
 
-    private class Remembered : JudgedMemory {
+    private class Remembered(var version: Int = SpamScorer.VERSION) : JudgedMemory {
         var stored: Map<Long, Long> = emptyMap()
-        override fun load() = stored
-        override fun save(judged: Map<Long, Long>) {
-            stored = judged
+        override fun load() = Judged(version, stored)
+        override fun save(judged: Judged) {
+            version = judged.version
+            stored = judged.threads
         }
     }
 
@@ -115,5 +116,34 @@ class SpamOnReadTest {
         restarted.judge(listOf(newer, clean), spam.verdicts.first())
         assertEquals(3, judgedCount)
         assertEquals(mapOf(7L to 3_000L, 8L to 6_000L), memory.stored)
+    }
+
+    @Test
+    fun `new rules judge again what older rules judged, and never undo the user's own choice`() = runTest {
+        seed()
+        // Judged with rules 1: the poll passed then, and was remembered as judged
+        val poll = conversation(9, "0533001122", dateMillis = 7_000)
+        messages.allMessages.value += sms(90, 9, "סקר קצר: לאיזו מפלגה תצביע בבחירות? השיבו 1 לליכוד. להסרה השב הסר", 7_000, address = "0533001122")
+        val mine = conversation(5, "0539990000", dateMillis = 900)
+        messages.allMessages.value += sms(50, 5, "Hello friend", 900, address = "0539990000")
+        val allowed = conversation(10, "0541110000", dateMillis = 8_000)
+        messages.allMessages.value += sms(100, 10, "You won! Claim now bit.ly/y", 8_000, address = "0541110000")
+        spam.markSpam("0539990000", 5, listOf(SpamReason.MarkedByUser))
+        spam.markNotSpam("+972541110000")
+        val memory = Remembered(version = 1).apply { stored = mapOf(9L to 7_000L, 5L to 900L, 10L to 8_000L) }
+        val judge = SpamOnRead(hook, memory, version = 2) { t -> messages.recentMessages(t, 50).lastOrNull { !it.type.outgoing } }
+
+        judge.judge(listOf(poll, mine, allowed), spam.verdicts.first())
+
+        assertTrue(spam.verdictState.value.any { it.threadId == 9L && SpamReason.Poll in it.reasons })
+        // "Mark as spam" stays the user's: not judged at all; "Not spam" judged, and kept out
+        assertEquals(listOf(SpamReason.MarkedByUser), spam.verdictState.value.single { it.threadId == 5L }.reasons)
+        assertTrue(spam.verdictState.value.none { it.threadId == 10L })
+        assertEquals(2, judgedCount)
+        assertEquals(2, memory.version)
+        // The same version again: nothing is judged twice
+        SpamOnRead(hook, memory, version = 2) { t -> messages.recentMessages(t, 50).lastOrNull { !it.type.outgoing } }
+            .judge(listOf(poll, mine, allowed), spam.verdicts.first())
+        assertEquals(2, judgedCount)
     }
 }

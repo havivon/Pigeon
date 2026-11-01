@@ -40,6 +40,7 @@
     <string name="common_folder_unread">לא נקראו</string>
     <string name="common_folder_personal">אישי</string>
     <string name="common_folder_banks">בנקים</string>
+    <string name="common_folder_insurance">ביטוח</string>
     <string name="common_folder_codes">קודים</string>
     <string name="common_folder_deliveries">משלוחים</string>
     <string name="common_folder_spam">ספאם</string>
@@ -152,10 +153,18 @@
     <!-- spam_ -->
     <string name="spam_title">ספאם</string>
     <plurals name="spam_subtitle">
-        <item quantity="one">הודעה חשודה אחת · בלי התראות</item>
-        <item quantity="two">%1$d הודעות חשודות · בלי התראות</item>
-        <item quantity="other">%1$d הודעות חשודות · בלי התראות</item>
+        <item quantity="one">שולח חשוד אחד · בלי התראות</item>
+        <item quantity="two">%1$d שולחים חשודים · בלי התראות</item>
+        <item quantity="other">%1$d שולחים חשודים · בלי התראות</item>
     </plurals>
+    <plurals name="spam_group_messages">
+        <item quantity="one">הודעה אחת</item>
+        <item quantity="two">%1$d הודעות</item>
+        <item quantity="other">%1$d הודעות</item>
+    </plurals>
+    <string name="spam_show_messages">הצג את ההודעות</string>
+    <string name="spam_hide_messages">הסתר את ההודעות</string>
+    <string name="spam_open_conversation">פתח את השיחה</string>
     <string name="spam_delete_all">מחק הכל</string>
     <string name="spam_info">הודעות חשודות עוברות לכאן אוטומטית. \"זה לא ספאם\" מחזיר את השולח לתיבה ומלמד את הסינון.</string>
     <string name="spam_not_spam">זה לא ספאם</string>
@@ -166,6 +175,7 @@
     <string name="spam_reason_many_links">הרבה קישורים</string>
     <string name="spam_reason_brand_sender">מתחזה לחברה מוכרת</string>
     <string name="spam_reason_marked_by_user">סימנת כספאם</string>
+    <string name="spam_reason_poll">סקר או בחירות</string>
     <string name="spam_back_to_inbox">הוחזר לתיבה. הסינון לא יחסום יותר את השולח הזה.</string>
     <string name="spam_empty_title">אין ספאם</string>
     <string name="spam_empty_body">הודעות חשודות יועברו לכאן, בלי התראות.</string>

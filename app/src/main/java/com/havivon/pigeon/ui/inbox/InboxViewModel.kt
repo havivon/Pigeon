@@ -79,7 +79,7 @@ class InboxViewModel(
     private val cancelNotification: (Long) -> Unit,
     /** Whether Pigeon may change the system database (it is the default SMS app); a viewer only reads. */
     private val canWrite: () -> Boolean = { true },
-    /** Judges spam on the conversations a viewer reads ([com.havivon.pigeon.domain.analysis.SpamOnRead]). */
+    /** Judges spam on the conversations already on the phone ([com.havivon.pigeon.domain.analysis.SpamOnRead]). */
     private val judgeSpam: suspend (List<SmsConversation>, List<SpamVerdict>) -> Unit = { _, _ -> },
     private val now: () -> Long = System::currentTimeMillis,
     /** Where the conversations are mapped (rules, folders, codes for each one): off the main thread. */
@@ -103,7 +103,7 @@ class InboxViewModel(
         locks.lockedThreadIds,
         spam.verdicts,
     ) { conversations, ruleList, pinned, locked, verdicts ->
-        if (!canWrite()) spamJudging.offer(conversations, verdicts)
+        spamJudging.offer(conversations, verdicts)
         val t = now()
         Mapped(mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts)) }, conversations, ruleList, locked)
     }.conflate()

@@ -1,5 +1,6 @@
 package com.havivon.pigeon.domain.analysis
 
+import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.SpamReason
 
 /** What the analysers need to know about one incoming message. */
@@ -15,6 +16,8 @@ data class IncomingSms(
     val allowedSenders: Collection<String> = emptyList(),
     /** Words and phrases the user blocks. A message containing one is always spam. */
     val blockedKeywords: Collection<String> = emptyList(),
+    /** The user wrote in this conversation: someone they talk to, treated like a contact. */
+    val userWrote: Boolean = false,
 )
 
 /** The spam filter's answer: a [score] and, for the UI, the [reasons] behind it. */
@@ -28,6 +31,14 @@ data class SpamVerdict(val score: Int, val reasons: List<SpamReason>) {
  * writing "הסר" is an advertiser, a stranger writing "זכית" with a shortened link is a scam.
  */
 object SpamScorer {
+
+    /**
+     * The version of these rules, stored with what spam-on-read judged ([SpamOnRead]): when it changes, the
+     * conversations are judged again with the new rules. Raise it with every change of the rules. The
+     * user's own "Not spam" and "Mark as spam" are never judged over.
+     * 1: the first rules. 2: polls and political campaigns, and the opt-out line together with an ad.
+     */
+    const val VERSION = 2
 
     /**
      * The score from which a message goes to the spam folder. Every message from an unknown sender starts
@@ -54,53 +65,111 @@ object SpamScorer {
     private const val MODERATE = 15
     private const val MILD = 10
 
+    /** A poll ("סקר", "survey") and a vote ("הצבעה", "vote"): moderate each, a residents' committee writes them too. */
+    private const val POLL_SURVEY = 15
+    private const val POLL_VOTE = 15
+
+    /** Elections, parties, candidates, the prime minister: strong, and alone from a stranger still below the threshold. */
+    private const val POLL_POLITICS = 25
+
+    /** "הקישו 1", "השיבו 2", "reply 1": counted only beside another poll sign ("השב 1 לאישור התור" is a clinic). */
+    private const val POLL_REPLY_DIGIT = 15
+
+    private const val POLL_CAP = 50
+
+    /**
+     * The opt-out line together with what makes it an ad, added once: with the opt-out itself and the unknown
+     * sender, enough for the threshold. It counts for a stranger's phone number with a link or ad wording, and
+     * for any sender with a poll. A business's sender id ("SuperPharm") with "מבצע ... להסרה" stays below: that
+     * is its ordinary advertising, which the law requires to say "הסר". Never for a service notice: a code, a
+     * bank, an insurer, a delivery, an appointment or the municipality.
+     */
+    private const val OPT_OUT_AD = 20
+
     /**
      * A bait or pressure phrase. [label] is what the UI shows; [variants] are the spellings looked for,
-     * as whole words (Hebrew ones also with ה/ו/ב/ל/מ/ש/כ in front).
+     * as whole words (Hebrew ones also with ה/ו/ב/ל/מ/ש/כ in front). [ad] marks wording that makes an
+     * opt-out line an ad's ("מבצע", "זכית"); a call to action or the opt-out itself is not.
      */
-    private class Phrase(val label: String, val points: Int, vararg val variants: String)
+    private class Phrase(val label: String, val points: Int, val variants: List<String>, val ad: Boolean = true, val optOut: Boolean = false)
+
+    private fun phrase(label: String, points: Int, vararg variants: String) = Phrase(label, points, variants.toList())
 
     private val PHRASES = listOf(
         // Prizes and bait.
-        Phrase("זכית", STRONG, "זכית", "זכיתם"),
-        Phrase("won", STRONG, "you won", "you've won", "you have won", "winner", "you are a winner"),
-        Phrase("claim", STRONG, "claim your", "claim now", "claim prize", "claim reward", "to claim"),
-        Phrase("מתנה חינם", STRONG, "מתנה חינם", "מתנה בחינם", "פרס כספי", "הגרלה"),
-        Phrase("free gift", STRONG, "free gift", "free prize", "lottery", "jackpot"),
+        phrase("זכית", STRONG, "זכית", "זכיתם"),
+        phrase("won", STRONG, "you won", "you've won", "you have won", "winner", "you are a winner"),
+        phrase("claim", STRONG, "claim your", "claim now", "claim prize", "claim reward", "to claim"),
+        phrase("מתנה חינם", STRONG, "מתנה חינם", "מתנה בחינם", "פרס כספי", "הגרלה"),
+        phrase("free gift", STRONG, "free gift", "free prize", "lottery", "jackpot"),
         // Parcels: the most common scam in Israel.
-        Phrase("חבילה ממתינה", STRONG, "חבילה ממתינה", "החבילה שלך ממתינה", "חבילה מחכה", "החבילה ממתינה", "החבילה מחכה"),
-        Phrase("package waiting", STRONG, "package is waiting", "package waiting", "parcel is waiting", "package on hold", "package is on hold", "parcel on hold"),
-        Phrase("דמי משלוח", STRONG, "דמי משלוח", "דמי טיפול", "תשלום חסר", "עמלת שחרור"),
-        Phrase("delivery fee", STRONG, "delivery fee", "redelivery", "failed delivery", "delivery failed", "customs fee"),
+        phrase("חבילה ממתינה", STRONG, "חבילה ממתינה", "החבילה שלך ממתינה", "חבילה מחכה", "החבילה ממתינה", "החבילה מחכה"),
+        phrase("package waiting", STRONG, "package is waiting", "package waiting", "parcel is waiting", "package on hold", "package is on hold", "parcel on hold"),
+        phrase("דמי משלוח", STRONG, "דמי משלוח", "דמי טיפול", "תשלום חסר", "עמלת שחרור"),
+        phrase("delivery fee", STRONG, "delivery fee", "redelivery", "failed delivery", "delivery failed", "customs fee"),
         // Loans and money.
-        Phrase("הלוואה", STRONG, "הלוואה", "הלוואות", "בלי בדיקות", "ללא בדיקות", "אישור מיידי"),
-        Phrase("loan", STRONG, "loan", "loans", "payday", "pre-approved", "no credit check", "instant approval"),
-        Phrase("קזינו", STRONG, "קזינו", "הימורים", "קזינו אונליין"),
-        Phrase("casino", STRONG, "casino", "betting", "sportsbook"),
+        phrase("הלוואה", STRONG, "הלוואה", "הלוואות", "בלי בדיקות", "ללא בדיקות", "אישור מיידי"),
+        phrase("loan", STRONG, "loan", "loans", "payday", "pre-approved", "no credit check", "instant approval"),
+        phrase("קזינו", STRONG, "קזינו", "הימורים", "קזינו אונליין"),
+        phrase("casino", STRONG, "casino", "betting", "sportsbook"),
         // Phishing: account threats.
-        Phrase("החשבון ייחסם", STRONG, "ייחסם", "יחסם", "הושעה", "נחסם", "אמת את הפרטים", "אמתו את הפרטים", "עדכן את הפרטים", "פעילות חריגה"),
-        Phrase("account suspended", STRONG, "account suspended", "account locked", "account has been locked", "verify your account", "unusual activity", "confirm your identity"),
-        // Calls to action.
-        Phrase("לחץ כאן", MODERATE, "לחץ כאן", "לחצו כאן", "הקש כאן", "לחץ על הקישור", "לחצו על הקישור"),
-        Phrase("click here", MODERATE, "click here", "click the link", "tap here", "tap the link", "click below"),
+        phrase("החשבון ייחסם", STRONG, "ייחסם", "יחסם", "הושעה", "נחסם", "אמת את הפרטים", "אמתו את הפרטים", "עדכן את הפרטים", "פעילות חריגה"),
+        phrase("account suspended", STRONG, "account suspended", "account locked", "account has been locked", "verify your account", "unusual activity", "confirm your identity"),
+        // Calls to action: "לחץ כאן להסרה" is how many opt-out lines read, so they do not make it an ad.
+        Phrase("לחץ כאן", MODERATE, listOf("לחץ כאן", "לחצו כאן", "הקש כאן", "לחץ על הקישור", "לחצו על הקישור"), ad = false),
+        Phrase("click here", MODERATE, listOf("click here", "click the link", "tap here", "tap the link", "click below"), ad = false),
         // The opt-out line. Israeli law requires it in every ad, so it is a sign of an advertiser, not of a scam.
-        Phrase("הסר", MODERATE, "הסר", "הסרה", "להסרה"),
-        Phrase("STOP", MODERATE, "reply stop", "text stop", "send stop", "stop to opt out", "unsubscribe", "opt out"),
+        Phrase("הסר", MODERATE, listOf("הסר", "הסרה", "להסרה"), ad = false, optOut = true),
+        Phrase("STOP", MODERATE, listOf("reply stop", "text stop", "send stop", "stop to opt out", "stop to end", "unsubscribe", "opt out"), ad = false, optOut = true),
         // Pressure and promotions.
-        Phrase("היום בלבד", MILD, "היום בלבד", "לזמן מוגבל", "דחוף", "מיידי"),
-        Phrase("act now", MILD, "act now", "limited time", "today only", "urgent", "final notice", "hurry"),
-        Phrase("מבצע", MILD, "מבצע", "הטבה", "הנחה", "חינם", "בונוס"),
-        Phrase("free", MILD, "free", "discount", "sale", "bonus", "offer"),
+        phrase("היום בלבד", MILD, "היום בלבד", "לזמן מוגבל", "דחוף", "מיידי"),
+        phrase("act now", MILD, "act now", "limited time", "today only", "urgent", "final notice", "hurry"),
+        phrase("מבצע", MILD, "מבצע", "הטבה", "הנחה", "חינם", "בונוס"),
+        phrase("free", MILD, "free", "discount", "sale", "bonus", "offer"),
     )
 
+    /** Keyword phrases, split into words once rather than for every message. */
+    private fun words(vararg phrase: String): List<List<String>> = phrase.map { Text.words(it) }
+
+    private val POLL_SURVEY_WORDS = words("סקר", "סקרים", "שאלון", "poll", "polls", "survey", "questionnaire")
+
+    private val POLL_VOTE_WORDS = words(
+        "הצבעה", "להצביע", "תצביע", "תצביעי", "תצביעו", "הצביעו", "מצביע", "מצביעים",
+        "vote", "votes", "voting", "voter", "voters", "ballot",
+    )
+
+    /** The words of elections and parties. Not "כנסת", which is also the synagogue's ("בית הכנסת"). */
+    private val POLL_POLITICS_WORDS = words(
+        "בחירות", "מפלגה", "מפלגות", "מועמד", "מועמדת", "מועמדים", "ראש הממשלה", "ראשות הממשלה", "קלפי", "קואליציה",
+        "אופוזיציה", "ליכוד", "יש עתיד", "ישראל ביתנו", "יהדות התורה", "הציונות הדתית", "המחנה הממלכתי",
+        "election", "elections", "candidate", "candidates", "prime minister", "political party", "polling station", "knesset",
+    )
+
+    /** The verb in front of the digit of "הקישו 1", "השיבו 2", "reply 1". */
+    private val REPLY_VERBS = words(
+        "הקישו", "הקש", "הקישי", "השיבו", "השב", "השיבי", "השבי", "שלחו", "שלח", "ענו", "ענה", "עני",
+        "press", "reply", "text", "dial", "send",
+    )
+
+    /** Words of an appointment or a public service's notice, which may carry an opt-out line and a link. */
+    private val SERVICE_WORDS = words(
+        "התור", "תורך", "לתור", "קביעת תור", "זימון תור", "appointment", "קופת חולים", "מרפאה", "clinic",
+        "עירייה", "עיריית", "municipality", "מועצה מקומית",
+    )
+
+    /** The folders of a service notice, whose opt-out line is no ad. */
+    private val SERVICE_FOLDERS = setOf(Folder.Codes, Folder.Banks, Folder.Insurance, Folder.Deliveries)
+
+    private val NOT_SPAM = SpamVerdict(0, emptyList())
+
     /**
-     * The verdict for [sms]. A saved contact or an allowed sender is never spam, whatever the text says;
-     * otherwise a blocked keyword always is.
+     * The verdict for [sms]. A saved contact, someone the user wrote to or an allowed sender is never spam,
+     * whatever the text says; otherwise a blocked keyword always is.
      */
     fun score(sms: IncomingSms): SpamVerdict {
-        if (sms.isContact) return SpamVerdict(0, emptyList())
+        if (sms.isContact || sms.userWrote) return NOT_SPAM
         val key = Text.senderKey(sms.address)
-        if (sms.allowedSenders.any { Text.senderKey(it) == key }) return SpamVerdict(0, emptyList())
+        if (sms.allowedSenders.any { Text.senderKey(it) == key }) return NOT_SPAM
 
         val words = Text.words(sms.body)
         val reasons = ArrayList<SpamReason>()
@@ -125,14 +194,30 @@ object SpamScorer {
             reasons += SpamReason.ManyLinks
         }
 
+        val poll = pollPoints(words)
+        if (poll > 0) {
+            score += poll
+            reasons += SpamReason.Poll
+        }
+
         var phrasePoints = 0
+        var optOut = false
+        var adWording = false
         for (phrase in PHRASES) {
             if (phrase.variants.any { Text.containsPhrase(words, it) }) {
                 phrasePoints += phrase.points
                 reasons += SpamReason.Keyword(phrase.label)
+                optOut = optOut || phrase.optOut
+                adWording = adWording || phrase.ad
             }
         }
         score += minOf(phrasePoints, PHRASE_CAP)
+
+        if (optOut) {
+            val stranger = Text.phoneKey(sms.address) != null
+            val advertises = poll > 0 || (stranger && (links.isNotEmpty() || adWording))
+            if (advertises && !isServiceNotice(sms, words)) score += OPT_OUT_AD
+        }
 
         val blocked = sms.blockedKeywords.filter { it.isNotBlank() && Text.containsPhrase(words, it) }
         if (blocked.isNotEmpty()) {
@@ -141,6 +226,33 @@ object SpamScorer {
         }
         return SpamVerdict(score, reasons)
     }
+
+    /** Whether [body] has the words of a poll or a political campaign: the [SpamReason.Poll] sign, whoever sent it. */
+    fun isPoll(body: String): Boolean = pollPoints(Text.words(body)) > 0
+
+    /** The poll and political-campaign points of a message's [words]; 0 when it has none of their words. */
+    private fun pollPoints(words: List<String>): Int {
+        var points = 0
+        if (POLL_SURVEY_WORDS.any { Text.containsWords(words, it) }) points += POLL_SURVEY
+        if (POLL_VOTE_WORDS.any { Text.containsWords(words, it) }) points += POLL_VOTE
+        if (POLL_POLITICS_WORDS.any { Text.containsWords(words, it) }) points += POLL_POLITICS
+        if (points > 0 && hasReplyDigit(words)) points += POLL_REPLY_DIGIT
+        return minOf(points, POLL_CAP)
+    }
+
+    /** "הקישו 1", "והשיבו 2", "reply 1": a reply verb right in front of a single digit. */
+    private fun hasReplyDigit(words: List<String>): Boolean {
+        for (i in 0 until words.size - 1) {
+            val next = words[i + 1]
+            if (next.length != 1 || !next[0].isDigit()) continue
+            if (REPLY_VERBS.any { Text.containsWords(listOf(words[i]), it) }) return true
+        }
+        return false
+    }
+
+    /** A code, a bank, an insurer, a delivery or an appointment: an opt-out line there does not make it an ad. */
+    private fun isServiceNotice(sms: IncomingSms, words: List<String>): Boolean =
+        SERVICE_WORDS.any { Text.containsWords(words, it) } || FolderClassifier.classify(sms, NOT_SPAM) in SERVICE_FOLDERS
 
     /** An alphanumeric sender named like a known company, whose message links somewhere that company does not live. */
     private fun impersonatesBrand(sms: IncomingSms, links: List<LinkInfo>): Boolean {

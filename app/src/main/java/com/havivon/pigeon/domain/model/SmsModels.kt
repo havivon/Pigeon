@@ -35,6 +35,10 @@ data class SmsConversation(
     val unreadCount: Int,
     /** Whether a message in it failed to send, so the list can show a warning. */
     val hasFailed: Boolean,
+    /** How many of its messages came in (the Spam folder counts a sender's messages). */
+    val incomingCount: Int = 0,
+    /** The user wrote in it (sent, or tried to): the other side is someone they talk to, never spam, and Personal. */
+    val userWrote: Boolean = false,
 ) {
     /** What the list shows as the title: the contact's name, otherwise the address(es). */
     val title: String get() = contactName ?: addresses.joinToString(", ")

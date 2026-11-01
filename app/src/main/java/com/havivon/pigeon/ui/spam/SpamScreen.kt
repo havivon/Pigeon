@@ -193,4 +193,5 @@ private fun SpamReason.label(): String = when (this) {
     SpamReason.ManyLinks -> stringResource(R.string.spam_reason_many_links)
     SpamReason.BrandSender -> stringResource(R.string.spam_reason_brand_sender)
     SpamReason.MarkedByUser -> stringResource(R.string.spam_reason_marked_by_user)
+    SpamReason.Poll -> stringResource(R.string.spam_reason_poll)
 }

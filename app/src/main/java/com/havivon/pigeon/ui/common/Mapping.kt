@@ -37,14 +37,15 @@ class ConversationMapper(
     private val lockedSnippet: String,
 ) {
     /** The folder and code of a conversation's last message: the analysis, done again only when that message changes. */
-    private data class Analysis(val sender: String?, val address: String, val snippet: String, val folder: Folder, val code: String?)
+    private data class Analysis(val sender: String?, val address: String, val snippet: String, val userWrote: Boolean, val folder: Folder, val code: String?)
 
     /** By thread. The inbox maps every conversation on every change (a pin, a verdict), and most did not change. */
     private val analyses = ConcurrentHashMap<Long, Analysis>()
 
     private fun analysis(c: SmsConversation, address: String): Analysis {
-        analyses[c.threadId]?.takeIf { it.sender == c.contactName && it.address == address && it.snippet == c.snippet }?.let { return it }
-        return Analysis(c.contactName, address, c.snippet, folders.classify(c), codeFinder.find(c.snippet)).also { analyses[c.threadId] = it }
+        analyses[c.threadId]?.takeIf { it.sender == c.contactName && it.address == address && it.snippet == c.snippet && it.userWrote == c.userWrote }
+            ?.let { return it }
+        return Analysis(c.contactName, address, c.snippet, c.userWrote, folders.classify(c), codeFinder.find(c.snippet)).also { analyses[c.threadId] = it }
     }
 
     fun map(

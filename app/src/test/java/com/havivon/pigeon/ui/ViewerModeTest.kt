@@ -130,7 +130,7 @@ class ViewerModeTest {
     }
 
     @Test
-    fun `spam is judged on read only while Pigeon is not the default`() = runTest {
+    fun `spam is judged on read as a viewer and as the default app, after the list is shown`() = runTest {
         seed()
         collect(inbox().state)
         // After the list is on the screen, not with it
@@ -138,10 +138,11 @@ class ViewerModeTest {
         advanceUntilIdle()
         assertEquals(listOf(2), judged)
         judged.clear()
+        // The default app too: new rules reach the messages already on the phone (what was judged is remembered)
         canWrite = true
         collect(inbox().state)
         advanceUntilIdle()
-        assertTrue(judged.isEmpty())
+        assertEquals(listOf(2), judged)
     }
 
     @Test

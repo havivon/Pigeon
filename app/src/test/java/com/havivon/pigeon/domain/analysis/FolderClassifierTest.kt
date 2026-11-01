@@ -2,6 +2,7 @@ package com.havivon.pigeon.domain.analysis
 
 import com.havivon.pigeon.domain.model.Folder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class FolderClassifierTest {
@@ -13,7 +14,8 @@ class FolderClassifierTest {
         name: String? = null,
         allowed: List<String> = emptyList(),
         blocked: List<String> = emptyList(),
-    ) = FolderClassifier.classify(IncomingSms(address, name, body, contact, allowed, blocked))
+        wrote: Boolean = false,
+    ) = FolderClassifier.classify(IncomingSms(address, name, body, contact, allowed, blocked, userWrote = wrote))
 
     private fun check(expected: Folder, cases: List<Triple<String, String, Boolean>>) {
         for ((body, address, contact) in cases) assertEquals("$address: $body", expected, classify(body, address, contact))
@@ -145,7 +147,6 @@ class FolderClassifierTest {
                 // Names that only look like a bank's
                 Triple("הכל ב-10 ₪ בסניפים", "Max Stock", false),
                 Triple("תזכורת לתור", "Leumit", false),
-                Triple("עדכון בנוגע לפנייתך", "ביטוח לאומי", false),
                 Triple("מבצעי סוף שבוע", "Cal Fitness", false),
                 Triple("Big sale", "Bit Shop", false),
                 Triple("Hello", "Maxim Pizza", false),
@@ -154,9 +155,9 @@ class FolderClassifierTest {
     }
 
     @Test
-    fun aLoneBankWordFromAPhoneNumberIsPersonal() {
+    fun aLoneBankWordFromAStrangersNumberIsNoBank() {
         check(
-            Folder.Personal,
+            Folder.All,
             listOf(
                 Triple("יש לי כרטיס נוסף להופעה, רוצה?", "0541234567", false),
                 Triple("שילמתי בכרטיס אשראי, תחזיר לי 50 ₪", "0541234567", false),
@@ -214,18 +215,33 @@ class FolderClassifierTest {
     }
 
     @Test
-    fun personalIsContactsAndPhoneNumbers() {
+    fun personalIsContactsAndThePeopleWrittenTo() {
         check(
             Folder.Personal,
             listOf(
                 Triple("תביא לחם בדרך הביתה ❤️", "0541234567", true),
+                Triple("המשלוח הגיע, תודה!", "0541234567", true),
+                Triple("The package arrived, thanks", "Mom", true),
+                Triple("בדיקה של היתרה? חיוב כרטיס", "Mom", true),
+            ),
+        )
+        // Not saved, but the user wrote to them (also all there is without the contacts permission)
+        assertEquals(Folder.Personal, classify("מה קורה?", address = "+972541234567", wrote = true))
+        assertEquals(Folder.Personal, classify("Are we still on for dinner?", address = "+14155550100", wrote = true))
+        assertEquals(Folder.Personal, classify("המשלוח הגיע, תודה!", address = "0541234567", wrote = true))
+    }
+
+    @Test
+    fun aStrangersNumberIsNotPersonal() {
+        check(
+            Folder.All,
+            listOf(
+                Triple("מבצע על פיצות היום בלבד!", "0541234567", false),
+                Triple("קורס דיגיטל חדש נפתח, הירשמו עכשיו", "0541234567", false),
                 Triple("מה קורה?", "+972541234567", false),
                 Triple("Are we still on for dinner?", "+14155550100", false),
                 Triple("שלום", "03-1234567", false),
                 Triple("נתראה מחר ב-10:00", "0541234567", false),
-                Triple("המשלוח הגיע, תודה!", "0541234567", true),
-                Triple("The package arrived, thanks", "Mom", true),
-                Triple("בדיקה של היתרה? חיוב כרטיס", "Mom", true),
             ),
         )
     }
@@ -255,11 +271,72 @@ class FolderClassifierTest {
     fun theVerdictCanBePassedIn() {
         val sms = IncomingSms("0541234567", null, "שלום", false)
         assertEquals(Folder.Spam, FolderClassifier.classify(sms, SpamVerdict(100, emptyList())))
-        assertEquals(Folder.Personal, FolderClassifier.classify(sms, SpamVerdict(0, emptyList())))
+        assertEquals(Folder.All, FolderClassifier.classify(sms, SpamVerdict(0, emptyList())))
+        assertEquals(Folder.Personal, FolderClassifier.classify(sms.copy(isContact = true), SpamVerdict(0, emptyList())))
     }
 
     @Test
     fun allowedSendersAreNotSpamSoTheyFileNormally() {
         assertEquals(Folder.Codes, classify("זכית! קוד אימות 482913 bit.ly/x", address = "0551234567", allowed = listOf("0551234567")))
+    }
+
+    // --- insurance (made-up messages) ---
+
+    @Test
+    fun insuranceBySenderOrTheShapeOfAPolicy() {
+        check(
+            Folder.Insurance,
+            listOf(
+                Triple("עדכון לגבי הפוליסה שלך", "Harel", false),
+                Triple("תזכורת", "HarelIns", false),
+                Triple("הודעה חדשה", "מגדל", false),
+                Triple("שלום", "Clal-Health", false),
+                Triple("עדכון", "הפניקס", false),
+                Triple("עדכון", "Menora Mivtachim", false),
+                Triple("עדכון", "BituachYashir", false),
+                Triple("עדכון בנוגע לפנייתך", "ביטוח לאומי", false),
+                Triple("Your policy was renewed", "Lemonade", false),
+                Triple("Update", "AIG", false),
+                Triple("עדכון", "9000000", false),
+                Triple("Update on your claim", "Allianz", false),
+                Triple("פוליסה מס' 12345678 חודשה בהצלחה", "0527000000", false),
+                Triple("תביעה מספר 445566 התקבלה ונמצאת בטיפול", "Notify", false),
+                Triple("ביטוח הרכב שלך יפוג בעוד 14 יום", "Notify", false),
+                Triple("Your car insurance policy has been renewed", "Alerts", false),
+                Triple("Claim #123456 was approved", "Alerts", false),
+            ),
+        )
+        assertEquals(Folder.Insurance, classify("עדכון", address = "0391234567", contact = true, name = "הראל ביטוח"))
+    }
+
+    @Test
+    fun aLoneInsuranceWordOrAnInsuranceAdIsNotInsurance() {
+        val cases = listOf(
+            Triple("ביטוח רכב במחיר הכי זול! השוו עכשיו", "0541234567", false),
+            Triple("הצעת מחיר לביטוח דירה תוך דקה", "Insure4U", false),
+            Triple("מגדל חדש נפתח בעיר", "0541234567", false),
+            Triple("כלל ראשון: לא לאחר", "0541234567", false),
+            Triple("Hello", "Migdal Or", false),
+            Triple("Lemonade stand opens today", "0541234567", false),
+            Triple("Zurich trip photos", "+41441234567", false),
+            Triple("מבצע! ביטוח נסיעות לחו\"ל ב-20% הנחה. להסרה השב הסר", "TravelCo", false),
+            Triple("Get a quote for home insurance today", "+15550001111", false),
+            Triple("חודש טוב!", "0541234567", false),
+            Triple("Dikla's birthday party tonight", "0541234567", false),
+            Triple("Our policy on returns has changed", "ShopNow", false),
+            Triple("הפוליסה של הטלפון שלי נגמרה, יש לך המלצה?", "0541234567", true),
+        )
+        for ((body, address, contact) in cases) {
+            val folder = classify(body, address, contact)
+            assertNotEquals("$address: $body", Folder.Insurance, folder)
+        }
+        assertEquals(Folder.Personal, classify("הראל, מתי אתה מגיע?", address = "0541234567", contact = true, name = "Harel"))
+    }
+
+    @Test
+    fun banksComeBeforeInsuranceAndInsuranceBeforeDeliveries() {
+        assertEquals(Folder.Banks, classify("חיוב בסך 89.90 ש\"ח בכרטיס המסתיים ב-1234 עבור ביטוח הרכב שחודש", address = "Notify"))
+        assertEquals(Folder.Insurance, classify("הפוליסה חודשה, המסמכים יצאו אליך במשלוח", address = "Notify"))
+        assertEquals(Folder.Codes, classify("קוד האימות שלך הוא 482913", address = "Harel"))
     }
 }

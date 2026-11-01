@@ -40,6 +40,7 @@
     <string name="common_folder_unread">Unread</string>
     <string name="common_folder_personal">Personal</string>
     <string name="common_folder_banks">Banks</string>
+    <string name="common_folder_insurance">Insurance</string>
     <string name="common_folder_codes">Codes</string>
     <string name="common_folder_deliveries">Deliveries</string>
     <string name="common_folder_spam">Spam</string>
@@ -149,9 +150,16 @@
     <!-- spam_ -->
     <string name="spam_title">Spam</string>
     <plurals name="spam_subtitle">
-        <item quantity="one">%1$d suspicious message · no notifications</item>
-        <item quantity="other">%1$d suspicious messages · no notifications</item>
+        <item quantity="one">%1$d suspicious sender · no notifications</item>
+        <item quantity="other">%1$d suspicious senders · no notifications</item>
     </plurals>
+    <plurals name="spam_group_messages">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <string name="spam_show_messages">Show the messages</string>
+    <string name="spam_hide_messages">Hide the messages</string>
+    <string name="spam_open_conversation">Open the conversation</string>
     <string name="spam_delete_all">Delete all</string>
     <string name="spam_info">Suspicious messages move here automatically. \"Not spam\" returns the sender to the inbox and teaches the filter.</string>
     <string name="spam_not_spam">Not spam</string>
@@ -162,6 +170,7 @@
     <string name="spam_reason_many_links">Many links</string>
     <string name="spam_reason_brand_sender">Pretends to be a known company</string>
     <string name="spam_reason_marked_by_user">Marked by you</string>
+    <string name="spam_reason_poll">Poll or election</string>
     <string name="spam_back_to_inbox">Back in the inbox. The filter will leave this sender alone.</string>
     <string name="spam_empty_title">No spam</string>
     <string name="spam_empty_body">Suspicious messages will be moved here, without notifications.</string>

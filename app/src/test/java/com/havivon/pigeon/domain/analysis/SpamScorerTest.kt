@@ -211,7 +211,8 @@ class SpamScorerTest {
         val all = "זכית בפרס הלוואה קזינו לחץ כאן הסר מבצע חינם דחוף החבילה שלך ממתינה דמי משלוח"
         val v = verdict(all)
         assertTrue(v.isSpam)
-        assertTrue(v.score <= 15 + 60)
+        // The unknown sender, the capped phrases, and the opt-out line with an ad's words from a stranger
+        assertTrue(v.score <= 15 + 60 + 20)
     }
 
     @Test
@@ -239,5 +240,111 @@ class SpamScorerTest {
         val v = SpamScorer.score(sms("בנק לאומי: קוד האימות שלך 482913", address = "Leumi"))
         assertFalse(v.isSpam)
         assertEquals(listOf<SpamReason>(SpamReason.UnknownSender), v.reasons)
+    }
+
+    // --- polls and political campaigns (all made up) ---
+
+    @Test
+    fun pollsAndPoliticalCampaignsAreSpam() {
+        val cases = listOf(
+            "סקר קצר: לאיזו מפלגה תצביע בבחירות הקרובות? השיבו 1 לליכוד, 2 ליש עתיד. להסרה השב הסר" to "0533001122",
+            "השתתפו בסקר בחירות ארצי וזכו בשובר! bit.ly/seker26" to "+972533001123",
+            "מי ראוי להיות ראש הממשלה? הקישו 1 עבור המועמד הראשון, 2 עבור השני" to "0721234567",
+            "סקר: אם הבחירות היו היום, למי היית מצביע? ענו בקישור poll-il.com/q1 להסרה הסר" to "Seker",
+            "שלום, אנו עורכים סקר בנושא הבחירות. השב 1 אם תצביע, 2 אם לא" to "0559876543",
+            "הצביעו עכשיו למועמד שלנו לראשות הממשלה! www.vote-now.co.il להסרה השב הסר" to "Campaign",
+            "Quick poll: who will you vote for in the election? Reply 1 for A, 2 for B" to "+15550001234",
+            "Election survey: tell us your opinion at survey-now.info/e Reply STOP to opt out" to "+447700900111",
+            "Vote for our candidate on election day! Reply STOP to unsubscribe" to "Campaign2026",
+            "סקר טלפוני קצר על מצב המדינה. הקישו 1 להשתתפות. להסרה הקישו 9" to "0732223344",
+            "בחירות 2026: בדקו מי המועמד המוביל בסקרים rb.gy/elect" to "0541112233",
+            "לאיזו מפלגה תצביעו? השתתפו בסקר והשפיעו!" to "Polls",
+            "הליכוד או יש עתיד? הצבעה בסקר שלנו: https://seker-online.com/v" to "0524445566",
+            "תמכו במפלגה שלנו בבחירות! לפרטים: www.party-site.co.il להסרה השב הסר" to "0501239876",
+            "Take our short survey about the prime minister and win a prize! tinyurl.com/pm26" to "+15550009999",
+            "סקר דעת קהל: האם הקואליציה תשרוד? השיבו 1 כן, 2 לא. להסרה השיבו הסר" to "PollsIL",
+            "‏סקר‏ בחירות: לחצו על הקישור והצביעו https://elections-poll.site/a" to "0587776655",
+        )
+        for ((body, address) in cases) {
+            val v = verdict(body, address)
+            assertTrue("$body -> ${v.score} ${v.reasons}", v.isSpam)
+            assertTrue("$body -> ${v.reasons}", SpamReason.Poll in v.reasons)
+        }
+    }
+
+    @Test
+    fun aStrangersAdWithTheOptOutLineIsSpam() {
+        val cases = listOf(
+            "החנות החדשה שלנו נפתחה! כנסו: shop-new.co.il להסרה השב הסר" to "0547778899",
+            "מבצע ענק על מזגנים! להסרה השב הסר" to "0547778800",
+            "Big sale this weekend only at our store. Reply STOP to opt out" to "+15550004444",
+            "Visit our new site www.best-deals.example.com unsubscribe here" to "+15550004445",
+        )
+        for ((body, address) in cases) {
+            val v = verdict(body, address)
+            assertTrue("$body -> ${v.score} ${v.reasons}", v.isSpam)
+        }
+    }
+
+    @Test
+    fun lookAlikesOfPollsAndAdsStayInTheInbox() {
+        val cases = listOf(
+            "תזכורת: התור שלך לד\"ר כהן מחר ב-09:30. לאישור השב 1, לביטול השב 2" to "Clinic",
+            "שלום, נשמח לשמוע את דעתך על הביקור במרפאה. סקר קצר: השב 1 עד 5" to "Maccabi",
+            "החבילה שלך יצאה למשלוח, מעקב: https://israelpost.co.il/t/RR123456789IL" to "IsraelPost",
+            "חיוב בסך 120 ₪ בכרטיס המסתיים ב-4821. לפרטים: https://www.leumi.co.il" to "Leumi",
+            "מחר בחירות, נלך יחד לקלפי? 🙂" to "0541239999",
+            "עיריית תל אביב: ביום הבחירות יופעלו הסעות לקלפי. פרטים באתר העירייה" to "TelAviv",
+            "ועד הבית: הצבעה על צביעת חדר המדרגות. השב 1 בעד, 2 נגד" to "0526667788",
+            "קוד האימות שלך הוא 482913. אין למסור את הקוד לאיש" to "Verify",
+            "תודה שקניתם בסופר-פארם! הקבלה נשלחה למייל. להסרה השב הסר" to "SuperPharm",
+            "תזכורת לתור במרפאת השיניים ביום ה׳ ב-16:00. לביטול: https://clinic-dent.co.il/c/77 להסרה השב הסר" to "0779990000",
+            "השליח בדרך אליך עם המשלוח שלך. מעקב: https://track.hfd.co.il/123 להסרה הסר" to "0501231231",
+            "בוצעה עסקה בסך 250 ₪ בכרטיס המסתיים ב-1234. לפרטים https://www.bankhapoalim.co.il להסרה הסר" to "0509990001",
+            "Your appointment with Dr. Smith is on Monday at 10:00. Reply 1 to confirm, 2 to cancel. Reply STOP to opt out" to "+15551230000",
+            "Survey results from the school committee: school.example.com/r" to "+15553334444",
+            "Did you vote yet? The polls close at 8" to "+15557778888",
+            "שלום, אנחנו מחפשים מועמדים לתפקיד מנהל משמרת. לפרטים התקשרו" to "0523334455",
+            "פוליסת ביטוח הרכב שלך מס' 5512345 חודשה. להסרה השב הסר" to "0525556677",
+            "מבצע סוף עונה! 20% הנחה. לקטלוג: https://www.super-pharm.co.il להסרה השב הסר" to "SuperPharm",
+            "ההצבעה באסיפה הכללית תתקיים ביום שלישי" to "0541110000",
+        )
+        for ((body, address) in cases) {
+            val v = verdict(body, address)
+            assertFalse("$body -> ${v.score} ${v.reasons}", v.isSpam)
+        }
+    }
+
+    @Test
+    fun friendsAndPeopleWrittenToTalkingAboutElectionsAreNeverSpam() {
+        val body = "סקר: לאיזו מפלגה תצביע בבחירות? השב 1 לליכוד. להסרה השב הסר bit.ly/x"
+        assertEquals(0, SpamScorer.score(sms(body, contact = true)).score)
+        assertEquals(0, SpamScorer.score(IncomingSms("0541234567", null, body, userWrote = true)).score)
+        assertFalse(SpamScorer.score(sms(body, allowed = listOf("+972541234567"))).isSpam)
+    }
+
+    @Test
+    fun aReplyDigitAloneIsNoPoll() {
+        assertFalse(SpamReason.Poll in verdict("לאישור התור השב 1").reasons)
+        assertFalse(SpamScorer.isPoll("Reply 1 to confirm"))
+        assertTrue(SpamScorer.isPoll("Reply 1 in our survey"))
+        assertTrue(SpamScorer.isPoll("לאיזו מפלגה תצביע?"))
+        assertFalse(SpamScorer.isPoll("תפילה בבית הכנסת בשבע"))
+        assertFalse(SpamScorer.isPoll("סקרן לדעת מה קורה"))
+    }
+
+    @Test
+    fun theOptOutLineMakesAnAdOnlyFromAStrangersNumberOrWithAPoll() {
+        val ad = "מבצע! 20% הנחה. להסרה השב הסר"
+        assertTrue(verdict(ad, "0541234567").isSpam)
+        assertFalse(verdict(ad, "SuperPharm").isSpam)
+        assertFalse(verdict(ad, "37133").isSpam)
+        assertTrue(verdict("סקר קצר בנושא המדינה. להסרה השב הסר", "Seker").isSpam)
+        assertFalse(verdict("סקר קצר בנושא המדינה", "Seker").isSpam)
+    }
+
+    @Test
+    fun theRulesHaveAVersion() {
+        assertTrue(SpamScorer.VERSION >= 2)
     }
 }

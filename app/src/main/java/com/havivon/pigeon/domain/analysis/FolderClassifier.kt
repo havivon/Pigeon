@@ -10,15 +10,22 @@ import com.havivon.pigeon.domain.model.Folder
  * 3. [Folder.Banks]: the sender is a known bank, card company or payment app, or the text is shaped like a
  *    transaction: an amount of money together with a card ending, money that moved (charged, withdrawn,
  *    deposited), or the balance of an account.
- * 4. [Folder.Deliveries]: the sender is a known courier, or the text is shaped like a shipment update: a
+ * 4. [Folder.Insurance]: the sender is a known insurer (or has "ביטוח" / "insurance" in its name), or the text
+ *    is shaped like the user's own policy: a policy or claim number, or a kind of insurance ("ביטוח רכב",
+ *    "הפוליסה", "health insurance") together with what happened to it (renewed, expires, approved, received).
+ *    Never an ad: a text with an opt-out line or with offer words ("הצעת מחיר", "השוו", "quote") is not.
+ * 5. [Folder.Deliveries]: the sender is a known courier, or the text is shaped like a shipment update: a
  *    tracking number, or the user's package or order together with what happened to it.
- * 5. [Folder.Personal]: the sender is a saved contact or an ordinary phone number.
+ * 6. [Folder.Personal]: the sender is a saved contact, or someone the user wrote to. An unknown phone number
+ *    is not personal (without the contacts permission only the people written to are).
  *
- * Anything else (an advertiser, a service with an alphanumeric id) stays out of the automatic folders and
- * is returned as [Folder.All], the folder that holds every conversation. A lone word never decides: an ad
- * that says "כרטיס" (a ticket, too), "יתרה", "חיוב", "אשראי" or "משלוח חינם" is neither a bank nor a delivery.
- * The text rules of 3 and 4 are skipped for saved contacts: a friend writing "the package arrived" is still
- * personal. A bank or courier saved as a contact is still recognised by its name.
+ * The senders are recognised first (banks, then insurers, then couriers), then the shapes of the text in
+ * the same order. Anything else (an advertiser, a service with an alphanumeric id, a stranger's number) stays
+ * out of the automatic folders and is returned as [Folder.All], the folder that holds every conversation. A lone
+ * word never decides: an ad that says "כרטיס" (a ticket, too), "יתרה", "חיוב", "אשראי", "ביטוח" or "משלוח חינם"
+ * is neither a bank, an insurer nor a delivery. The text rules are skipped for saved contacts and the people the
+ * user wrote to: a friend writing "the package arrived" is still personal. A bank, insurer or courier saved as a
+ * contact is still recognised by its name.
  */
 object FolderClassifier {
 
@@ -30,15 +37,17 @@ object FolderClassifier {
         val address = Text.words(sms.address)
         // A contact named "Max" is a person: the names that are also everyday words count only for a sender id
         if (isBank(address, plainNames = true) || isBank(name, plainNames = !sms.isContact)) return Folder.Banks
+        if (isInsurer(address, plainNames = true) || isInsurer(name, plainNames = !sms.isContact)) return Folder.Insurance
         if (isCourier(address) || isCourier(name)) return Folder.Deliveries
-        if (!sms.isContact) {
+        val known = sms.isContact || sms.userWrote
+        if (!known) {
             val normalized = Text.normalize(sms.body)
             val words = Text.words(sms.body)
             if (isTransaction(normalized, words)) return Folder.Banks
+            if (isInsuranceNotice(normalized, words)) return Folder.Insurance
             if (isShipmentUpdate(sms.body, normalized, words)) return Folder.Deliveries
         }
-        if (sms.isContact || Text.phoneKey(sms.address) != null) return Folder.Personal
-        return Folder.All
+        return if (known) Folder.Personal else Folder.All
     }
 
     /** Keyword phrases, split into words once rather than for every message. */
@@ -142,6 +151,89 @@ object FolderClassifier {
         if (MONEY_MOVED.any { Text.containsWords(words, it) }) return true
         if (ACCOUNT.none { Text.containsWords(words, it) }) return false
         return BALANCE.any { Text.containsWords(words, it) } || MOVED_WITH_ACCOUNT.any { Text.containsWords(words, it) }
+    }
+
+    // --- insurance by sender ---
+
+    /*
+     * The insurers recognised by name, in Hebrew and as the sender ids they use:
+     * - Israeli insurers: Harel, Migdal, Clal, the Phoenix (FNX), Menora Mivtachim, Ayalon, Bituach Yashir
+     *   (Direct Insurance), AIG, Shomera, Hachshara, Libra, Wesure, 9 Million (9000000), Shirbit, Dikla;
+     * - National Insurance (ביטוח לאומי, BTL), the state's: its messages are about the user's own benefits;
+     * - international: Allianz, AXA, Generali, Zurich, Lemonade; and any sender with "ביטוח", "bituach",
+     *   "mivtachim" or "insurance" in its name.
+     */
+
+    /** Distinctive names, found anywhere in the sender written as one run ("HarelIns", "BituachYashir", "הראל ביטוח"). */
+    private val INSURER_MARKS = listOf(
+        "insurance", "bituach", "mivtachim", "harelins", "migdalins", "clalins", "clalbit", "phoenixins", "fnxins",
+        "ayalonins", "hachsharains", "shirbit", "wesure", "9000000", "9million", "allianz", "generali",
+        "ביטוח", "מבטחים", "שירביט", "הפניקס",
+    )
+
+    /**
+     * Names that are also everyday words, places or surnames ("מגדל" is a tower, "כלל" a rule, "Zurich" a city,
+     * "Lemonade" a drink, "Harel" a first name): only as the whole sender, or the whole sender but for words of
+     * [INSURER_AFFIXES] ("Harel-Health", "Menora IL").
+     */
+    private val INSURER_NAMES = setOf(
+        "harel", "migdal", "clal", "phoenix", "fnx", "menora", "ayalon", "aig", "shomera", "hachshara", "libra", "dikla",
+        "btl", "axa", "zurich", "lemonade",
+        "הראל", "מגדל", "כלל", "פניקס", "מנורה", "איילון", "שומרה", "הכשרה", "ליברה", "דקלה",
+    )
+
+    private val INSURER_AFFIXES = setOf("ins", "il", "israel", "health", "group", "בריאות", "קבוצת")
+
+    /** Whether the sender's words name an insurer; [plainNames] lets the names in [INSURER_NAMES] count too. */
+    private fun isInsurer(senderWords: List<String>, plainNames: Boolean): Boolean {
+        if (senderWords.isEmpty()) return false
+        val compact = senderWords.joinToString("")
+        if (INSURER_MARKS.any { compact.contains(it) }) return true
+        if (!plainNames) return false
+        val rest = senderWords.filter { it !in INSURER_AFFIXES }
+        return rest.size == 1 && rest[0] in INSURER_NAMES
+    }
+
+    // --- insurance by content ---
+
+    /** "פוליסה מס' 12345678", "policy number: 5501234": a policy named with its number, in the normalized text. */
+    private val POLICY_NUMBER = Regex(
+        "(?:פוליסה|הפוליסה|פוליסת|פוליסתך|policy)\\s*(?:ביטוח\\s*)?(?:מס'|מס|מספר|number|no\\.?|#)?\\s*:?\\s*-?\\s*\\d{5,}",
+    )
+
+    /** "תביעה מס' 4455", "claim #123456": a claim named with its number. */
+    private val CLAIM_NUMBER = Regex(
+        "(?:תביעה|התביעה|תביעתך|תביעת|claim)\\s*(?:מס'|מס|מספר|number|no\\.?|#)?\\s*:?\\s*-?\\s*\\d{4,}",
+    )
+
+    /** The user's own insurance, named by its kind or as the policy. */
+    private val INSURANCE_KINDS = phrases(
+        "ביטוח רכב", "ביטוח הרכב", "ביטוח דירה", "ביטוח הדירה", "ביטוח בריאות", "ביטוח חיים", "ביטוח נסיעות", "ביטוח חובה",
+        "ביטוח מקיף", "ביטוח משכנתא", "ביטוח סיעודי", "הפוליסה", "פוליסת", "פוליסה", "פוליסתך", "הפרמיה", "פרמיה",
+        "car insurance", "home insurance", "health insurance", "life insurance", "travel insurance", "your insurance",
+        "your policy", "insurance policy", "your premium", "your claim",
+    )
+
+    /** What happened to it, as a notice says it. */
+    private val INSURANCE_STATUS = phrases(
+        "חודש", "חודשה", "תחודש", "יחודש", "מתחדש", "מתחדשת", "חידוש", "לחידוש", "פג", "פגה", "יפוג", "תפוג", "בתוקף",
+        "הסתיים", "הסתיימה", "התקבל", "התקבלה", "אושר", "אושרה", "נדחה", "נדחתה", "שולם", "שולמה", "נקלט", "נקלטה",
+        "בטיפול", "הונפק", "הונפקה", "בוטל", "בוטלה", "עודכן", "עודכנה",
+        "renewed", "renewal", "renews", "expires", "expired", "expiring", "approved", "received", "issued", "cancelled",
+        "canceled", "is due", "has been updated", "was paid", "has been paid",
+    )
+
+    /** An ad's words: an insurance ad says "השוו", "הצעת מחיר" or "get a quote", and carries the opt-out line. */
+    private val INSURANCE_AD = phrases(
+        "הסר", "הסרה", "להסרה", "מבצע", "הנחה", "הצעה", "הצעת מחיר", "השוו", "השוואת", "חסכו", "חיסכון", "זול", "הזול",
+        "משתלם", "הצטרפו", "unsubscribe", "opt out", "reply stop", "compare", "quote", "save", "cheapest", "discount",
+        "offer", "deal", "join",
+    )
+
+    private fun isInsuranceNotice(normalized: String, words: List<String>): Boolean {
+        if (INSURANCE_AD.any { Text.containsWords(words, it) }) return false
+        if (POLICY_NUMBER.containsMatchIn(normalized) || CLAIM_NUMBER.containsMatchIn(normalized)) return true
+        return INSURANCE_KINDS.any { Text.containsWords(words, it) } && INSURANCE_STATUS.any { Text.containsWords(words, it) }
     }
 
     // --- deliveries ---

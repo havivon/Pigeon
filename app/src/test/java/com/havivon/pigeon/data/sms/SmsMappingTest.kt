@@ -100,6 +100,20 @@ class SmsMappingTest {
     }
 
     @Test
+    fun `each conversation counts its incoming messages and knows whether the user wrote in it`() {
+        val list = summarizeThreads(rows).associateBy { it.threadId }
+        assertEquals(2, list.getValue(2).incomingCount)
+        assertTrue(list.getValue(2).userWrote)
+        assertEquals(2, list.getValue(3).incomingCount)
+        assertFalse(list.getValue(3).userWrote)
+        // A failed send is the user writing too; the draft of thread 4 is no conversation at all
+        assertTrue(list.getValue(1).userWrote)
+        val conversation = list.getValue(2).toConversation("hi", emptyMap())
+        assertEquals(2, conversation.incomingCount)
+        assertTrue(conversation.userWrote)
+    }
+
+    @Test
     fun `hidden threads are left out`() {
         assertEquals(listOf(3L, 1L), summarizeThreads(rows, hidden = setOf(2L)).map { it.threadId })
     }

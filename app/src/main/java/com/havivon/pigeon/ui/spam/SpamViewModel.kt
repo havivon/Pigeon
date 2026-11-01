@@ -42,7 +42,7 @@ class SpamViewModel(
     private val appScope: CoroutineScope,
     /** Whether Pigeon may change the system database (it is the default SMS app); a viewer only reads. */
     private val canWriteNow: () -> Boolean = { true },
-    /** Judges spam on the conversations a viewer reads ([com.havivon.pigeon.domain.analysis.SpamOnRead]). */
+    /** Judges spam on the conversations already on the phone ([com.havivon.pigeon.domain.analysis.SpamOnRead]). */
     private val judgeSpam: suspend (List<SmsConversation>, List<SpamVerdict>) -> Unit = { _, _ -> },
     private val now: () -> Long = System::currentTimeMillis,
     /** Where the conversations are mapped: off the main thread. */
@@ -58,7 +58,7 @@ class SpamViewModel(
         spam.verdicts,
         locks.lockedThreadIds,
     ) { conversations, verdicts, locked ->
-        if (!canWriteNow()) spamJudging.offer(conversations, verdicts)
+        spamJudging.offer(conversations, verdicts)
         val t = now()
         SpamUiState(
             loaded = true,
