@@ -33,7 +33,7 @@
 
     <!-- inbox_ -->
     <string name="inbox_title">הודעות</string>
-    <string name="inbox_settings_description">צבעים והגדרות</string>
+    <string name="inbox_settings_description">הגדרות</string>
     <string name="inbox_search_hint">חיפוש בהודעות, שולחים וקודים</string>
     <string name="inbox_pinned">מוצמדות</string>
     <string name="inbox_all_conversations">כל השיחות</string>
@@ -162,8 +162,7 @@
     <!-- rules_ -->
     <string name="rules_title">צבעים וכללים</string>
     <string name="rules_subtitle">מסגרת בצבע לפי שולח או מילה בהודעה</string>
-    <string name="rules_section_yours">הכללים שלך · הכלל העליון קובע, גרור לשינוי הסדר</string>
-    <string name="rules_section_yours_plain">הכללים שלך · הכלל העליון קובע</string>
+    <string name="rules_section_yours">הכללים שלך · העליון קובע · הקש לעריכה, גרור לשינוי הסדר</string>
     <string name="rules_drag">גרור</string>
     <string name="rules_sender_subtitle">שולח: %1$s</string>
     <string name="rules_keyword_subtitle">מילה בהודעה: %1$s</string>
@@ -252,4 +251,95 @@
     <string name="reminder_snooze">דחה בשעה</string>
     <string name="reminder_notification_title">תזכורת</string>
     <string name="notification_channel_reminders_hidden">תזכורות (בלי הטקסט במסך הנעילה)</string>
+
+    <!-- rules_ (adding and editing) -->
+    <string name="rules_add">הוסף כלל</string>
+    <string name="rules_edit_rule">עריכת כלל</string>
+    <string name="rules_none">עדיין אין כללים. הוסף כלל כדי לסמן הודעות במסגרת צבעונית לפי שולח או מילה.</string>
+    <string name="rules_delete">מחק כלל</string>
+    <string name="rules_field_sender">שם או מספר של השולח</string>
+    <string name="rules_field_word">מילה בהודעה</string>
+    <string name="rules_field_label">שם התגית (לא חובה)</string>
+    <string name="rules_hint_sender">למשל בנק הפועלים או 035550100</string>
+    <string name="rules_hint_word">למשל משלוח</string>
+    <string name="rules_hint_label">כמו השולח או המילה</string>
+    <string name="rules_preview_sample">תגית</string>
+    <string name="rules_preview_sender_message">הודעה מ-%1$s</string>
+
+    <!-- keywords_ (blocked words) -->
+    <string name="keywords_title">מילים חסומות</string>
+    <string name="keywords_subtitle">הודעות עם המילים האלה עוברות ישר לספאם</string>
+    <string name="keywords_info">הודעה שמכילה אחת מהמילים האלה עוברת לספאם ברגע שהיא מגיעה, בלי התראה. לא משנה אם האותיות באנגלית גדולות או קטנות.</string>
+    <string name="keywords_field">מילה חדשה</string>
+    <string name="keywords_hint">למשל הלוואה</string>
+    <string name="keywords_add">הוסף מילה</string>
+    <string name="keywords_duplicate">המילה הזאת כבר ברשימה</string>
+    <string name="keywords_section_empty">המילים שלך</string>
+    <plurals name="keywords_section">
+        <item quantity="one">מילה חסומה אחת</item>
+        <item quantity="two">%1$d מילים חסומות</item>
+        <item quantity="other">%1$d מילים חסומות</item>
+    </plurals>
+    <string name="keywords_none">עדיין אין מילים חסומות.</string>
+    <string name="keywords_remove">הסר את “%1$s”</string>
+
+    <!-- settings_ -->
+    <string name="settings_title">הגדרות</string>
+    <string name="settings_subtitle">מראה, פרטיות ואופן העבודה של Pigeon</string>
+    <string name="settings_section_appearance">מראה</string>
+    <string name="settings_language">שפה</string>
+    <string name="settings_by_phone">לפי הטלפון</string>
+    <string name="settings_language_hebrew">עברית</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_theme">ערכת נושא</string>
+    <string name="settings_theme_light">בהיר</string>
+    <string name="settings_theme_dark">כהה</string>
+    <string name="settings_section_messages">הודעות</string>
+    <string name="settings_color_rules">כללי צבע</string>
+    <plurals name="settings_rules_count">
+        <item quantity="one">כלל אחד</item>
+        <item quantity="two">%1$d כללים</item>
+        <item quantity="other">%1$d כללים</item>
+    </plurals>
+    <string name="settings_blocked_words">מילים חסומות</string>
+    <plurals name="settings_words_count">
+        <item quantity="one">מילה אחת</item>
+        <item quantity="two">%1$d מילים</item>
+        <item quantity="other">%1$d מילים</item>
+    </plurals>
+    <string name="settings_auto_delete">מחק קודי אימות אחרי 24 שעות</string>
+    <string name="settings_auto_delete_note">הודעות שסימנת בכוכב נשמרות.</string>
+    <string name="settings_section_notifications">התראות</string>
+    <string name="settings_lock_screen_text">הצג את טקסט ההודעה במסך הנעילה</string>
+    <string name="settings_lock_screen_text_note">כבוי: ההתראה רק מודיעה שהגיעה הודעה.</string>
+    <string name="settings_system_notifications">הגדרות ההתראות של המערכת</string>
+    <string name="settings_system_notifications_note">צליל, רטט וערוצים</string>
+    <string name="settings_exact_alarms">תזכורות בדקה המדויקת</string>
+    <string name="settings_exact_alarms_note">בלי זה תזכורת עלולה להגיע באיחור של כמה דקות. הקש כדי לאפשר בהגדרות המערכת.</string>
+    <string name="settings_section_privacy">פרטיות ואבטחה</string>
+    <string name="settings_block_screenshots">חסום צילומי מסך</string>
+    <string name="settings_block_screenshots_note">מסתיר את Pigeon גם במסך האפליקציות האחרונות</string>
+    <string name="settings_app_lock">נעילת האפליקציה</string>
+    <string name="settings_app_lock_note">טביעת אצבע או נעילת מסך בכניסה ל-Pigeon</string>
+    <string name="settings_app_lock_unavailable">הגדר קודם נעילת מסך בטלפון</string>
+    <string name="settings_permission_contacts">אנשי קשר</string>
+    <string name="settings_permission_contacts_note">שמות במקום מספרים</string>
+    <string name="settings_permission_notifications">התראות</string>
+    <string name="settings_permission_notifications_note">כדי לדעת כשמגיעה הודעה</string>
+    <string name="settings_permission_allowed">מאושר</string>
+    <string name="settings_permission_allow">אשר</string>
+    <string name="settings_section_widgets">ווידג׳טים</string>
+    <string name="settings_widgets_text">הצג טקסט הודעות בווידג׳טים</string>
+    <string name="settings_widgets_text_note">כבוי: הווידג׳טים מציגים רק מספרים</string>
+    <string name="settings_section_default">אפליקציית ההודעות</string>
+    <string name="settings_default_yes">Pigeon היא אפליקציית ההודעות שלך</string>
+    <string name="settings_default_yes_note">הודעות חדשות מגיעות אליה.</string>
+    <string name="settings_default_no">אפליקציה אחרת היא אפליקציית ההודעות שלך</string>
+    <string name="settings_default_no_note">כל עוד Pigeon אינה אפליקציית ההודעות שלך, הודעות חדשות לא יגיעו אליה.</string>
+    <string name="settings_default_change">שנה</string>
+    <string name="settings_default_make">הפוך לברירת מחדל</string>
+    <string name="settings_section_about">אודות</string>
+    <string name="settings_version">גרסה %1$s</string>
+    <string name="settings_no_internet_title">בלי גישה לאינטרנט</string>
+    <string name="settings_no_internet">ל-Pigeon אין הרשאת אינטרנט, ולכן ההודעות שלך לא יוצאות מהטלפון לעולם.</string>
 </resources>

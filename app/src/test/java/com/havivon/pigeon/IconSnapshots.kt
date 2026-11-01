@@ -34,7 +34,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams
 import com.havivon.pigeon.domain.model.AppIcon
-import com.havivon.pigeon.ui.rules.AppIconPicker
+import com.havivon.pigeon.ui.settings.AppIconPicker
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import com.havivon.pigeon.ui.theme.HebTheme
 import org.junit.Rule

@@ -52,9 +52,17 @@ enum class AppLanguage(val tag: String?) {
     English("en"),
 }
 
+enum class AppTheme {
+    /** Follow the phone's light or dark mode. */
+    System,
+    Light,
+    Dark,
+}
+
 /** The user's settings. The defaults match Google Messages (see CLAUDE.md, section 4). */
 data class AppSettings(
     val language: AppLanguage = AppLanguage.System,
+    val theme: AppTheme = AppTheme.System,
     val appIcon: AppIcon = AppIcon.Envelope,
     val lockScreenText: Boolean = true,
     val widgetsShowText: Boolean = true,

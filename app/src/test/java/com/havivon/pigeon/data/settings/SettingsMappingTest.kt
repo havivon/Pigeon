@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
+import com.havivon.pigeon.domain.model.AppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -18,6 +19,7 @@ class SettingsMappingTest {
         val s = emptyPreferences().toAppSettings()
         assertEquals(AppSettings(), s)
         assertEquals(AppLanguage.System, s.language)
+        assertEquals(AppTheme.System, s.theme)
         assertEquals(AppIcon.Envelope, s.appIcon)
         assertTrue(s.lockScreenText)
         assertTrue(s.widgetsShowText)
@@ -32,6 +34,7 @@ class SettingsMappingTest {
     fun `stored values are read`() {
         val prefs = mutablePreferencesOf(
             SettingsKeys.LANGUAGE to "Hebrew",
+            SettingsKeys.THEME to "Dark",
             SettingsKeys.APP_ICON to "Bubble",
             SettingsKeys.LOCK_SCREEN_TEXT to false,
             SettingsKeys.WIDGETS_SHOW_TEXT to false,
@@ -45,6 +48,7 @@ class SettingsMappingTest {
         assertEquals(
             AppSettings(
                 language = AppLanguage.Hebrew,
+                theme = AppTheme.Dark,
                 appIcon = AppIcon.Bubble,
                 lockScreenText = false,
                 widgetsShowText = false,
@@ -61,9 +65,10 @@ class SettingsMappingTest {
 
     @Test
     fun `an unknown stored choice falls back to the default`() {
-        val prefs = mutablePreferencesOf(SettingsKeys.LANGUAGE to "Klingon", SettingsKeys.APP_ICON to "Gone")
+        val prefs = mutablePreferencesOf(SettingsKeys.LANGUAGE to "Klingon", SettingsKeys.APP_ICON to "Gone", SettingsKeys.THEME to "Sepia")
         assertEquals(AppLanguage.System, prefs.toAppSettings().language)
         assertEquals(AppIcon.Envelope, prefs.toAppSettings().appIcon)
+        assertEquals(AppTheme.System, prefs.toAppSettings().theme)
     }
 
     @Test

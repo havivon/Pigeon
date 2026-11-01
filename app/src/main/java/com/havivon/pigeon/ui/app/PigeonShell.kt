@@ -48,6 +48,7 @@ import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.ui.compose.NewMessageRoute
 import com.havivon.pigeon.ui.conversation.ConversationRoute
 import com.havivon.pigeon.ui.inbox.InboxRoute
+import com.havivon.pigeon.ui.keywords.BlockedKeywordsRoute
 import com.havivon.pigeon.ui.lock.BiometricAuthenticator
 import com.havivon.pigeon.ui.lock.LockCover
 import com.havivon.pigeon.ui.navigation.Navigator
@@ -58,6 +59,7 @@ import com.havivon.pigeon.ui.onboarding.DefaultAppWelcome
 import com.havivon.pigeon.ui.onboarding.PermissionsExplainer
 import com.havivon.pigeon.ui.rules.RulesRoute
 import com.havivon.pigeon.ui.search.SearchRoute
+import com.havivon.pigeon.ui.settings.SettingsRoute
 import com.havivon.pigeon.ui.spam.SpamRoute
 import com.havivon.pigeon.ui.theme.HebTheme
 import kotlinx.coroutines.launch
@@ -156,8 +158,9 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
                 onBack = { navigator.pop() },
                 openThreadInstead = { openThread(it, replaceTop = true) },
             )
-            // Stage C2 replaces this with the settings screen (which links to the rules)
-            Screen.Settings -> RulesRoute(onBack = { navigator.pop() })
+            Screen.Settings -> SettingsRoute(onBack = { navigator.pop() }, navigate = navigator::push)
+            Screen.Rules -> RulesRoute(onBack = { navigator.pop() })
+            Screen.BlockedKeywords -> BlockedKeywordsRoute(onBack = { navigator.pop() })
         }
     }
 }

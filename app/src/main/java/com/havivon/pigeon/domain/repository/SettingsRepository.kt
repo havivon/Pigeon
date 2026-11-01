@@ -3,6 +3,7 @@ package com.havivon.pigeon.domain.repository
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
+import com.havivon.pigeon.domain.model.AppTheme
 import kotlinx.coroutines.flow.Flow
 
 /** The user's settings, kept in the app's private storage. */
@@ -11,6 +12,7 @@ interface SettingsRepository {
     val settings: Flow<AppSettings>
 
     suspend fun setLanguage(value: AppLanguage)
+    suspend fun setTheme(value: AppTheme)
     suspend fun setAppIcon(value: AppIcon)
     suspend fun setLockScreenText(value: Boolean)
     suspend fun setWidgetsShowText(value: Boolean)

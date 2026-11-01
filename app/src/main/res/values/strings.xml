@@ -33,7 +33,7 @@
 
     <!-- inbox_ -->
     <string name="inbox_title">Messages</string>
-    <string name="inbox_settings_description">Colors and settings</string>
+    <string name="inbox_settings_description">Settings</string>
     <string name="inbox_search_hint">Search messages, senders and codes</string>
     <string name="inbox_pinned">Pinned</string>
     <string name="inbox_all_conversations">All conversations</string>
@@ -156,8 +156,7 @@
     <!-- rules_ -->
     <string name="rules_title">Colors and rules</string>
     <string name="rules_subtitle">A colored frame by sender or word in the message</string>
-    <string name="rules_section_yours">Your rules · the top rule wins, drag to reorder</string>
-    <string name="rules_section_yours_plain">Your rules · the top rule wins</string>
+    <string name="rules_section_yours">Your rules · the top one wins · tap to edit, drag to reorder</string>
     <string name="rules_drag">Drag</string>
     <string name="rules_sender_subtitle">Sender: %1$s</string>
     <string name="rules_keyword_subtitle">Word in message: %1$s</string>
@@ -244,4 +243,92 @@
     <string name="reminder_snooze">Snooze 1 hour</string>
     <string name="reminder_notification_title">Reminder</string>
     <string name="notification_channel_reminders_hidden">Reminders (text hidden on the lock screen)</string>
+
+    <!-- rules_ (adding and editing) -->
+    <string name="rules_add">Add rule</string>
+    <string name="rules_edit_rule">Edit rule</string>
+    <string name="rules_none">No rules yet. Add one to frame messages in a color by sender or by a word.</string>
+    <string name="rules_delete">Delete rule</string>
+    <string name="rules_field_sender">Sender\'s name or number</string>
+    <string name="rules_field_word">Word in the message</string>
+    <string name="rules_field_label">Tag name (optional)</string>
+    <string name="rules_hint_sender">For example Bank Hapoalim or 035550100</string>
+    <string name="rules_hint_word">For example delivery</string>
+    <string name="rules_hint_label">Same as the sender or word</string>
+    <string name="rules_preview_sample">Tag</string>
+    <string name="rules_preview_sender_message">A message from %1$s</string>
+
+    <!-- keywords_ (blocked words) -->
+    <string name="keywords_title">Blocked words</string>
+    <string name="keywords_subtitle">Messages with these words go straight to Spam</string>
+    <string name="keywords_info">A message that contains one of these words is moved to Spam when it arrives, without a notification. Capital letters don\'t matter.</string>
+    <string name="keywords_field">New word</string>
+    <string name="keywords_hint">For example loan</string>
+    <string name="keywords_add">Add word</string>
+    <string name="keywords_duplicate">This word is on the list already</string>
+    <string name="keywords_section_empty">Your words</string>
+    <plurals name="keywords_section">
+        <item quantity="one">%1$d blocked word</item>
+        <item quantity="other">%1$d blocked words</item>
+    </plurals>
+    <string name="keywords_none">No blocked words yet.</string>
+    <string name="keywords_remove">Remove “%1$s”</string>
+
+    <!-- settings_ -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Look, privacy and how Pigeon works</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_by_phone">By phone</string>
+    <string name="settings_language_hebrew">עברית</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_section_messages">Messages</string>
+    <string name="settings_color_rules">Color rules</string>
+    <plurals name="settings_rules_count">
+        <item quantity="one">%1$d rule</item>
+        <item quantity="other">%1$d rules</item>
+    </plurals>
+    <string name="settings_blocked_words">Blocked words</string>
+    <plurals name="settings_words_count">
+        <item quantity="one">%1$d word</item>
+        <item quantity="other">%1$d words</item>
+    </plurals>
+    <string name="settings_auto_delete">Delete verification codes after 24 hours</string>
+    <string name="settings_auto_delete_note">Starred messages are kept.</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_lock_screen_text">Show message text on the lock screen</string>
+    <string name="settings_lock_screen_text_note">Off: a notification only says that a message arrived.</string>
+    <string name="settings_system_notifications">System notification settings</string>
+    <string name="settings_system_notifications_note">Sound, vibration and channels</string>
+    <string name="settings_exact_alarms">Reminders on the exact minute</string>
+    <string name="settings_exact_alarms_note">Without this, a reminder can arrive a few minutes late. Tap to allow it in the system settings.</string>
+    <string name="settings_section_privacy">Privacy and security</string>
+    <string name="settings_block_screenshots">Block screenshots</string>
+    <string name="settings_block_screenshots_note">Also hides Pigeon in the recent apps screen</string>
+    <string name="settings_app_lock">Lock the app</string>
+    <string name="settings_app_lock_note">Fingerprint or screen lock when opening Pigeon</string>
+    <string name="settings_app_lock_unavailable">Set a screen lock on the phone first</string>
+    <string name="settings_permission_contacts">Contacts</string>
+    <string name="settings_permission_contacts_note">Names instead of numbers</string>
+    <string name="settings_permission_notifications">Notifications</string>
+    <string name="settings_permission_notifications_note">Know when a message arrives</string>
+    <string name="settings_permission_allowed">Allowed</string>
+    <string name="settings_permission_allow">Allow</string>
+    <string name="settings_section_widgets">Widgets</string>
+    <string name="settings_widgets_text">Show message text in widgets</string>
+    <string name="settings_widgets_text_note">Off: widgets show only counts</string>
+    <string name="settings_section_default">Messaging app</string>
+    <string name="settings_default_yes">Pigeon is your messaging app</string>
+    <string name="settings_default_yes_note">New messages arrive here.</string>
+    <string name="settings_default_no">Another app is your messaging app</string>
+    <string name="settings_default_no_note">Until Pigeon is your messaging app, new messages do not reach it.</string>
+    <string name="settings_default_change">Change</string>
+    <string name="settings_default_make">Make default</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_no_internet_title">No internet access</string>
+    <string name="settings_no_internet">Pigeon has no internet permission, so your messages never leave your phone.</string>
 </resources>

@@ -57,7 +57,7 @@ class DesignSnapshots {
             ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = PHONE)
         }
         shot("5_spam") { SpamScreen(sample.spam) }
-        shot("6_color_rules") { RulesScreen(sample.rules, sample.newRuleWord) }
+        shot("6_color_rules") { RulesScreen(sample.rules) }
         shot("7_conversation_dark", dark = true) {
             ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", subtitle = PHONE)
         }
@@ -89,7 +89,7 @@ class DesignSnapshotsEnglish {
             )
         }
         shot("10_en_spam") { SpamScreen(sample.spam) }
-        shot("11_en_color_rules") { RulesScreen(sample.rules, sample.newRuleWord) }
+        shot("11_en_color_rules") { RulesScreen(sample.rules) }
         shot("12_en_inbox_dark", dark = true) {
             InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine)
         }

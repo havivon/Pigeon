@@ -4,6 +4,7 @@ import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
+import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Contact
@@ -153,7 +154,11 @@ class FakeRules(initial: List<ColorRule> = emptyList()) : RulesRepository {
     }
     override suspend fun update(rule: ColorRule) = state.update { list -> list.map { if (it.id == rule.id) rule else it } }
     override suspend fun delete(id: Int) = state.update { list -> list.filter { it.id != id } }
-    override suspend fun reorder(idsInOrder: List<Int>) = Unit
+    val reordered = mutableListOf<List<Int>>()
+    override suspend fun reorder(idsInOrder: List<Int>) {
+        reordered += idsInOrder
+        state.update { list -> idsInOrder.mapNotNull { id -> list.firstOrNull { it.id == id } } + list.filter { it.id !in idsInOrder } }
+    }
 }
 
 class FakeFavorites : FavoritesRepository {
@@ -232,7 +237,9 @@ class FakeBlockedKeywords(words: List<String> = emptyList()) : BlockedKeywordsRe
     val state = MutableStateFlow(words.mapIndexed { i, w -> BlockedKeyword(i.toLong(), w) })
     override val keywords: Flow<List<BlockedKeyword>> = state
     override suspend fun add(word: String): Boolean {
-        state.update { it + BlockedKeyword(it.size.toLong(), word) }
+        val trimmed = word.trim()
+        if (trimmed.isEmpty() || state.value.any { it.word.equals(trimmed, ignoreCase = true) }) return false
+        state.update { it + BlockedKeyword(it.size.toLong(), trimmed) }
         return true
     }
     override suspend fun delete(id: Long) = state.update { list -> list.filter { it.id != id } }
@@ -242,6 +249,7 @@ class FakeSettings(initial: AppSettings = AppSettings()) : SettingsRepository {
     val state = MutableStateFlow(initial)
     override val settings: Flow<AppSettings> = state
     override suspend fun setLanguage(value: AppLanguage) = state.update { it.copy(language = value) }
+    override suspend fun setTheme(value: AppTheme) = state.update { it.copy(theme = value) }
     override suspend fun setAppIcon(value: AppIcon) = state.update { it.copy(appIcon = value) }
     override suspend fun setLockScreenText(value: Boolean) = state.update { it.copy(lockScreenText = value) }
     override suspend fun setWidgetsShowText(value: Boolean) = state.update { it.copy(widgetsShowText = value) }

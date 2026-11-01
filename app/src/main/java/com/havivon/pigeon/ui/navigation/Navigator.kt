@@ -28,11 +28,13 @@ sealed interface Screen {
     data object Search : Screen
     /** A new message; [recipients] and [body] come prefilled from an `sms:` link. */
     data class NewMessage(val recipients: List<String> = emptyList(), val body: String = "") : Screen
-    /**
-     * The settings. Until the settings screen exists (stage C2) this is the colours-and-rules
-     * screen; C2 points the route at the real one.
-     */
     data object Settings : Screen
+
+    /** The colour rules, opened from the settings. */
+    data object Rules : Screen
+
+    /** The blocked words, opened from the settings. */
+    data object BlockedKeywords : Screen
 }
 
 /** A screen on the stack, with its own ViewModels: they are cleared when the screen is popped. */

@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
+import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.map
 /** The DataStore keys. Renaming one loses the user's value; add a migration instead. */
 internal object SettingsKeys {
     val LANGUAGE = stringPreferencesKey("language")
+    val THEME = stringPreferencesKey("theme")
     val APP_ICON = stringPreferencesKey("app_icon")
     val LOCK_SCREEN_TEXT = booleanPreferencesKey("lock_screen_text")
     val WIDGETS_SHOW_TEXT = booleanPreferencesKey("widgets_show_text")
@@ -36,6 +38,7 @@ internal fun Preferences.toAppSettings(): AppSettings {
     val defaults = AppSettings()
     return AppSettings(
         language = this[SettingsKeys.LANGUAGE]?.let { v -> AppLanguage.entries.firstOrNull { it.name == v } } ?: defaults.language,
+        theme = this[SettingsKeys.THEME]?.let { v -> AppTheme.entries.firstOrNull { it.name == v } } ?: defaults.theme,
         appIcon = this[SettingsKeys.APP_ICON]?.let { v -> AppIcon.entries.firstOrNull { it.name == v } } ?: defaults.appIcon,
         lockScreenText = this[SettingsKeys.LOCK_SCREEN_TEXT] ?: defaults.lockScreenText,
         widgetsShowText = this[SettingsKeys.WIDGETS_SHOW_TEXT] ?: defaults.widgetsShowText,
@@ -85,6 +88,7 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
     override val settings: Flow<AppSettings> = store.data.map { it.toAppSettings() }
 
     override suspend fun setLanguage(value: AppLanguage) = put(SettingsKeys.LANGUAGE, value.name)
+    override suspend fun setTheme(value: AppTheme) = put(SettingsKeys.THEME, value.name)
     override suspend fun setAppIcon(value: AppIcon) = put(SettingsKeys.APP_ICON, value.name)
     override suspend fun setLockScreenText(value: Boolean) = put(SettingsKeys.LOCK_SCREEN_TEXT, value)
     override suspend fun setWidgetsShowText(value: Boolean) = put(SettingsKeys.WIDGETS_SHOW_TEXT, value)
