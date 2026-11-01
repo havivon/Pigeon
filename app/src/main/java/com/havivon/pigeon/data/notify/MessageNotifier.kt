@@ -45,11 +45,14 @@ class MessageNotifier(
     private val locks: LocksRepository,
     private val settings: SettingsRepository,
     private val codeFinder: CodeFinder,
+    /** Whether the conversation is open on the screen: its messages then show there instead. */
+    private val isOnScreen: (Long) -> Boolean = { false },
 ) {
     private val manager = NotificationManagerCompat.from(context)
 
     /** Shows (or refreshes) the conversation's notification with its unread messages, alerting the user. */
     suspend fun notifyThread(threadId: Long) {
+        if (isOnScreen(threadId)) return
         val unread = messages.unreadMessages(threadId)
         if (unread.isEmpty()) {
             cancel(threadId)

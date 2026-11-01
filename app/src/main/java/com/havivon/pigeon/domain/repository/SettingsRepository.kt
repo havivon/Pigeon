@@ -19,4 +19,5 @@ interface SettingsRepository {
     suspend fun setAutoDeleteCodes(value: Boolean)
     suspend fun setAutoDeleteCodesSince(millis: Long?)
     suspend fun setWelcomeDone(value: Boolean)
+    suspend fun setPermissionsAsked(value: Boolean)
 }

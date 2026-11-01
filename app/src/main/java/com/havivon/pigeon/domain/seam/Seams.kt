@@ -1,6 +1,7 @@
 package com.havivon.pigeon.domain.seam
 
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.SmsConversation
 
 /**
@@ -56,5 +57,22 @@ fun interface FolderClassifier {
 
     companion object {
         val AllPersonal = FolderClassifier { Folder.Personal }
+    }
+}
+
+/**
+ * Sets the alarm that fires a reminder as a notification. The conversation screen creates the
+ * reminder in `RemindersRepository` and then calls [schedule]; the default does nothing, so a
+ * reminder is stored but does not fire until the real scheduler is passed to `AppContainer`.
+ */
+interface ReminderScheduler {
+    fun schedule(reminder: Reminder)
+    fun cancel(reminderId: Long)
+
+    companion object {
+        val None = object : ReminderScheduler {
+            override fun schedule(reminder: Reminder) = Unit
+            override fun cancel(reminderId: Long) = Unit
+        }
     }
 }

@@ -67,6 +67,7 @@
     <string name="spam_reason_lookalike_domain">Lookalike domain</string>
     <string name="spam_reason_many_links">Many links</string>
     <string name="spam_reason_brand_sender">Pretends to be a known company</string>
+    <string name="spam_reason_marked_by_user">Marked by you</string>
 
     <!-- rules_ -->
     <string name="rules_title">Colors and rules</string>

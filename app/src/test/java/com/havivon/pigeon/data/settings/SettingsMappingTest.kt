@@ -40,6 +40,7 @@ class SettingsMappingTest {
             SettingsKeys.AUTO_DELETE_CODES to false,
             SettingsKeys.AUTO_DELETE_CODES_SINCE to 1234L,
             SettingsKeys.WELCOME_DONE to true,
+            SettingsKeys.PERMISSIONS_ASKED to true,
         )
         assertEquals(
             AppSettings(
@@ -52,6 +53,7 @@ class SettingsMappingTest {
                 autoDeleteCodes = false,
                 autoDeleteCodesSinceMillis = 1234L,
                 welcomeDone = true,
+                permissionsAsked = true,
             ),
             prefs.toAppSettings(),
         )

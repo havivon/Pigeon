@@ -1,6 +1,7 @@
 package com.havivon.pigeon.data.db
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -18,9 +19,12 @@ import androidx.room.RoomDatabase
         SpamVerdictEntity::class,
         NotSpamEntity::class,
         BlockedKeywordEntity::class,
+        PinnedThreadEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    // 2: pinned conversations (a new table, nothing else changes)
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class PigeonDatabase : RoomDatabase() {
     abstract fun colorRules(): ColorRuleDao
@@ -29,6 +33,7 @@ abstract class PigeonDatabase : RoomDatabase() {
     abstract fun lockedThreads(): LockedThreadDao
     abstract fun spam(): SpamDao
     abstract fun blockedKeywords(): BlockedKeywordDao
+    abstract fun pinnedThreads(): PinnedThreadDao
 
     companion object {
         private const val NAME = "pigeon.db"

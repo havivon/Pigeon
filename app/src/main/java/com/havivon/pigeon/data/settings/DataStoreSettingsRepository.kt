@@ -28,6 +28,7 @@ internal object SettingsKeys {
     val AUTO_DELETE_CODES = booleanPreferencesKey("auto_delete_codes")
     val AUTO_DELETE_CODES_SINCE = longPreferencesKey("auto_delete_codes_since")
     val WELCOME_DONE = booleanPreferencesKey("welcome_done")
+    val PERMISSIONS_ASKED = booleanPreferencesKey("permissions_asked")
 }
 
 /** Reads the settings, with the defaults of [AppSettings] for anything never set (or unknown). */
@@ -43,6 +44,7 @@ internal fun Preferences.toAppSettings(): AppSettings {
         autoDeleteCodes = this[SettingsKeys.AUTO_DELETE_CODES] ?: defaults.autoDeleteCodes,
         autoDeleteCodesSinceMillis = this[SettingsKeys.AUTO_DELETE_CODES_SINCE],
         welcomeDone = this[SettingsKeys.WELCOME_DONE] ?: defaults.welcomeDone,
+        permissionsAsked = this[SettingsKeys.PERMISSIONS_ASKED] ?: defaults.permissionsAsked,
     )
 }
 
@@ -89,6 +91,7 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
     override suspend fun setBlockScreenshots(value: Boolean) = put(SettingsKeys.BLOCK_SCREENSHOTS, value)
     override suspend fun setAppLock(value: Boolean) = put(SettingsKeys.APP_LOCK, value)
     override suspend fun setWelcomeDone(value: Boolean) = put(SettingsKeys.WELCOME_DONE, value)
+    override suspend fun setPermissionsAsked(value: Boolean) = put(SettingsKeys.PERMISSIONS_ASKED, value)
 
     /** Turning it on starts the count again from now; turning it off forgets when it started. */
     override suspend fun setAutoDeleteCodes(value: Boolean) {

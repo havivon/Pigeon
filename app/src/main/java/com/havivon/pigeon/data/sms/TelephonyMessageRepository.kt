@@ -18,6 +18,7 @@ import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNDO_WINDOW_MILLIS
+import com.havivon.pigeon.domain.repository.PinsRepository
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,7 @@ class TelephonyMessageRepository(
     private val context: Context,
     private val contacts: ContactsRepository,
     private val locks: LocksRepository,
+    private val pins: PinsRepository,
     /** Outlives the screens, so a deletion completes after the user leaves the conversation. */
     private val appScope: CoroutineScope,
 ) : MessageRepository {
@@ -236,8 +238,9 @@ class TelephonyMessageRepository(
                 }
                 for (threadId in threads) {
                     resolver.delete(ContentUris.withAppendedId(Telephony.Sms.Conversations.CONTENT_URI, threadId), null, null)
-                    // The system may give a deleted thread's id to a new conversation later; it must not start out locked
+                    // The system may give a deleted thread's id to a new conversation later; it must not start out locked or pinned
                     locks.unlock(threadId)
+                    pins.unpin(threadId)
                 }
             } catch (_: SecurityException) {
                 // Not the default SMS app: nothing can be deleted, and the rows come back into view

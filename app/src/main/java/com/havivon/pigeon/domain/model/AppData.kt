@@ -67,4 +67,6 @@ data class AppSettings(
      */
     val autoDeleteCodesSinceMillis: Long? = null,
     val welcomeDone: Boolean = false,
+    /** Whether the app has asked (once, after becoming the default) for notifications and contacts. */
+    val permissionsAsked: Boolean = false,
 )

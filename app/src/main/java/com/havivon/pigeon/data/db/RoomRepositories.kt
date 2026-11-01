@@ -12,6 +12,7 @@ import com.havivon.pigeon.domain.model.SpamVerdict
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.FavoritesRepository
 import com.havivon.pigeon.domain.repository.LocksRepository
+import com.havivon.pigeon.domain.repository.PinsRepository
 import com.havivon.pigeon.domain.repository.RemindersRepository
 import com.havivon.pigeon.domain.repository.RulesRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
@@ -128,6 +129,16 @@ class RoomLocksRepository(db: PigeonDatabase, private val now: () -> Long = Syst
     override suspend fun lock(threadId: Long) = dao.insert(LockedThreadEntity(threadId, now()))
 
     override suspend fun unlock(threadId: Long) = dao.delete(threadId)
+}
+
+class RoomPinsRepository(db: PigeonDatabase, private val now: () -> Long = System::currentTimeMillis) : PinsRepository {
+    private val dao = db.pinnedThreads()
+
+    override val pinnedThreadIds: Flow<Set<Long>> = dao.observeIds().map { it.toSet() }
+
+    override suspend fun pin(threadId: Long) = dao.insert(PinnedThreadEntity(threadId, now()))
+
+    override suspend fun unpin(threadId: Long) = dao.delete(threadId)
 }
 
 class RoomBlockedKeywordsRepository(db: PigeonDatabase, private val now: () -> Long = System::currentTimeMillis) : BlockedKeywordsRepository {

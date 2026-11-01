@@ -87,6 +87,14 @@ interface LocksRepository {
     suspend fun unlock(threadId: Long)
 }
 
+/** Conversations pinned to the top of the inbox. */
+interface PinsRepository {
+    val pinnedThreadIds: Flow<Set<Long>>
+
+    suspend fun pin(threadId: Long)
+    suspend fun unpin(threadId: Long)
+}
+
 interface BlockedKeywordsRepository {
     val keywords: Flow<List<BlockedKeyword>>
 

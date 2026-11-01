@@ -184,4 +184,5 @@ private fun SpamReason.label(): String = when (this) {
     is SpamReason.BlockedKeyword -> word
     SpamReason.ManyLinks -> stringResource(R.string.spam_reason_many_links)
     SpamReason.BrandSender -> stringResource(R.string.spam_reason_brand_sender)
+    SpamReason.MarkedByUser -> stringResource(R.string.spam_reason_marked_by_user)
 }

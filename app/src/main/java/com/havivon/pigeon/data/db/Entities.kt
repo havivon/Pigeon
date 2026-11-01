@@ -57,6 +57,12 @@ data class LockedThreadEntity(
     val lockedAtMillis: Long,
 )
 
+@Entity(tableName = "pinned_threads")
+data class PinnedThreadEntity(
+    @PrimaryKey val threadId: Long,
+    val pinnedAtMillis: Long,
+)
+
 /** The latest verdict per sender. [reasons] is encoded by [SpamReasonCodec]. */
 @Entity(tableName = "spam_verdicts", indices = [Index("threadId")])
 data class SpamVerdictEntity(

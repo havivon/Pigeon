@@ -11,7 +11,10 @@ class CodecsTest {
 
     @Test
     fun `spam reasons survive the round trip`() {
-        val reasons = listOf(SpamReason.UnknownSender, SpamReason.ShortLink, SpamReason.LookalikeDomain, SpamReason.Keyword("זכית"))
+        val reasons = listOf(
+            SpamReason.UnknownSender, SpamReason.ShortLink, SpamReason.LookalikeDomain, SpamReason.Keyword("זכית"),
+            SpamReason.BlockedKeyword("הלוואה"), SpamReason.ManyLinks, SpamReason.BrandSender, SpamReason.MarkedByUser,
+        )
         assertEquals(reasons, SpamReasonCodec.decode(SpamReasonCodec.encode(reasons)))
     }
 

@@ -69,6 +69,7 @@
     <string name="spam_reason_lookalike_domain">דומיין מתחזה</string>
     <string name="spam_reason_many_links">הרבה קישורים</string>
     <string name="spam_reason_brand_sender">מתחזה לחברה מוכרת</string>
+    <string name="spam_reason_marked_by_user">סימנת כספאם</string>
 
     <!-- rules_ -->
     <string name="rules_title">צבעים וכללים</string>

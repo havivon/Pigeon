@@ -102,6 +102,18 @@ interface LockedThreadDao {
 }
 
 @Dao
+interface PinnedThreadDao {
+    @Query("SELECT threadId FROM pinned_threads")
+    fun observeIds(): Flow<List<Long>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(pin: PinnedThreadEntity)
+
+    @Query("DELETE FROM pinned_threads WHERE threadId = :threadId")
+    suspend fun delete(threadId: Long)
+}
+
+@Dao
 interface SpamDao {
     @Query("SELECT * FROM spam_verdicts ORDER BY judgedAtMillis DESC")
     fun observeVerdicts(): Flow<List<SpamVerdictEntity>>

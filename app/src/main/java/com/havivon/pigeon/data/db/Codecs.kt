@@ -14,6 +14,7 @@ object SpamReasonCodec {
     private const val LOOKALIKE_DOMAIN = "lookalike_domain"
     private const val MANY_LINKS = "many_links"
     private const val BRAND_SENDER = "brand_sender"
+    private const val MARKED_BY_USER = "marked_by_user"
     private const val KEYWORD = "keyword:"
     private const val BLOCKED_KEYWORD = "blocked:"
 
@@ -24,6 +25,7 @@ object SpamReasonCodec {
             SpamReason.LookalikeDomain -> LOOKALIKE_DOMAIN
             SpamReason.ManyLinks -> MANY_LINKS
             SpamReason.BrandSender -> BRAND_SENDER
+            SpamReason.MarkedByUser -> MARKED_BY_USER
             // A line break inside the word would split the reason
             is SpamReason.Keyword -> KEYWORD + r.word.oneLine()
             is SpamReason.BlockedKeyword -> BLOCKED_KEYWORD + r.word.oneLine()
@@ -39,6 +41,7 @@ object SpamReasonCodec {
             line == LOOKALIKE_DOMAIN -> SpamReason.LookalikeDomain
             line == MANY_LINKS -> SpamReason.ManyLinks
             line == BRAND_SENDER -> SpamReason.BrandSender
+            line == MARKED_BY_USER -> SpamReason.MarkedByUser
             line.startsWith(KEYWORD) -> SpamReason.Keyword(line.removePrefix(KEYWORD))
             line.startsWith(BLOCKED_KEYWORD) -> SpamReason.BlockedKeyword(line.removePrefix(BLOCKED_KEYWORD))
             else -> null

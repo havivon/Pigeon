@@ -24,6 +24,8 @@ sealed interface SpamReason {
     data object ManyLinks : SpamReason
     /** An alphanumeric sender named like a known company, with a link that does not go to that company. */
     data object BrandSender : SpamReason
+    /** The user moved it to spam by hand ("Mark as spam"). */
+    data object MarkedByUser : SpamReason
 }
 
 sealed interface RuleMatch {
