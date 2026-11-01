@@ -61,7 +61,7 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
     val danny = sample.inbox.first { it.id == 2L }
     val noa = sample.inbox.first { it.id == 6L }
 
-    /** The Unread chip: messages, not conversations (two from Mom, a bank, a code, a locked chat, a long one cut at three lines). */
+    /** The unread list: messages, not conversations (two from Mom, two from the bank, a code, a locked chat, a long one cut at three lines). */
     val unread: List<UnreadMessage> = run {
         val mom = sample.inbox.first { it.id == 1L }
         val bank = sample.inbox.first { it.id == 3L }
@@ -74,6 +74,11 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
                 if (hebrew) "12:38" else "12:38 PM", mom.avatarArgb, ruleId = 3,
             ),
             UnreadMessage(103, bank.id, bank.name, if (hebrew) "חיוב בכרטיס המסתיים ב-4821 בסך 249.90 ₪" else "Charge on the card ending in 4821 for $249.90", bank.time, bank.avatarArgb, ruleId = 1),
+            UnreadMessage(
+                107, bank.id, bank.name,
+                if (hebrew) "משיכה של 320 ₪ מהחשבון. יתרה: 4,812 ₪" else "Withdrawal of $320 from your account. Balance: $4,812",
+                if (hebrew) "09:48" else "9:48 AM", bank.avatarArgb, ruleId = 1,
+            ),
             UnreadMessage(
                 104, verify.id, verify.name,
                 if (hebrew) "קוד האימות שלך הוא 482913. אל תשתף אותו עם אף אחד." else "Your verification code is 482913. Do not share it with anyone.",
@@ -92,7 +97,11 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
         )
     }
 
-    val unreadCounts = sample.folderCounts + (Folder.Unread to unread.size)
+    /** The unread messages of the Banks folder only (the conversations of [unread] that the sample files under Banks). */
+    val bankUnread = unread.filter { m -> sample.inbox.first { it.id == m.threadId }.folder == Folder.Banks }
+
+    /** The chips as the screen counts them when the unread list is shown. */
+    val unreadCounts = sample.folderCounts + (Folder.All to unread.size) + (Folder.Banks to bankUnread.size)
 
     val search = SearchUiState(
         query = if (hebrew) "הרצל" else "Maple",
@@ -208,11 +217,16 @@ class NewScreensSnapshots {
         shot("40_search_dark", dark = true) { SearchScreen(s.search, autoFocus = false) }
         shot("41_new_message_dark", dark = true) { NewMessageScreen(s.newMessage, autoFocus = false) }
         shot("66_inbox_unread_empty") {
-            InboxScreen(emptyList(), s.sample.rules, s.sample.folderCounts - Folder.Unread, s.sample.dateLine, selectedFolder = Folder.Unread, emptyState = { InboxEmpty(Folder.Unread) })
+            InboxScreen(emptyList(), s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadOnly = true, emptyState = { InboxEmpty(Folder.All, unreadOnly = true) })
         }
-        shot("67_inbox_unread") { InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread) }
+        shot("67_inbox_banks_unread") {
+            InboxScreen(
+                emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine,
+                selectedFolder = Folder.Banks, unreadOnly = true, unreadCount = s.bankUnread.size, unreadMessages = s.bankUnread,
+            )
+        }
         shot("68_inbox_unread_dark", dark = true) {
-            InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread)
+            InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size, unreadMessages = s.unread)
         }
         shot("64_inbox_loading") { InboxScreen(emptyList(), s.sample.rules, emptyMap(), s.sample.dateLine, loading = true) }
         shot("65_conversation_loading") {
@@ -247,7 +261,9 @@ class NewScreensSnapshotsEnglish {
             ConversationScreen(s.danny, s.states, rule = null, draft = "", subtitle = "555-0123")
         }
         shot("71_en_spam_expanded") { SpamScreen(s.spamGroups, expanded = s.spamOpened.keys, messages = s.spamOpened) }
-        shot("69_en_inbox_unread") { InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, selectedFolder = Folder.Unread, unreadMessages = s.unread) }
+        shot("69_en_inbox_unread") {
+            InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size, unreadMessages = s.unread)
+        }
     }
 }
 

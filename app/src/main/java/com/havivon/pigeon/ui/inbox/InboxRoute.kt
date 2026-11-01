@@ -89,6 +89,9 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         selectedFolder = state.folder,
         onFolder = { if (it == Folder.Spam) navigate(Screen.Spam) else vm.selectFolder(it) },
         onOpen = { openThread(it.id) },
+        unreadOnly = state.unreadOnly,
+        unreadCount = state.unreadCount,
+        onUnreadOnly = vm::selectUnreadOnly,
         unreadMessages = state.unread.orEmpty(),
         onOpenMessage = { openMessage(it.threadId, it.messageId) },
         // The same sheet as for the message's conversation (gone by now: nothing to act on)
@@ -97,8 +100,8 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         onLongPress = { sheetFor = it },
         onSearch = { navigate(Screen.Search) },
         onNewMessage = { navigate(Screen.NewMessage()) },
-        emptyState = if (state.loaded) ({ InboxEmpty(state.folder) }) else null,
-        loading = !state.loaded || (state.folder == Folder.Unread && state.unread == null),
+        emptyState = if (state.loaded) ({ InboxEmpty(state.folder, state.unreadOnly) }) else null,
+        loading = !state.loaded || (state.unreadOnly && state.unread == null),
         banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
 
@@ -173,9 +176,12 @@ internal fun ConversationActions(
     }
 }
 
-/** No conversations: until Pigeon may see the messages, the reason and the two ways to fix it; then a plain "No messages yet". */
+/**
+ * No conversations (or, with [unreadOnly], no unread messages): until Pigeon may see the messages, the
+ * reason and the two ways to fix it; then a plain "No messages yet".
+ */
 @Composable
-internal fun InboxEmpty(folder: Folder) {
+internal fun InboxEmpty(folder: Folder, unreadOnly: Boolean = false) {
     val access = LocalDefaultApp.current
     when {
         access.mode == SmsAccess.None -> EmptyState(
@@ -189,8 +195,8 @@ internal fun InboxEmpty(folder: Folder) {
                 PillButton(stringResource(R.string.onboarding_view_only), onClick = access.viewOnly)
             }
         }
+        unreadOnly -> EmptyState(Icons.Rounded.DoneAll, stringResource(R.string.inbox_empty_unread_title), stringResource(R.string.inbox_empty_unread_body))
         folder == Folder.All -> EmptyState(Icons.Rounded.Forum, stringResource(R.string.inbox_empty_title), stringResource(R.string.inbox_empty_body))
-        folder == Folder.Unread -> EmptyState(Icons.Rounded.DoneAll, stringResource(R.string.inbox_empty_unread_title), stringResource(R.string.inbox_empty_unread_body))
         else -> EmptyState(
             Icons.Rounded.Forum,
             stringResource(R.string.inbox_empty_folder_title, stringResource(folder.labelRes)),

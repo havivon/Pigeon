@@ -150,26 +150,83 @@ class ViewModelsTest {
     }
 
     @Test
-    fun `the unread chip lists the unread messages, newest first, and lets go of a conversation's once it is read`() = runTest {
+    fun `the unread toggle lists the unread messages, newest first, and lets go of a conversation's once it is read`() = runTest {
         seedInbox()
         seedUnreadMessages()
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
         val vm = inbox()
         collect(vm.state)
-        // Mapped only while the chip is chosen
+        // Mapped only while the toggle is on
+        assertFalse(vm.state.value.unreadOnly)
         assertEquals(emptyList<Any>(), vm.state.value.unread)
-        vm.selectFolder(Folder.Unread)
-        assertEquals(emptyList<Any>(), vm.state.value.conversations)
+        vm.selectUnreadOnly(true)
         assertEquals(listOf(11L, 10L, 12L, 13L), vm.state.value.unread!!.map { it.messageId })
         assertEquals(listOf("Mom", "Mom", "Leumi", "Verify"), vm.state.value.unread!!.map { it.name })
         assertEquals("482913", vm.state.value.unread!!.last().code)
-        // The chip counts messages, spam's left out: as many as the rows
-        assertEquals(4, vm.state.value.folderCounts[Folder.Unread])
+        // The toggle counts messages, spam's left out: as many as the rows
+        assertEquals(4, vm.state.value.unreadCount)
         vm.markRead(vm.state.value.all.first { it.id == 1L })
         assertEquals(listOf(12L, 13L), vm.state.value.unread!!.map { it.messageId })
-        assertEquals(2, vm.state.value.folderCounts[Folder.Unread])
-        vm.selectFolder(Folder.All)
+        assertEquals(2, vm.state.value.unreadCount)
+        vm.selectUnreadOnly(false)
         assertEquals(emptyList<Any>(), vm.state.value.unread)
+    }
+
+    @Test
+    fun `the unread toggle applies to the chosen folder and stays on as the folder changes`() = runTest {
+        seedInbox()
+        seedUnreadMessages()
+        spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectUnreadOnly(true)
+        vm.selectFolder(Folder.Banks)
+        assertTrue(vm.state.value.unreadOnly)
+        assertEquals(listOf(12L), vm.state.value.unread!!.map { it.messageId })
+        assertEquals(1, vm.state.value.unreadCount)
+        // The chip keeps its own count, the same number
+        assertEquals(1, vm.state.value.folderCounts[Folder.Banks])
+        vm.selectFolder(Folder.Codes)
+        assertTrue(vm.state.value.unreadOnly)
+        assertEquals(listOf(13L), vm.state.value.unread!!.map { it.messageId })
+        vm.selectFolder(Folder.Personal)
+        assertEquals(listOf(11L, 10L), vm.state.value.unread!!.map { it.messageId })
+        assertEquals(2, vm.state.value.unreadCount)
+        // A folder with nothing unread: an empty list, not a loading one
+        vm.selectFolder(Folder.Deliveries)
+        assertEquals(emptyList<Any>(), vm.state.value.unread)
+        assertEquals(0, vm.state.value.unreadCount)
+        // Back to every message: the folder's conversations again
+        vm.selectUnreadOnly(false)
+        vm.selectFolder(Folder.Banks)
+        assertFalse(vm.state.value.unreadOnly)
+        assertEquals(listOf(2L), vm.state.value.conversations.map { it.id })
+        vm.selectFolder(Folder.All)
+        assertEquals(3, vm.state.value.conversations.size)
+        // Turned on again, it lists the unread messages of every folder
+        vm.selectUnreadOnly(true)
+        assertEquals(listOf(11L, 10L, 12L, 13L), vm.state.value.unread!!.map { it.messageId })
+        assertEquals(4, vm.state.value.unreadCount)
+    }
+
+    @Test
+    fun `the unread messages of a locked chat stay in its folder, and spam is in none`() = runTest {
+        seedInbox()
+        seedUnreadMessages()
+        spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectUnreadOnly(true)
+        vm.lock(vm.state.value.all.first { it.id == 2L })
+        vm.selectFolder(Folder.Banks)
+        val row = vm.state.value.unread!!.single()
+        assertEquals(12L, row.messageId)
+        assertTrue(row.locked)
+        assertEquals("Locked chat", row.text)
+        for (folder in Folder.entries.filter { it != Folder.Spam }) {
+            vm.selectFolder(folder)
+            assertTrue("$folder", vm.state.value.unread!!.none { it.messageId == 14L })
+        }
     }
 
     @Test
@@ -178,7 +235,7 @@ class ViewModelsTest {
         seedUnreadMessages()
         val vm = inbox()
         collect(vm.state)
-        vm.selectFolder(Folder.Unread)
+        vm.selectUnreadOnly(true)
         messages.allMessages.value += sms(20, 2, "Another charge of 15.00", millis(2026, 11, 1, 11, 30), "Leumi", read = false)
         assertEquals(20L, vm.state.value.unread!!.first().messageId)
         val deletion = vm.delete(vm.state.value.all.first { it.id == 2L })!!
@@ -193,7 +250,7 @@ class ViewModelsTest {
         seedUnreadMessages()
         val vm = inbox()
         collect(vm.state)
-        vm.selectFolder(Folder.Unread)
+        vm.selectUnreadOnly(true)
         vm.lock(vm.state.value.all.first { it.id == 3L })
         val verify = vm.state.value.unread!!.first { it.messageId == 13L }
         assertTrue(verify.locked)
@@ -211,7 +268,7 @@ class ViewModelsTest {
             rules, pins, locks, spam, reminders, scheduler, mapper, MutableStateFlow(0), { "date line" }, { cancelled += it }, now = { Now }, work = main.dispatcher,
         )
         collect(vm.state)
-        vm.selectFolder(Folder.Unread)
+        vm.selectUnreadOnly(true)
         assertTrue(vm.state.value.loaded)
         assertNull(vm.state.value.unread)
     }

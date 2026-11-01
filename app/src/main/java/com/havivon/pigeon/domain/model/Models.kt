@@ -5,12 +5,6 @@ import com.havivon.pigeon.R
 
 enum class Folder(@StringRes val labelRes: Int) {
     All(R.string.common_folder_all),
-
-    /**
-     * A filter rather than a folder: the unread messages themselves (see [UnreadMessage]), whatever
-     * their conversation's folder (spam aside). No conversation is ever classified into it.
-     */
-    Unread(R.string.common_folder_unread),
     Personal(R.string.common_folder_personal),
     Banks(R.string.common_folder_banks),
     Insurance(R.string.common_folder_insurance),
@@ -76,7 +70,7 @@ data class Conversation(
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }
 
-/** One unread incoming message, as a row of the inbox's Unread list: the message, not its whole conversation. */
+/** One unread incoming message, as a row of the inbox's unread list (the "Unread" toggle): the message, not its whole conversation. */
 data class UnreadMessage(
     /** The system message id. */
     val messageId: Long,

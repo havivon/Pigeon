@@ -93,19 +93,94 @@ class MappingTest {
         assertEquals(listOf(4L, 5L), inFolder(all, Folder.Spam).map { it.id })
     }
 
+    /** One conversation in every folder, a locked one among the banks, a spam one with unread messages, and a chat that is all read. */
+    private val folderConversations = listOf(
+        Conversation(1, "Mom", "", "", 0, unread = 2, folder = Folder.Personal),
+        Conversation(2, "Leumi", "", "", 0, unread = 2, folder = Folder.Banks),
+        Conversation(3, "Hapoalim", "", "", 0, unread = 1, folder = Folder.Banks, locked = true),
+        Conversation(4, "Harel", "", "", 0, unread = 1, folder = Folder.Insurance),
+        Conversation(5, "Verify", "", "", 0, unread = 1, folder = Folder.Codes),
+        Conversation(6, "Couriers", "", "", 0, unread = 1, folder = Folder.Deliveries),
+        Conversation(7, "Shop", "", "", 0, unread = 4, folder = Folder.All),
+        Conversation(8, "Dana", "", "", 0, unread = 0, folder = Folder.Personal),
+        Conversation(9, "Scam", "", "", 0, unread = 3, folder = Folder.Spam, spamReasons = listOf(SpamReason.UnknownSender)),
+    )
+
+    /** The unread messages behind [folderConversations]' counts, and a message of a chat that is not in the list yet. */
+    private val folderMessages = listOf(
+        sms(1, 1, "Bring bread", millis(2026, 11, 1, 10, 0), "0525550100", read = false),
+        sms(2, 1, "and milk", millis(2026, 11, 1, 10, 5), "0525550100", read = false),
+        sms(3, 2, "Charge of 20.00", millis(2026, 11, 1, 9, 0), "Leumi", read = false),
+        sms(4, 2, "Charge of 30.00", millis(2026, 11, 1, 9, 5), "Leumi", read = false),
+        sms(5, 3, "Balance 1,000.00", millis(2026, 11, 1, 9, 10), "Hapoalim", read = false),
+        sms(6, 4, "Your policy was renewed", millis(2026, 11, 1, 8, 0), "Harel", read = false),
+        sms(7, 5, "Your verification code is 482913", millis(2026, 11, 1, 7, 0), "Verify", read = false),
+        sms(8, 6, "Your package is on its way", millis(2026, 11, 1, 6, 0), "Couriers", read = false),
+        sms(9, 7, "Sale today", millis(2026, 11, 1, 5, 0), "Shop", read = false),
+        sms(10, 7, "Sale ends soon", millis(2026, 11, 1, 5, 5), "Shop", read = false),
+        sms(11, 7, "Last chance", millis(2026, 11, 1, 5, 10), "Shop", read = false),
+        sms(12, 7, "Gone tonight", millis(2026, 11, 1, 5, 15), "Shop", read = false),
+        sms(13, 9, "You won!", millis(2026, 11, 1, 4, 0), "+972551234567", read = false),
+        sms(14, 9, "Claim now", millis(2026, 11, 1, 4, 5), "+972551234567", read = false),
+        sms(15, 9, "Hurry", millis(2026, 11, 1, 4, 10), "+972551234567", read = false),
+        sms(16, 77, "Hello", millis(2026, 11, 1, 11, 30), "0541112222", read = false),
+    )
+
+    private fun folderRows(folder: Folder, locked: Set<Long> = emptySet()) =
+        mapper.mapUnread(folderMessages, folderConversations.associateBy { it.id }, emptyMap(), Now, locked = locked, folder = folder)
+
     @Test
-    fun `the unread chip counts unread messages but spam's, and lists no conversations`() {
-        val all = listOf(
-            Conversation(1, "Mom", "", "", 0, unread = 2, folder = Folder.Personal),
-            Conversation(2, "Bank", "", "", 0, unread = 1, folder = Folder.Banks),
-            Conversation(3, "Shop", "", "", 0, unread = 4, folder = Folder.All),
-            Conversation(4, "Dana", "", "", 0, unread = 0, folder = Folder.Personal),
-            Conversation(5, "Scam", "", "", 0, unread = 3, folder = Folder.Spam, spamReasons = listOf(SpamReason.UnknownSender)),
-        )
-        assertEquals(7, folderCounts(all)[Folder.Unread])
-        assertEquals(0, folderCounts(all.filter { it.unread == 0 })[Folder.Unread])
-        // Its rows are messages (mapUnread), not conversations
-        assertEquals(emptyList<Conversation>(), inFolder(all, Folder.Unread))
+    fun `the chips count unread messages per folder, with no chip for unread`() {
+        val counts = folderCounts(folderConversations)
+        assertEquals(setOf(Folder.All, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries, Folder.Spam), counts.keys)
+        assertEquals(12, counts[Folder.All])
+        assertEquals(2, counts[Folder.Personal])
+        assertEquals(3, counts[Folder.Banks])
+        assertEquals(1, counts[Folder.Insurance])
+        assertEquals(1, counts[Folder.Codes])
+        assertEquals(1, counts[Folder.Deliveries])
+        // Spam counts conversations, as before
+        assertEquals(1, counts[Folder.Spam])
+        assertEquals(0, folderCounts(folderConversations.filter { it.unread == 0 }).getValue(Folder.All))
+    }
+
+    @Test
+    fun `the unread messages of each folder are those of its conversations only`() {
+        assertEquals(listOf(2L, 1L), folderRows(Folder.Personal).map { it.messageId })
+        assertEquals(listOf(5L, 4L, 3L), folderRows(Folder.Banks).map { it.messageId })
+        assertEquals(listOf(6L), folderRows(Folder.Insurance).map { it.messageId })
+        assertEquals(listOf(7L), folderRows(Folder.Codes).map { it.messageId })
+        assertEquals(listOf(8L), folderRows(Folder.Deliveries).map { it.messageId })
+        // Every folder at once; the unclassified ones belong to it too
+        assertEquals(listOf(16L, 5L, 4L, 3L, 2L, 1L, 6L, 7L, 8L, 12L, 11L, 10L, 9L).sorted(), folderRows(Folder.All).map { it.messageId }.sorted())
+    }
+
+    @Test
+    fun `spam never shows in the unread messages of any folder`() {
+        for (folder in Folder.entries.filter { it != Folder.Spam }) {
+            assertTrue("$folder", folderRows(folder).none { it.threadId == 9L })
+        }
+        // A chat that just arrived has no folder yet: only the unfiltered list shows it
+        assertTrue(folderRows(Folder.All).any { it.threadId == 77L })
+        assertTrue(Folder.entries.filter { it != Folder.All }.all { f -> folderRows(f).none { it.threadId == 77L } })
+    }
+
+    @Test
+    fun `a locked chat's unread messages stay in its folder, as the locked line`() {
+        val banks = folderRows(Folder.Banks, locked = setOf(3L))
+        assertEquals(listOf(5L, 4L, 3L), banks.map { it.messageId })
+        val locked = banks.first { it.messageId == 5L }
+        assertTrue(locked.locked)
+        assertEquals("Locked chat", locked.text)
+        assertTrue(folderRows(Folder.Personal, locked = setOf(3L)).none { it.locked })
+    }
+
+    @Test
+    fun `the number on a folder is the number of its unread rows when nothing is capped`() {
+        val counts = folderCounts(folderConversations)
+        for (folder in listOf(Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries)) {
+            assertEquals("$folder", counts[folder], folderRows(folder).size)
+        }
     }
 
     private val sources = listOf(
@@ -153,11 +228,20 @@ class MappingTest {
     }
 
     @Test
-    fun `the count of the chip is the number of listed rows when nothing is capped`() {
+    fun `the number on All is the number of listed rows when nothing is capped`() {
         val spamVerdicts = mapOf(3L to SpamVerdict("+972551234567", 3, listOf(SpamReason.ShortLink), 0))
         val conversations = sources.map { mapper.map(it, Now, emptyList(), emptySet(), emptySet(), spamVerdicts[it.threadId]) }
-        assertEquals(mapUnread(unread, spam = spamVerdicts).size, folderCounts(conversations)[Folder.Unread])
-        assertEquals(4, folderCounts(conversations)[Folder.Unread])
+        assertEquals(mapUnread(unread, spam = spamVerdicts).size, folderCounts(conversations)[Folder.All])
+        assertEquals(4, folderCounts(conversations)[Folder.All])
+    }
+
+    @Test
+    fun `mapped from real conversations, a folder keeps the unread messages the classifier put there`() {
+        val conversations = sources.map { mapper.map(it, Now) }
+        val rows = mapper.mapUnread(unread, conversations.associateBy { it.id }, sources.associateBy { it.threadId }, Now, folder = Folder.Codes)
+        assertEquals(listOf(12L), rows.map { it.messageId })
+        val banks = mapper.mapUnread(unread, conversations.associateBy { it.id }, sources.associateBy { it.threadId }, Now, folder = Folder.Banks)
+        assertEquals(listOf(14L), banks.map { it.messageId })
     }
 
     @Test

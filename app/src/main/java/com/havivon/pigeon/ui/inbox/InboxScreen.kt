@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,7 +80,12 @@ fun InboxScreen(
     onLongPress: (Conversation) -> Unit = {},
     onSearch: () -> Unit = {},
     onNewMessage: () -> Unit = {},
-    /** The rows of the Unread chip: the unread messages themselves, newest first. Used instead of [conversations] while it is chosen. */
+    /** The "Unread" side of the All / Unread toggle under the chips is on: the list shows [unreadMessages] instead of [conversations]. */
+    unreadOnly: Boolean = false,
+    /** The number on the toggle's "Unread": the unread messages of [selectedFolder]. */
+    unreadCount: Int = 0,
+    onUnreadOnly: (Boolean) -> Unit = {},
+    /** The rows of the unread list: the unread messages of [selectedFolder] themselves, newest first. Used instead of [conversations] while the toggle is on. */
     unreadMessages: List<UnreadMessage> = emptyList(),
     onOpenMessage: (UnreadMessage) -> Unit = {},
     onLongPressMessage: (UnreadMessage) -> Unit = {},
@@ -91,15 +98,14 @@ fun InboxScreen(
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
-    val unreadMode = selectedFolder == Folder.Unread
-    val nothing = if (unreadMode) unreadMessages.isEmpty() else conversations.isEmpty()
+    val nothing = if (unreadOnly) unreadMessages.isEmpty() else conversations.isEmpty()
     val pinned = conversations.filter { it.pinned }
     Box(Modifier.fillMaxSize().background(c.background)) {
-        // The header (title, search, folder chips) stays; the banner, the pinned row and the sections scroll under it
+        // The header (title, search, folder chips, the All / Unread toggle) stays; the banner, the pinned row and the sections scroll under it
         FixedHeaderLayout(
             Modifier.fillMaxSize(),
-            header = { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) },
-        ) { top -> InboxList(top, conversations, pinned, ruleById, unreadMode, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
+            header = { InboxHeader(dateLine, selectedFolder, folderCounts, unreadOnly, unreadCount, onFolder, onUnreadOnly, onSettings, onSearch) },
+        ) { top -> InboxList(top, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
         NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
     }
 }
@@ -167,7 +173,10 @@ private fun InboxHeader(
     dateLine: String,
     selected: Folder,
     counts: Map<Folder, Int>,
+    unreadOnly: Boolean,
+    unreadCount: Int,
     onFolder: (Folder) -> Unit,
+    onUnreadOnly: (Boolean) -> Unit,
     onSettings: () -> Unit,
     onSearch: () -> Unit,
 ) {
@@ -202,7 +211,70 @@ private fun InboxHeader(
                 FolderChip(folder, counts[folder] ?: 0, folder == selected) { onFolder(folder) }
             }
         }
+        Spacer(Modifier.height(10.dp))
+        UnreadToggle(unreadOnly, unreadCount, onUnreadOnly)
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+/**
+ * The two-option toggle under the folder chips: every message of the chosen folder, or only the unread
+ * ones (with their number). The chosen option is lit like a chosen chip.
+ */
+@Composable
+private fun UnreadToggle(unreadOnly: Boolean, unreadCount: Int, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.18f))
+            .padding(3.dp),
+    ) {
+        ToggleOption(stringResource(R.string.inbox_filter_all), count = 0, selected = !unreadOnly) { onChange(false) }
+        ToggleOption(stringResource(R.string.inbox_filter_unread), count = unreadCount, selected = unreadOnly) { onChange(true) }
+    }
+}
+
+@Composable
+private fun ToggleOption(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
+    val c = HebTheme.colors
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) Color.White else Color.Transparent)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            color = if (!selected) Color.White else if (c.isDark) Color(0xFF3A2596) else c.accent,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        if (count > 0) {
+            Spacer(Modifier.width(6.dp))
+            CountDot(count, selected)
+        }
+    }
+}
+
+/** The small round number on a chip or a toggle option. */
+@Composable
+private fun CountDot(count: Int, selected: Boolean) {
+    val c = HebTheme.colors
+    Box(
+        Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .background(if (selected) c.accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.25f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "$count",
+            color = if (!selected) Color.White else c.accent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -225,20 +297,7 @@ private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: (
         )
         if (count > 0) {
             Spacer(Modifier.width(6.dp))
-            Box(
-                Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) c.accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "$count",
-                    color = if (!selected) Color.White else c.accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            CountDot(count, selected)
         }
     }
 }

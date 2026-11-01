@@ -88,11 +88,12 @@ class ConversationMapper(
     private val unreadCodes = ConcurrentHashMap<Long, String>()
 
     /**
-     * The inbox's Unread rows: [unread] (incoming, unread) as one row per message, newest first. The
-     * messages of a spam conversation are left out; those of a locked one show only [lockedSnippet],
-     * no code and no keyword colour. A message whose conversation is not in [conversations] yet (it
-     * just arrived) shows its number. [sources] are the conversations as the system gave them: the
-     * contact's name is what a sender rule matches.
+     * The inbox's unread rows: [unread] (incoming, unread) as one row per message, newest first, of the
+     * conversations in [folder] ([Folder.All] is every folder). The messages of a spam conversation are
+     * left out; those of a locked one show only [lockedSnippet], no code and no keyword colour. A message
+     * whose conversation is not in [conversations] yet (it just arrived) shows its number, under
+     * [Folder.All] only: it has no folder yet. [sources] are the conversations as the system gave them:
+     * the contact's name is what a sender rule matches.
      */
     fun mapUnread(
         unread: List<SmsMessage>,
@@ -101,12 +102,14 @@ class ConversationMapper(
         nowMillis: Long,
         rules: List<ColorRule> = emptyList(),
         locked: Set<Long> = emptySet(),
+        folder: Folder = Folder.All,
     ): List<UnreadMessage> {
         val rows = unread
             .sortedWith(compareByDescending<SmsMessage> { it.dateMillis }.thenByDescending { it.id })
             .mapNotNull { m ->
                 val conversation = conversations[m.threadId]
                 if (conversation?.isSpam == true) return@mapNotNull null
+                if (folder != Folder.All && conversation?.folder != folder) return@mapNotNull null
                 val isLocked = m.threadId in locked
                 val code = if (isLocked) null else unreadCodes.getOrPut(m.id) { codeFinder.find(m.body).orEmpty() }.ifEmpty { null }
                 UnreadMessage(
@@ -151,25 +154,20 @@ suspend fun <T, R> mapAll(items: List<T>, map: (T) -> R): List<R> =
 fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? =
     verdicts.firstOrNull { v -> c.addresses.any { PhoneNumbers.same(it, v.address) } }
 
-/**
- * The conversations a folder chip shows: spam only under Spam, and only there. Unread shows no conversations:
- * its rows are the unread messages themselves ([ConversationMapper.mapUnread]).
- */
+/** The conversations a folder chip shows: spam only under Spam, and only there. */
 fun inFolder(all: List<Conversation>, folder: Folder): List<Conversation> = when (folder) {
     Folder.All -> all.filter { !it.isSpam }
-    Folder.Unread -> emptyList()
     Folder.Spam -> all.filter { it.isSpam }
     else -> all.filter { !it.isSpam && it.folder == folder }
 }
 
 /**
- * The numbers on the folder chips: unread messages per folder, all the unread messages (spam aside) on
- * Unread, and the number of spam conversations on Spam.
+ * The numbers on the folder chips: unread messages per folder (the number the "Unread" toggle shows for
+ * the chosen folder), and the number of spam conversations on Spam.
  */
 fun folderCounts(all: List<Conversation>): Map<Folder, Int> = Folder.entries.associateWith { folder ->
     when (folder) {
         Folder.Spam -> all.count { it.isSpam }
-        Folder.Unread -> all.filter { !it.isSpam }.sumOf { it.unread }
         else -> inFolder(all, folder).sumOf { it.unread }
     }
 }

@@ -50,17 +50,22 @@ data class InboxUiState(
     /** Every conversation, spam included, newest first. */
     val all: List<Conversation> = emptyList(),
     val folder: Folder = Folder.All,
+    /** The "Unread" side of the toggle under the chips is on: the list shows [unread] instead of [conversations]. */
+    val unreadOnly: Boolean = false,
     val rules: List<ColorRule> = emptyList(),
     val dateLine: String = "",
     /**
-     * The unread messages, newest first, one row each, while the Unread chip is chosen; empty under the
-     * other chips, and null while they are not read yet (a quiet loading sign meanwhile).
+     * The unread messages of the chosen folder, newest first, one row each, while the toggle is on; empty
+     * while it is off, and null while they are not read yet (a quiet loading sign meanwhile).
      */
     val unread: List<UnreadMessage>? = emptyList(),
 ) {
-    /** What the list shows for the chosen folder (none under Unread: it shows [unread]). */
+    /** What the list shows for the chosen folder when the toggle is off. */
     val conversations: List<Conversation> get() = inFolder(all, folder)
     val folderCounts: Map<Folder, Int> get() = folderCounts(all)
+
+    /** The number on the toggle's "Unread": the unread messages of the chosen folder (as on its chip). */
+    val unreadCount: Int get() = inFolder(all, folder).sumOf { it.unread }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -88,7 +93,9 @@ class InboxViewModel(
     judgeDelayMillis: Long = JUDGE_AFTER_MILLIS,
 ) : ViewModel() {
 
+    // Both outlive a rotation with the view model, and stay as the user switches folders
     private val folder = MutableStateFlow(Folder.All)
+    private val unreadOnly = MutableStateFlow(false)
 
     // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
     private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
@@ -112,24 +119,30 @@ class InboxViewModel(
     private val unreadMessages: Flow<List<SmsMessage>?> =
         accessChanges.flatMapLatest { messages.unreadInbox }.map<List<SmsMessage>, List<SmsMessage>?> { it }.onStart { emit(null) }
 
-    val state: StateFlow<InboxUiState> = combine(mapped, unreadMessages, folder) { m, unread, f ->
+    val state: StateFlow<InboxUiState> = combine(mapped, unreadMessages, folder, unreadOnly) { m, unread, f, only ->
         InboxUiState(
             loaded = true,
             all = m.all,
             folder = f,
+            unreadOnly = only,
             rules = m.rules,
             dateLine = dateLine(),
-            // Mapped only while shown: the rows of hundreds of messages are not made for a chip nobody chose
-            unread = if (f != Folder.Unread) emptyList() else unread?.let { mapUnread(it, m) },
+            // Mapped only while shown: the rows of hundreds of messages are not made for a toggle nobody turned on
+            unread = if (!only) emptyList() else unread?.let { mapUnread(it, m, f) },
         )
     }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
 
-    private fun mapUnread(unread: List<SmsMessage>, m: Mapped): List<UnreadMessage> =
-        mapper.mapUnread(unread, m.all.associateBy { it.id }, m.sources.associateBy { it.threadId }, now(), m.rules, m.locked)
+    private fun mapUnread(unread: List<SmsMessage>, m: Mapped, folder: Folder): List<UnreadMessage> =
+        mapper.mapUnread(unread, m.all.associateBy { it.id }, m.sources.associateBy { it.threadId }, now(), m.rules, m.locked, folder)
 
     /** Spam opens its own screen, so it is never the chosen chip. */
     fun selectFolder(value: Folder) {
         if (value != Folder.Spam) folder.value = value
+    }
+
+    /** The toggle under the chips: every message of the folder (false) or only the unread ones (true). It applies to every folder. */
+    fun selectUnreadOnly(value: Boolean) {
+        unreadOnly.value = value
     }
 
     fun togglePin(c: Conversation) {
