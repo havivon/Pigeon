@@ -2,6 +2,7 @@ package com.havivon.pigeon.ui.spam
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -57,6 +58,11 @@ fun SpamScreen(
     onBack: () -> Unit = {},
     onNotSpam: (Conversation) -> Unit = {},
     onDelete: (Conversation) -> Unit = {},
+    onOpen: (Conversation) -> Unit = {},
+    /** Null hides the button (nothing to delete). */
+    onDeleteAll: (() -> Unit)? = {},
+    /** Shown under the info card when there is no spam; null shows nothing. */
+    emptyState: (@Composable () -> Unit)? = null,
 ) {
     val c = HebTheme.colors
     LazyColumn(
@@ -75,7 +81,7 @@ fun SpamScreen(
                             fontSize = 13.sp,
                         )
                     }
-                    HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all))
+                    if (onDeleteAll != null) HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all), onDeleteAll)
                 }
             }
         }
@@ -99,13 +105,14 @@ fun SpamScreen(
                 )
             }
         }
-        items(items, key = { it.id }) { SpamCard(it, onNotSpam, onDelete) }
+        if (items.isEmpty() && emptyState != null) item { emptyState() }
+        items(items, key = { it.id }) { SpamCard(it, onNotSpam, onDelete, onOpen) }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SpamCard(conv: Conversation, onNotSpam: (Conversation) -> Unit, onDelete: (Conversation) -> Unit) {
+private fun SpamCard(conv: Conversation, onNotSpam: (Conversation) -> Unit, onDelete: (Conversation) -> Unit, onOpen: (Conversation) -> Unit) {
     val c = HebTheme.colors
     val shape = RoundedCornerShape(20.dp)
     Column(
@@ -115,6 +122,7 @@ private fun SpamCard(conv: Conversation, onNotSpam: (Conversation) -> Unit, onDe
             .clip(shape)
             .background(c.spamTint)
             .border(2.dp, c.spam, shape)
+            .clickable { onOpen(conv) }
             .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

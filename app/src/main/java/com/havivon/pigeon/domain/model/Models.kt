@@ -43,7 +43,8 @@ data class ColorRule(
 )
 
 data class Conversation(
-    val id: Int,
+    /** The system thread id. */
+    val id: Long,
     val name: String,
     val snippet: String,
     val time: String,
@@ -56,18 +57,34 @@ data class Conversation(
     val code: String? = null,
     /** Why the spam filter flagged it; empty when it is not spam. */
     val spamReasons: List<SpamReason> = emptyList(),
+    /** The other side's addresses as the system stores them (for calling and spam marks). */
+    val addresses: List<String> = emptyList(),
+    /** Behind fingerprint or screen lock: the list shows no text of it. */
+    val locked: Boolean = false,
 ) {
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }
 
 data class Message(
-    val id: Int,
+    /** The system message id. */
+    val id: Long,
     val text: String,
     val time: String,
     val outgoing: Boolean,
-    /** A date or time found in the text, offered as "create a reminder". */
+    /** A date or time found in the text, offered as "create a reminder": the button's label. */
     val reminder: String? = null,
+    /** When that reminder would fire. */
+    val reminderAtMillis: Long? = null,
+    /** A reminder was already created from this message. */
+    val reminderSet: Boolean = false,
+    val status: SendStatus = SendStatus.Done,
+    val starred: Boolean = false,
+    /** The frame colour of the first colour rule that matches this message, if any. */
+    val ruleArgb: Long? = null,
 )
+
+/** Where an outgoing message stands. Incoming messages are always [Done]. */
+enum class SendStatus { Done, Sending, Failed }
 
 /** A message the user starred, shown by the favourites widget. */
 data class FavoriteMessage(

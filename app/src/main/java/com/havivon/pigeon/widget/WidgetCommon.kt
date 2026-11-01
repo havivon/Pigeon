@@ -1,5 +1,6 @@
 package com.havivon.pigeon.widget
 
+import android.content.ComponentName
 import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.annotation.PluralsRes
@@ -32,7 +33,6 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.havivon.pigeon.MainActivity
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
@@ -53,7 +53,16 @@ internal object WidgetColors {
 internal val HeaderHeight = 44.dp
 
 /** Every tap target opens the app for now. Later each one gets a deep link to its conversation (or message). */
-internal fun openApp(): Action = actionStartActivity<MainActivity>()
+internal fun openApp(): Action = actionStartActivity(ComponentName(MainActivityName.PACKAGE, MainActivityName.MAIN_ACTIVITY))
+
+/**
+ * MainActivity by name, not by class: it is an AppCompatActivity, and AppCompat is kept off the
+ * JVM test classpath (see app/build.gradle.kts), where the widget snapshots render.
+ */
+internal object MainActivityName {
+    const val PACKAGE = "com.havivon.pigeon"
+    const val MAIN_ACTIVITY = "com.havivon.pigeon.MainActivity"
+}
 
 /** The widgets show sample content until SMS access exists. */
 internal fun sampleFor(context: Context): SampleSet =

@@ -66,6 +66,12 @@ fun RulesScreen(
     appIcon: AppIcon = AppIcon.Envelope,
     onAppIcon: (AppIcon) -> Unit = {},
     onBack: () -> Unit = {},
+    onToggle: (ColorRule, Boolean) -> Unit = { _, _ -> },
+    /**
+     * Hides what does not work yet in the app: adding and reordering rules, and the spam row's
+     * switch (spam is always on). The settings stage (C2) builds the rule editor and drops this.
+     */
+    hideUnfinished: Boolean = false,
 ) {
     val c = HebTheme.colors
     LazyColumn(
@@ -87,11 +93,13 @@ fun RulesScreen(
                 }
             }
         }
-        item { SectionLabel(stringResource(R.string.rules_section_yours)) }
-        items(rules, key = { it.id }) { RuleCard(it) }
-        item { SpamRuleCard() }
-        item { SectionLabel(stringResource(R.string.rules_new_rule)) }
-        item { NewRuleCard(newRuleWord, newRuleSwatch) }
+        if (rules.isNotEmpty() || !hideUnfinished) item { SectionLabel(stringResource(if (hideUnfinished) R.string.rules_section_yours_plain else R.string.rules_section_yours)) }
+        items(rules, key = { it.id }) { RuleCard(it, dragHandle = !hideUnfinished) { on -> onToggle(it, on) } }
+        item { SpamRuleCard(showSwitch = !hideUnfinished) }
+        if (!hideUnfinished) {
+            item { SectionLabel(stringResource(R.string.rules_new_rule)) }
+            item { NewRuleCard(newRuleWord, newRuleSwatch) }
+        }
         item { SectionLabel(stringResource(R.string.rules_app_icon)) }
         item { AppIconPicker(appIcon, onAppIcon) }
     }
@@ -149,17 +157,17 @@ fun AppIconPicker(current: AppIcon, onPick: (AppIcon) -> Unit) {
 }
 
 @Composable
-private fun RuleCard(rule: ColorRule) {
+private fun RuleCard(rule: ColorRule, dragHandle: Boolean, onToggle: (Boolean) -> Unit) {
     val color = Color(rule.argb)
     val (icon, subtitle) = when (val m = rule.match) {
         is RuleMatch.Sender -> Icons.Rounded.Person to stringResource(R.string.rules_sender_subtitle, m.name)
         is RuleMatch.Keyword -> Icons.Rounded.Tag to stringResource(R.string.rules_keyword_subtitle, m.word)
     }
-    RuleRow(icon, rule.label, subtitle, if (rule.enabled) color else HebTheme.colors.divider, color, rule.enabled, dragHandle = true)
+    RuleRow(icon, rule.label, subtitle, if (rule.enabled) color else HebTheme.colors.divider, color, rule.enabled, dragHandle = dragHandle, onToggle = onToggle)
 }
 
 @Composable
-private fun SpamRuleCard() {
+private fun SpamRuleCard(showSwitch: Boolean) {
     val spam = HebTheme.colors.spam
     RuleRow(
         Icons.Rounded.Warning,
@@ -169,6 +177,7 @@ private fun SpamRuleCard() {
         spam,
         enabled = true,
         dragHandle = false,
+        onToggle = if (showSwitch) ({}) else null,
     )
 }
 
@@ -181,6 +190,8 @@ private fun RuleRow(
     color: Color,
     enabled: Boolean,
     dragHandle: Boolean,
+    /** Null hides the switch. */
+    onToggle: ((Boolean) -> Unit)?,
 ) {
     val c = HebTheme.colors
     val shape = RoundedCornerShape(20.dp)
@@ -212,9 +223,9 @@ private fun RuleRow(
             Text(title, color = c.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text(subtitle, color = c.onSurfaceMuted, fontSize = 13.sp)
         }
-        Switch(
+        if (onToggle != null) Switch(
             checked = enabled,
-            onCheckedChange = {},
+            onCheckedChange = onToggle,
             colors = SwitchDefaults.colors(checkedTrackColor = color, checkedThumbColor = Color.White),
         )
     }

@@ -14,8 +14,11 @@ import com.havivon.pigeon.ui.theme.HebSmsTheme
 import org.junit.Rule
 import org.junit.Test
 
+/** The made-up number under Danny's name. */
+private const val PHONE = "052-555-0123"
+
 /** The range of [part] inside the text of message [id], for the static selection highlight. */
-private fun highlight(thread: List<ThreadItem>, id: Int, part: String): TextRange {
+private fun highlight(thread: List<ThreadItem>, id: Long, part: String): TextRange {
     val text = thread.filterIsInstance<ThreadItem.Msg>().first { it.message.id == id }.message.text
     val start = text.indexOf(part)
     check(start >= 0) { "\"$part\" is not in message $id" }
@@ -38,7 +41,7 @@ class DesignSnapshots {
         paparazzi.snapshot(name) { HebSmsTheme(darkTheme = dark) { content() } }
 
     private val sample = SampleData.hebrew
-    private val danny = sample.inbox.first { it.id == 2 }
+    private val danny = sample.inbox.first { it.id == 2L }
 
     @Test
     fun screens() {
@@ -46,17 +49,17 @@ class DesignSnapshots {
         shot("2_inbox_dark", dark = true) { InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine) }
         shot("3_text_selection") {
             ConversationScreen(
-                danny, sample.dannyThread, rule = null, draft = "אני בדרך, אגיע בעוד עשר דקות",
+                danny, sample.dannyThread, rule = null, draft = "אני בדרך, אגיע בעוד עשר דקות", subtitle = PHONE,
                 textSelectionId = 5, previewSelection = highlight(sample.dannyThread, 5, "רחוב הרצל 12, קומה 3, דירה 7"),
             )
         }
         shot("4_multi_select") {
-            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4, 5, 6))
+            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = PHONE)
         }
         shot("5_spam") { SpamScreen(sample.spam) }
         shot("6_color_rules") { RulesScreen(sample.rules, sample.newRuleWord) }
         shot("7_conversation_dark", dark = true) {
-            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "")
+            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", subtitle = PHONE)
         }
     }
 }
@@ -74,14 +77,14 @@ class DesignSnapshotsEnglish {
         paparazzi.snapshot(name) { HebSmsTheme(darkTheme = dark) { content() } }
 
     private val sample = SampleData.english
-    private val danny = sample.inbox.first { it.id == 2 }
+    private val danny = sample.inbox.first { it.id == 2L }
 
     @Test
     fun screens() {
         shot("8_en_inbox") { InboxScreen(sample.inbox, sample.rules, sample.folderCounts, sample.dateLine) }
         shot("9_en_text_selection") {
             ConversationScreen(
-                danny, sample.dannyThread, rule = null, draft = "On my way, I'll be there in ten minutes",
+                danny, sample.dannyThread, rule = null, draft = "On my way, I'll be there in ten minutes", subtitle = PHONE,
                 textSelectionId = 5, previewSelection = highlight(sample.dannyThread, 5, "12 Maple Street, floor 3, apt 7"),
             )
         }

@@ -1,0 +1,235 @@
+package com.havivon.pigeon.ui.conversation
+
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Report
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.havivon.pigeon.R
+import com.havivon.pigeon.data.AppContainer
+import com.havivon.pigeon.data.SensitiveClipboard
+import com.havivon.pigeon.domain.PhoneNumbers
+import com.havivon.pigeon.domain.analysis.LinkInfo
+import com.havivon.pigeon.domain.model.SendStatus
+import com.havivon.pigeon.ui.app.LocalAuthenticator
+import com.havivon.pigeon.ui.app.LocalNotices
+import com.havivon.pigeon.ui.common.conversationMapper
+import com.havivon.pigeon.ui.common.dateLabels
+import com.havivon.pigeon.ui.common.ltr
+import com.havivon.pigeon.ui.navigation.pigeonViewModel
+import com.havivon.pigeon.ui.theme.HebTheme
+import java.time.ZoneId
+
+/** The conversation screen on real data. [onClosed] leaves it (after delete or "mark as spam"). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationRoute(threadId: Long, onBack: () -> Unit, onClosed: () -> Unit) {
+    val context = LocalContext.current
+    val me = stringResource(R.string.thread_sender_me)
+    val vm = pigeonViewModel { app ->
+        val labels = dateLabels(context)
+        ConversationViewModel(
+            threadId, app.messages, app.smsSender, app.rules, app.favorites, app.reminders, app.reminderScheduler,
+            app.spam, app.locks, app.pins,
+            mapper = conversationMapper(context, app, labels),
+            labels = labels,
+            zone = ZoneId.systemDefault(),
+            me = me,
+            cancelNotification = app.notifier::cancel,
+            appScope = app.appScope,
+        )
+    }
+    val state by vm.state.collectAsStateWithLifecycle()
+    val draft by vm.draft.collectAsStateWithLifecycle()
+    val selected by vm.selected.collectAsStateWithLifecycle()
+    val notices = LocalNotices.current
+    val auth = LocalAuthenticator.current
+    var textSelectionId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var link by remember { mutableStateOf<LinkInfo?>(null) }
+
+    // While it is on the screen its messages count as read and are not notified
+    val container = remember { AppContainer.from(context) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, threadId) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    container.visibleThreadId = threadId
+                    vm.setVisible(true)
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (container.visibleThreadId == threadId) container.visibleThreadId = null
+                    vm.setVisible(false)
+                }
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            if (container.visibleThreadId == threadId) container.visibleThreadId = null
+            vm.setVisible(false)
+        }
+    }
+
+    val sendFailed = stringResource(R.string.thread_send_failed)
+    val reminderRemoved = stringResource(R.string.thread_reminder_removed)
+    val movedToSpam = stringResource(R.string.thread_moved_to_spam)
+    val backToInbox = stringResource(R.string.spam_back_to_inbox)
+    val reminderCreatedFormat = stringResource(R.string.thread_reminder_created)
+    LaunchedEffect(vm) {
+        vm.eventFlow.collect { e ->
+            when (e) {
+                ConversationEvent.SendFailed -> notices.show(sendFailed)
+                is ConversationEvent.ReminderCreated -> notices.show(String.format(reminderCreatedFormat, e.label))
+                ConversationEvent.ReminderRemoved -> notices.show(reminderRemoved)
+                ConversationEvent.MovedToSpam -> {
+                    notices.show(movedToSpam)
+                    onClosed()
+                }
+                ConversationEvent.NotSpam -> notices.show(backToInbox)
+            }
+        }
+    }
+
+    BackHandler(enabled = selected.isNotEmpty() || textSelectionId != null) {
+        vm.clearSelection()
+        textSelectionId = null
+    }
+
+    val conversation = state.conversation
+    if (conversation == null) {
+        // Not read yet (or gone): the background only, never a half-built screen
+        Box(Modifier.fillMaxSize())
+        return
+    }
+    val dialable = conversation.addresses.singleOrNull()?.takeIf { PhoneNumbers.isPhoneNumber(it) }
+    val conversationDeleted = stringResource(R.string.inbox_conversation_deleted)
+    val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
+
+    val menu = listOfNotNull(
+        ThreadMenuItem(stringResource(if (conversation.pinned) R.string.action_unpin else R.string.action_pin), Icons.Rounded.PushPin) { vm.togglePin() },
+        ThreadMenuItem(
+            stringResource(if (conversation.locked) R.string.action_unlock_chat else R.string.action_lock_chat),
+            if (conversation.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
+        ) {
+            when {
+                conversation.locked -> auth.authenticate { ok -> if (ok) vm.unlock() }
+                auth.available() -> vm.lock()
+                else -> notices.show(needsScreenLock)
+            }
+        },
+        if (conversation.isSpam) {
+            ThreadMenuItem(stringResource(R.string.spam_not_spam), Icons.Rounded.VerifiedUser) { vm.markNotSpam() }
+        } else {
+            ThreadMenuItem(stringResource(R.string.action_mark_spam), Icons.Rounded.Report) { vm.markSpam() }
+        },
+        ThreadMenuItem(stringResource(R.string.action_delete_conversation), Icons.Rounded.Delete, danger = true) {
+            notices.undo(conversationDeleted, vm.deleteConversation())
+            onClosed()
+        },
+    )
+
+    ConversationScreen(
+        conversation = conversation,
+        items = state.items,
+        rule = state.rule,
+        draft = draft,
+        textSelectionId = textSelectionId,
+        selectedIds = selected,
+        subtitle = conversation.addresses.joinToString(", ") { ltr(it) }.takeIf { it != conversation.name },
+        onBack = onBack,
+        onMessageTap = { m ->
+            when {
+                selected.isNotEmpty() -> vm.toggleSelected(m.id)
+                m.status == SendStatus.Failed -> vm.retry(m.id)
+                else -> textSelectionId = if (textSelectionId == m.id) null else m.id
+            }
+        },
+        onMessageLongPress = { m ->
+            textSelectionId = null
+            vm.select(m.id)
+        },
+        onClearSelection = vm::clearSelection,
+        onSelectAll = vm::selectAll,
+        onCopySelected = {
+            SensitiveClipboard.copy(context, context.getString(R.string.app_name), vm.selectedText(), R.string.thread_copied)
+            vm.clearSelection()
+        },
+        onShareSelected = {
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, vm.selectedText())
+            try {
+                context.startActivity(Intent.createChooser(send, null))
+            } catch (_: ActivityNotFoundException) {
+                // No app can take text: nothing to offer
+            }
+            vm.clearSelection()
+        },
+        onDraft = vm::setDraft,
+        onSend = vm::send,
+        onCall = dialable?.let { number ->
+            {
+                try {
+                    // ACTION_DIAL only opens the dialer with the number: no call permission, the user still taps Call
+                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null)))
+                } catch (_: ActivityNotFoundException) {
+                    // A phone without a dialer (a tablet)
+                }
+            }
+        },
+        menu = menu,
+        selectedStarred = vm.allSelectedStarred(),
+        onStarSelected = vm::starSelected,
+        onDeleteSelected = {
+            vm.deleteSelected()?.let { (count, deletion) ->
+                notices.undo(context.resources.getQuantityString(R.plurals.thread_messages_deleted, count, count), deletion)
+            }
+        },
+        onReminder = vm::toggleReminder,
+        onLink = { link = it },
+        onNotSpam = vm::markNotSpam,
+    )
+
+    link?.let { l ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = { link = null }, sheetState = sheetState, containerColor = HebTheme.colors.surface) {
+            LinkDetails(
+                l,
+                onOpen = {
+                    link = null
+                    openInBrowser(context, l)
+                },
+                onCopy = {
+                    link = null
+                    SensitiveClipboard.copy(context, context.getString(R.string.app_name), l.text, R.string.link_copied)
+                },
+            )
+        }
+    }
+}

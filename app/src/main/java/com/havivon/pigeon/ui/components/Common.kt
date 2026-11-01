@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -178,5 +180,96 @@ fun LauncherIcon(@DrawableRes foreground: Int, size: Dp, shape: Shape = CircleSh
     Box(Modifier.size(size).clip(shape), contentAlignment = Alignment.Center) {
         Image(painterResource(R.drawable.ic_launcher_background), contentDescription = null, modifier = Modifier.requiredSize(size * 1.5f))
         Image(painterResource(foreground), contentDescription = null, modifier = Modifier.requiredSize(size * 1.5f))
+    }
+}
+
+/** What a screen shows when it has nothing: a soft round icon, a title, a line of help, and an optional action. */
+@Composable
+fun EmptyState(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
+) {
+    val c = HebTheme.colors
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(84.dp).clip(CircleShape).background(c.accent.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(56.dp).clip(CircleShape).background(c.header), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        Text(title, color = c.onSurface, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text(body, color = c.onSurfaceMuted, fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center)
+        if (action != null) {
+            Spacer(Modifier.height(18.dp))
+            action()
+        }
+    }
+}
+
+/** One action in a bottom sheet: an icon in a soft circle and its label; red for a destructive one. */
+@Composable
+fun SheetAction(icon: ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
+    val c = HebTheme.colors
+    val color = if (danger) c.spam else c.accent
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(color.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(label, color = if (danger) c.spam else c.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** The top of a sheet's content: the grab handle drawn by the sheet, then a title row. */
+@Composable
+fun SheetTitle(title: String, subtitle: String? = null, leading: (@Composable () -> Unit)? = null) {
+    val c = HebTheme.colors
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (leading != null) {
+            leading()
+            Spacer(Modifier.width(12.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, color = c.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            if (subtitle != null) Text(subtitle, color = c.onSurfaceMuted, fontSize = 13.sp, maxLines = 1)
+        }
+    }
+}
+
+/** A chip on the gradient header (folders, search filters): white when on, glassy when off. */
+@Composable
+fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: ImageVector? = null) {
+    val c = HebTheme.colors
+    val onWhite = if (c.isDark) Color(0xFF3A2596) else c.accent
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) Color.White else Color.White.copy(alpha = 0.18f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = if (selected) onWhite else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        if (trailing != null) {
+            Spacer(Modifier.width(4.dp))
+            Icon(trailing, contentDescription = null, tint = if (selected) onWhite else Color.White, modifier = Modifier.size(16.dp))
+        }
     }
 }

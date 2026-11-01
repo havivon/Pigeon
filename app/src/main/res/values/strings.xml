@@ -25,6 +25,11 @@
     <string name="common_folder_codes">Codes</string>
     <string name="common_folder_deliveries">Deliveries</string>
     <string name="common_folder_spam">Spam</string>
+    <string name="common_today">Today</string>
+    <string name="common_yesterday">Yesterday</string>
+    <string name="common_tomorrow">Tomorrow</string>
+    <string name="common_undo">Undo</string>
+    <string name="common_cancel">Cancel</string>
 
     <!-- inbox_ -->
     <string name="inbox_title">Messages</string>
@@ -34,9 +39,51 @@
     <string name="inbox_all_conversations">All conversations</string>
     <string name="inbox_copy_code">Copy code</string>
     <string name="inbox_new_message">New message</string>
+    <string name="inbox_locked_snippet">Locked chat</string>
+    <string name="inbox_conversation_deleted">Conversation deleted</string>
+    <string name="inbox_empty_title">No messages yet</string>
+    <string name="inbox_empty_body">When a message arrives, it shows up here. To write one, tap New message.</string>
+    <string name="inbox_empty_folder_title">Nothing in %1$s</string>
+    <string name="inbox_empty_folder_body">Conversations are sorted here automatically when they fit.</string>
+    <string name="inbox_empty_not_default">Your messages show up here once Pigeon is your messaging app.</string>
+
+    <!-- action_ (the long-press sheet and the conversation menu) -->
+    <string name="action_pin">Pin to the top</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_mark_read">Mark as read</string>
+    <string name="action_lock_chat">Lock chat</string>
+    <string name="action_unlock_chat">Unlock chat</string>
+    <string name="action_mark_spam">Mark as spam</string>
+    <string name="action_delete_conversation">Delete conversation</string>
+
+    <!-- search_ -->
+    <string name="search_clear">Clear search</string>
+    <string name="search_filter_sender">Sender</string>
+    <string name="search_filter_link">Has a link</string>
+    <string name="search_filter_code">Has a code</string>
+    <string name="search_filter_7_days">Last 7 days</string>
+    <string name="search_filter_30_days">Last 30 days</string>
+    <string name="search_section_conversations">Conversations</string>
+    <string name="search_section_messages">Messages</string>
+    <string name="search_start_title">Search your messages</string>
+    <string name="search_start_body">Names, numbers, words and codes. Locked chats are never searched.</string>
+    <string name="search_none_title">No results for “%1$s”</string>
+    <string name="search_none_body">Try another word or part of a number.</string>
+    <string name="search_none_filtered">Try turning off some of the filters.</string>
+
+    <!-- compose_ (new message) -->
+    <string name="compose_to">To</string>
+    <string name="compose_to_hint">Name or number</string>
+    <string name="compose_remove_recipient">Remove recipient</string>
+    <string name="compose_send_to_number">Send to this number</string>
+    <string name="compose_start_title">Who is it for?</string>
+    <string name="compose_start_body">Type a name from your contacts or a phone number. You can add several people.</string>
+    <plurals name="compose_sent_to_many">
+        <item quantity="one">Sent to %1$d person</item>
+        <item quantity="other">Sent to %1$d people</item>
+    </plurals>
 
     <!-- thread_ -->
-    <string name="thread_phone_subtitle">052-555-0123</string>
     <string name="thread_call">Call</string>
     <string name="thread_more">More</string>
     <string name="thread_clear_selection">Cancel selection</string>
@@ -51,6 +98,31 @@
     <string name="thread_draft_hint">SMS message</string>
     <string name="thread_send">Send</string>
     <string name="thread_sender_me">Me</string>
+    <string name="thread_star">Star</string>
+    <string name="thread_unstar">Remove star</string>
+    <string name="thread_starred">Starred</string>
+    <string name="thread_delete_selected">Delete</string>
+    <plurals name="thread_messages_deleted">
+        <item quantity="one">%1$d message deleted</item>
+        <item quantity="other">%1$d messages deleted</item>
+    </plurals>
+    <string name="thread_copied">Copied</string>
+    <string name="thread_sending">Sending…</string>
+    <string name="thread_failed">Not sent · tap to retry</string>
+    <string name="thread_send_failed">Couldn\'t send. Pigeon has to be your messaging app to send.</string>
+    <string name="thread_reminder_set">Reminder · %1$s</string>
+    <string name="thread_reminder_created">Reminder saved for %1$s</string>
+    <string name="thread_reminder_removed">Reminder removed</string>
+    <string name="thread_spam_banner">Suspected spam. Be careful with its links.</string>
+    <string name="thread_moved_to_spam">Moved to Spam</string>
+
+    <!-- link_ -->
+    <string name="link_goes_to">This link really goes to</string>
+    <string name="link_warning_lookalike">This address imitates “%1$s” but is not theirs. It may be a scam.</string>
+    <string name="link_warning_disguised">This address is disguised to look like another site. It may be a scam.</string>
+    <string name="link_warning_shortener">A shortened link: where it really leads is hidden. Open it only if you trust the sender.</string>
+    <string name="link_open">Open</string>
+    <string name="link_copied">Link copied</string>
 
     <!-- spam_ -->
     <string name="spam_title">Spam</string>
@@ -68,11 +140,24 @@
     <string name="spam_reason_many_links">Many links</string>
     <string name="spam_reason_brand_sender">Pretends to be a known company</string>
     <string name="spam_reason_marked_by_user">Marked by you</string>
+    <string name="spam_back_to_inbox">Back in the inbox. The filter will leave this sender alone.</string>
+    <string name="spam_empty_title">No spam</string>
+    <string name="spam_empty_body">Suspicious messages will be moved here, without notifications.</string>
+    <plurals name="spam_delete_all_title">
+        <item quantity="one">Delete %1$d spam conversation?</item>
+        <item quantity="other">Delete all %1$d spam conversations?</item>
+    </plurals>
+    <string name="spam_delete_all_body">You can undo it for a few seconds.</string>
+    <plurals name="spam_deleted_all">
+        <item quantity="one">%1$d conversation deleted</item>
+        <item quantity="other">%1$d conversations deleted</item>
+    </plurals>
 
     <!-- rules_ -->
     <string name="rules_title">Colors and rules</string>
     <string name="rules_subtitle">A colored frame by sender or word in the message</string>
     <string name="rules_section_yours">Your rules · the top rule wins, drag to reorder</string>
+    <string name="rules_section_yours_plain">Your rules · the top rule wins</string>
     <string name="rules_drag">Drag</string>
     <string name="rules_sender_subtitle">Sender: %1$s</string>
     <string name="rules_keyword_subtitle">Word in message: %1$s</string>
@@ -129,4 +214,19 @@
     <string name="notification_mark_read">Mark as read</string>
     <string name="notification_copy_code">Copy %1$s</string>
     <string name="notification_locked_title">Locked conversation</string>
+
+    <!-- lock_ (locked chats and app lock) -->
+    <string name="lock_prompt_title">Unlock Pigeon</string>
+    <string name="lock_prompt_subtitle">With your fingerprint or screen lock</string>
+    <string name="lock_cover_title">Pigeon is locked</string>
+    <string name="lock_cover_body">Your messages are hidden until you unlock with your fingerprint or screen lock.</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_needs_screen_lock">Set a screen lock on the phone first, then you can lock chats.</string>
+
+    <!-- permissions_ -->
+    <string name="permissions_title">Two more things</string>
+    <string name="permissions_notifications">Notifications, so you know when a message arrives.</string>
+    <string name="permissions_contacts">Contacts, to show names instead of numbers and to pick who to write to.</string>
+    <string name="permissions_optional">Both are optional. Without them Pigeon still works, with numbers instead of names.</string>
+    <string name="permissions_continue">Continue</string>
 </resources>

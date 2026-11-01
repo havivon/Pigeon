@@ -2,7 +2,9 @@ package com.havivon.pigeon.ui.inbox
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -55,6 +58,7 @@ import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.RuleTag
 import com.havivon.pigeon.ui.components.SectionLabel
+import com.havivon.pigeon.ui.components.SpamAvatar
 import com.havivon.pigeon.ui.theme.HebTheme
 
 @Composable
@@ -67,13 +71,21 @@ fun InboxScreen(
     onFolder: (Folder) -> Unit = {},
     onOpen: (Conversation) -> Unit = {},
     onSettings: () -> Unit = {},
+    onLongPress: (Conversation) -> Unit = {},
+    onSearch: () -> Unit = {},
+    onNewMessage: () -> Unit = {},
+    /** Shown instead of the list when there are no conversations; null shows nothing. */
+    emptyState: (@Composable () -> Unit)? = null,
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
     val pinned = conversations.filter { it.pinned }
     Box(Modifier.fillMaxSize().background(c.background)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 110.dp)) {
-            item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings) }
+            item { InboxHeader(dateLine, selectedFolder, folderCounts, onFolder, onSettings, onSearch) }
+            if (conversations.isEmpty() && emptyState != null) {
+                item { emptyState() }
+            }
             if (pinned.isNotEmpty()) {
                 item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
                 item {
@@ -81,16 +93,19 @@ fun InboxScreen(
                         contentPadding = PaddingValues(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen) }
+                        items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress) }
                     }
                 }
             }
-            item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
-            items(conversations.filterNot { it.pinned }, key = { it.id }) {
-                ConversationCard(it, ruleById[it.ruleId], onOpen)
+            val rest = conversations.filterNot { it.pinned }
+            if (rest.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
+            }
+            items(rest, key = { it.id }) {
+                ConversationCard(it, ruleById[it.ruleId], onOpen, onLongPress)
             }
         }
-        NewMessageButton(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
+        NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
     }
 }
 
@@ -101,6 +116,7 @@ private fun InboxHeader(
     counts: Map<Folder, Int>,
     onFolder: (Folder) -> Unit,
     onSettings: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,6 +132,7 @@ private fun InboxHeader(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color.White.copy(alpha = 0.2f))
+                .clickable(onClick = onSearch)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -174,8 +191,9 @@ private fun FolderChip(folder: Folder, count: Int, selected: Boolean, onClick: (
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit) {
+private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
     val shape = RoundedCornerShape(22.dp)
@@ -186,7 +204,7 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
             .clip(shape)
             .background(c.surface)
             .then(if (ruleColor != null) Modifier.border(2.dp, ruleColor, shape) else Modifier)
-            .clickable { onOpen(conv) }
+            .combinedClickable(onClick = { onOpen(conv) }, onLongClick = { onLongPress(conv) })
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -208,8 +226,9 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit) {
+private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
     val unread = conv.unread > 0
@@ -222,11 +241,11 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
             .clip(shape)
             .background(c.surface)
             .then(if (ruleColor != null) Modifier.border(2.dp, ruleColor, shape) else Modifier)
-            .clickable { onOpen(conv) }
+            .combinedClickable(onClick = { onOpen(conv) }, onLongClick = { onLongPress(conv) })
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(conv.name, conv.avatarArgb)
+        if (conv.isSpam) SpamAvatar() else Avatar(conv.name, conv.avatarArgb)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -248,6 +267,10 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
             }
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (conv.locked) {
+                    Icon(Icons.Rounded.Lock, contentDescription = null, tint = c.onSurfaceMuted, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
                 Text(
                     conv.snippet,
                     color = if (unread) c.onSurface else c.onSurfaceMuted,
@@ -290,7 +313,7 @@ private fun CopyCodeChip(code: String) {
 }
 
 @Composable
-private fun NewMessageButton(modifier: Modifier = Modifier) {
+private fun NewMessageButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = HebTheme.colors
     val shape = RoundedCornerShape(22.dp)
     Row(
@@ -298,7 +321,7 @@ private fun NewMessageButton(modifier: Modifier = Modifier) {
             .shadow(8.dp, shape, spotColor = c.accent)
             .clip(shape)
             .background(c.header)
-            .clickable { }
+            .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

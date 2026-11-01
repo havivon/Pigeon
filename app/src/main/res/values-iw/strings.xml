@@ -25,6 +25,11 @@
     <string name="common_folder_codes">קודים</string>
     <string name="common_folder_deliveries">משלוחים</string>
     <string name="common_folder_spam">ספאם</string>
+    <string name="common_today">היום</string>
+    <string name="common_yesterday">אתמול</string>
+    <string name="common_tomorrow">מחר</string>
+    <string name="common_undo">ביטול</string>
+    <string name="common_cancel">ביטול</string>
 
     <!-- inbox_ -->
     <string name="inbox_title">הודעות</string>
@@ -34,9 +39,52 @@
     <string name="inbox_all_conversations">כל השיחות</string>
     <string name="inbox_copy_code">העתק קוד</string>
     <string name="inbox_new_message">הודעה חדשה</string>
+    <string name="inbox_locked_snippet">שיחה נעולה</string>
+    <string name="inbox_conversation_deleted">השיחה נמחקה</string>
+    <string name="inbox_empty_title">עדיין אין הודעות</string>
+    <string name="inbox_empty_body">כשתגיע הודעה, היא תופיע כאן. כדי לכתוב הודעה, הקש על \"הודעה חדשה\".</string>
+    <string name="inbox_empty_folder_title">אין כלום ב%1$s</string>
+    <string name="inbox_empty_folder_body">שיחות מתאימות ממוינות לכאן אוטומטית.</string>
+    <string name="inbox_empty_not_default">ההודעות שלך יופיעו כאן ברגע ש-Pigeon תהיה אפליקציית ההודעות שלך.</string>
+
+    <!-- action_ (the long-press sheet and the conversation menu) -->
+    <string name="action_pin">הצמד למעלה</string>
+    <string name="action_unpin">בטל הצמדה</string>
+    <string name="action_mark_read">סמן כנקראה</string>
+    <string name="action_lock_chat">נעל שיחה</string>
+    <string name="action_unlock_chat">בטל נעילה</string>
+    <string name="action_mark_spam">סמן כספאם</string>
+    <string name="action_delete_conversation">מחק שיחה</string>
+
+    <!-- search_ -->
+    <string name="search_clear">נקה חיפוש</string>
+    <string name="search_filter_sender">שולח</string>
+    <string name="search_filter_link">יש קישור</string>
+    <string name="search_filter_code">יש קוד</string>
+    <string name="search_filter_7_days">7 ימים אחרונים</string>
+    <string name="search_filter_30_days">30 ימים אחרונים</string>
+    <string name="search_section_conversations">שיחות</string>
+    <string name="search_section_messages">הודעות</string>
+    <string name="search_start_title">חיפוש בהודעות</string>
+    <string name="search_start_body">שמות, מספרים, מילים וקודים. שיחות נעולות לא נכללות בחיפוש.</string>
+    <string name="search_none_title">לא נמצא “%1$s”</string>
+    <string name="search_none_body">נסה מילה אחרת או חלק ממספר.</string>
+    <string name="search_none_filtered">נסה לכבות חלק מהמסננים.</string>
+
+    <!-- compose_ (new message) -->
+    <string name="compose_to">אל</string>
+    <string name="compose_to_hint">שם או מספר</string>
+    <string name="compose_remove_recipient">הסר נמען</string>
+    <string name="compose_send_to_number">שלח למספר הזה</string>
+    <string name="compose_start_title">למי לשלוח?</string>
+    <string name="compose_start_body">הקלד שם מאנשי הקשר או מספר טלפון. אפשר להוסיף כמה נמענים.</string>
+    <plurals name="compose_sent_to_many">
+        <item quantity="one">נשלחה לנמען אחד</item>
+        <item quantity="two">נשלחה ל-%1$d נמענים</item>
+        <item quantity="other">נשלחה ל-%1$d נמענים</item>
+    </plurals>
 
     <!-- thread_ -->
-    <string name="thread_phone_subtitle">052-555-0123</string>
     <string name="thread_call">חיוג</string>
     <string name="thread_more">עוד</string>
     <string name="thread_clear_selection">ביטול בחירה</string>
@@ -52,6 +100,32 @@
     <string name="thread_draft_hint">הודעת SMS</string>
     <string name="thread_send">שלח</string>
     <string name="thread_sender_me">אני</string>
+    <string name="thread_star">סמן בכוכב</string>
+    <string name="thread_unstar">הסר כוכב</string>
+    <string name="thread_starred">מסומנת בכוכב</string>
+    <string name="thread_delete_selected">מחק</string>
+    <plurals name="thread_messages_deleted">
+        <item quantity="one">הודעה אחת נמחקה</item>
+        <item quantity="two">%1$d הודעות נמחקו</item>
+        <item quantity="other">%1$d הודעות נמחקו</item>
+    </plurals>
+    <string name="thread_copied">הועתק</string>
+    <string name="thread_sending">שולח…</string>
+    <string name="thread_failed">לא נשלחה · הקש לשליחה חוזרת</string>
+    <string name="thread_send_failed">השליחה נכשלה. כדי לשלוח, Pigeon צריכה להיות אפליקציית ההודעות שלך.</string>
+    <string name="thread_reminder_set">תזכורת · %1$s</string>
+    <string name="thread_reminder_created">נשמרה תזכורת ל%1$s</string>
+    <string name="thread_reminder_removed">התזכורת הוסרה</string>
+    <string name="thread_spam_banner">חשוד כספאם. היזהר מהקישורים שבו.</string>
+    <string name="thread_moved_to_spam">הועבר לספאם</string>
+
+    <!-- link_ -->
+    <string name="link_goes_to">הקישור הזה מוביל בפועל אל</string>
+    <string name="link_warning_lookalike">הכתובת מתחזה ל“%1$s” אבל לא שייכת להם. ייתכן שזו הונאה.</string>
+    <string name="link_warning_disguised">הכתובת מוסווית כדי להיראות כמו אתר אחר. ייתכן שזו הונאה.</string>
+    <string name="link_warning_shortener">קישור מקוצר: לא רואים לאן הוא מוביל באמת. פתח רק אם אתה סומך על השולח.</string>
+    <string name="link_open">פתח</string>
+    <string name="link_copied">הקישור הועתק</string>
 
     <!-- spam_ -->
     <string name="spam_title">ספאם</string>
@@ -70,11 +144,26 @@
     <string name="spam_reason_many_links">הרבה קישורים</string>
     <string name="spam_reason_brand_sender">מתחזה לחברה מוכרת</string>
     <string name="spam_reason_marked_by_user">סימנת כספאם</string>
+    <string name="spam_back_to_inbox">הוחזר לתיבה. הסינון לא יחסום יותר את השולח הזה.</string>
+    <string name="spam_empty_title">אין ספאם</string>
+    <string name="spam_empty_body">הודעות חשודות יועברו לכאן, בלי התראות.</string>
+    <plurals name="spam_delete_all_title">
+        <item quantity="one">למחוק שיחת ספאם אחת?</item>
+        <item quantity="two">למחוק את %1$d שיחות הספאם?</item>
+        <item quantity="other">למחוק את כל %1$d שיחות הספאם?</item>
+    </plurals>
+    <string name="spam_delete_all_body">אפשר לבטל במשך כמה שניות.</string>
+    <plurals name="spam_deleted_all">
+        <item quantity="one">שיחה אחת נמחקה</item>
+        <item quantity="two">%1$d שיחות נמחקו</item>
+        <item quantity="other">%1$d שיחות נמחקו</item>
+    </plurals>
 
     <!-- rules_ -->
     <string name="rules_title">צבעים וכללים</string>
     <string name="rules_subtitle">מסגרת בצבע לפי שולח או מילה בהודעה</string>
     <string name="rules_section_yours">הכללים שלך · הכלל העליון קובע, גרור לשינוי הסדר</string>
+    <string name="rules_section_yours_plain">הכללים שלך · הכלל העליון קובע</string>
     <string name="rules_drag">גרור</string>
     <string name="rules_sender_subtitle">שולח: %1$s</string>
     <string name="rules_keyword_subtitle">מילה בהודעה: %1$s</string>
@@ -133,4 +222,19 @@
     <string name="notification_mark_read">סמן כנקרא</string>
     <string name="notification_copy_code">העתק %1$s</string>
     <string name="notification_locked_title">שיחה נעולה</string>
+
+    <!-- lock_ (locked chats and app lock) -->
+    <string name="lock_prompt_title">ביטול נעילה של Pigeon</string>
+    <string name="lock_prompt_subtitle">בטביעת אצבע או בנעילת המסך</string>
+    <string name="lock_cover_title">Pigeon נעולה</string>
+    <string name="lock_cover_body">ההודעות שלך מוסתרות עד שתבטל את הנעילה בטביעת אצבע או בנעילת המסך.</string>
+    <string name="lock_unlock">בטל נעילה</string>
+    <string name="lock_needs_screen_lock">כדי לנעול שיחות, הגדר קודם נעילת מסך בטלפון.</string>
+
+    <!-- permissions_ -->
+    <string name="permissions_title">עוד שני דברים</string>
+    <string name="permissions_notifications">התראות, כדי שתדע כשמגיעה הודעה.</string>
+    <string name="permissions_contacts">אנשי קשר, כדי להציג שמות במקום מספרים ולבחור למי לכתוב.</string>
+    <string name="permissions_optional">שניהם לא חובה. בלעדיהם Pigeon עובדת, עם מספרים במקום שמות.</string>
+    <string name="permissions_continue">המשך</string>
 </resources>

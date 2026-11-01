@@ -125,7 +125,7 @@ class FakeSmsSender(private val messages: FakeMessageRepository? = null) : SmsSe
         return recipients.map { address ->
             val id = nextId++
             val threadId = messages?.threadIdFor(listOf(address)) ?: 1L
-            messages?.allMessages?.update { it + sms(id, threadId, body, 10_000_000_000L + id, address, SmsType.Outbox) }
+            messages?.allMessages?.update { it + sms(id, threadId, body, 4_000_000_000_000L + id, address, SmsType.Outbox) }
             id
         }
     }

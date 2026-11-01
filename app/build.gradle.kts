@@ -61,8 +61,11 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     // Glance already brings WorkManager; the -ktx artifact adds CoroutineWorker
     implementation("androidx.work:work-runtime-ktx:2.9.0")
-    // Locked chats and app lock (wired up in the screens stage)
+    // Locked chats and app lock
     implementation("androidx.biometric:biometric:1.1.0")
+    // MainActivity is an AppCompatActivity: BiometricPrompt needs a FragmentActivity, and the per-app
+    // language (AppCompatDelegate.setApplicationLocales) works back to Android 8 with it
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)

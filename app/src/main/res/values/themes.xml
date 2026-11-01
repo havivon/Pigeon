@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      MainActivity's theme: AppCompat, as AppCompatActivity and BiometricPrompt require. Compose draws
+      every screen, so the theme only sets the window: no action bar, and the app's background colour
+      until the first frame.
+    -->
+    <style name="Theme.Pigeon" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="colorPrimary">@color/accent</item>
+    </style>
+</resources>
