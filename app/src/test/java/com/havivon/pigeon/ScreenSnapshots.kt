@@ -22,6 +22,7 @@ import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
 import com.havivon.pigeon.domain.analysis.LinkAnalyzer
 import com.havivon.pigeon.domain.folders.FolderNameProblem
+import com.havivon.pigeon.domain.model.CategoryTag
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
@@ -48,6 +49,7 @@ import com.havivon.pigeon.ui.inbox.InboxEmpty
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.lock.LockCover
 import com.havivon.pigeon.ui.onboarding.PermissionsCard
+import com.havivon.pigeon.ui.rules.RuleSwatches
 import com.havivon.pigeon.ui.search.SearchFilters
 import com.havivon.pigeon.ui.search.SearchHit
 import com.havivon.pigeon.ui.search.SearchScreen
@@ -122,6 +124,63 @@ private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
         ),
         senders = emptyList(),
     )
+
+    // Categories with colours (the optional colour of a category) on the inbox and the search results
+    private val personal = if (hebrew) "אישי" else "Personal"
+    private val banks = if (hebrew) "בנקים" else "Banks"
+    private val codes = if (hebrew) "קודים" else "Codes"
+    private val work = if (hebrew) "עבודה" else "Work"
+    private val blue = 0xFF2F80EDL
+    private val purple = 0xFF5B3FD9L
+    private val amber = 0xFFE8B10CL
+
+    /** Personal, Codes and Deliveries have a colour; one category of the user's too. */
+    val builtInColors = mapOf(Folder.Personal to blue, Folder.Codes to purple, Folder.Deliveries to amber)
+    val coloredCustomFolders = listOf(CustomFolder(1, work, 0xFF1E9E6AL), CustomFolder(2, if (hebrew) "ועד בית" else "Building committee"))
+
+    /**
+     * The inbox with colours: Mom keeps her pink rule frame (a rule wins) and shows her Personal tag in blue; Danny is framed in
+     * Personal's blue; Verify in Codes' violet; the bank has no colour for Banks, so only its rule's frame, and no tag.
+     */
+    val inboxColored: List<Conversation> = sample.inbox.map {
+        when (it.id) {
+            1L, 2L, 6L, 7L, 8L -> it.copy(category = CategoryTag(personal, blue))
+            4L -> it.copy(category = CategoryTag(if (hebrew) "משלוחים" else "Deliveries", amber))
+            5L -> it.copy(category = CategoryTag(codes, purple))
+            3L -> it.copy(category = CategoryTag(banks))
+            else -> it
+        }
+    }
+
+    /**
+     * Search results with their category tags: Danny's in neutral Personal, the bank's message framed and tagged in its rule's green
+     * (Banks has no colour of its own), Noa's in the user's category "Work" (blue), and a spam result tagged "Spam", neutral.
+     */
+    val searchTagged = SearchUiState(
+        query = search.query,
+        rules = sample.rules,
+        conversations = listOf(
+            danny.copy(category = CategoryTag(personal)),
+            noa.copy(category = CategoryTag(work, blue)),
+        ),
+        messages = listOf(
+            SearchHit(5, 2, danny.name, search.messages[0].text, danny.time, danny.avatarArgb, false, category = CategoryTag(personal)),
+            SearchHit(
+                6, 3, sample.inbox.first { it.id == 3L }.name,
+                if (hebrew) "חיוב בכרטיס ברחוב הרצל 12 בסך 249.90 ₪" else "Card charge at 12 Maple Street for $249.90", "10:32", 0xFF1E9E6A, false,
+                category = CategoryTag(banks), ruleId = 1,
+            ),
+            SearchHit(41, 6, noa.name, search.messages[1].text, noa.time, noa.avatarArgb, false, category = CategoryTag(work, blue)),
+            SearchHit(
+                42, 101, if (hebrew) "+972 55-123-4567" else "+972 55-123-4567",
+                if (hebrew) "זכית בפרס ברחוב הרצל! bit.ly/x7Kq9" else "You won a prize on Maple Street! bit.ly/x7Kq9", "13:02", 0xFFE53935, false,
+                category = CategoryTag(if (hebrew) "ספאם" else "Spam"),
+            ),
+        ),
+        senders = emptyList(),
+    )
+    val searchSelected = setOf(6L, 41L)
+    val unreadColored: List<UnreadMessage> = unread.map { m -> m.copy(category = inboxColored.first { it.id == m.threadId }.category) }
 
     val newMessage = NewMessageUiState(
         recipients = listOf(Recipient("0525550123", danny.name)),
@@ -303,13 +362,13 @@ class NewScreensSnapshots {
         }
         shot("86_new_category") {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
-            Scrim { FolderNameDialogContent(stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.newFolderName, null, {}, {}, {}) }
+            Scrim { FolderNameDialogContent(stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.newFolderName, null, {}, {}, {}, argb = RuleSwatches[1], onColor = {}) }
         }
         shot("87_new_category_taken_dark", dark = true) {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
             Scrim {
                 FolderNameDialogContent(
-                    stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.takenFolderName, FolderNameProblem.Taken, {}, {}, {},
+                    stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.takenFolderName, FolderNameProblem.Taken, {}, {}, {}, onColor = {},
                 )
             }
         }
@@ -328,6 +387,28 @@ class NewScreensSnapshots {
         }
         shot("65_conversation_loading") {
             ConversationScreen(placeholderConversation(2), emptyList(), rule = null, draft = "", onCall = null, loading = true)
+        }
+        shot("104_search_tags") { SearchScreen(s.searchTagged, autoFocus = false) }
+        shot("105_search_tags_dark", dark = true) { SearchScreen(s.searchTagged, autoFocus = false) }
+        shot("106_search_selection") { SearchScreen(s.searchTagged, selectedIds = s.searchSelected, autoFocus = false) }
+        shot("107_search_selection_dark", dark = true) { SearchScreen(s.searchTagged, selectedIds = s.searchSelected, autoFocus = false) }
+        shot("108_inbox_category_colors") {
+            InboxScreen(
+                s.inboxColored, s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
+                customFolders = s.coloredCustomFolders, customCounts = mapOf(1L to 0, 2L to 0), builtInColors = s.builtInColors,
+            )
+        }
+        shot("109_inbox_category_colors_dark", dark = true) {
+            InboxScreen(
+                s.inboxColored, s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
+                customFolders = s.coloredCustomFolders, customCounts = mapOf(1L to 0, 2L to 0), builtInColors = s.builtInColors,
+            )
+        }
+        shot("113_inbox_unread_category_colors") {
+            InboxScreen(
+                emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size,
+                unreadMessages = s.unreadColored, builtInColors = s.builtInColors,
+            )
         }
     }
 }
@@ -368,7 +449,7 @@ class NewScreensSnapshotsEnglish {
         }
         shot("91_en_new_category") {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
-            Scrim { FolderNameDialogContent(stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.newFolderName, null, {}, {}, {}) }
+            Scrim { FolderNameDialogContent(stringResource(R.string.folder_new_title), stringResource(R.string.folder_create), s.newFolderName, null, {}, {}, {}, argb = RuleSwatches[1], onColor = {}) }
         }
         shot("92_en_inbox_category") {
             InboxScreen(
@@ -378,6 +459,14 @@ class NewScreensSnapshotsEnglish {
         }
         shot("69_en_inbox_unread") {
             InboxScreen(emptyList(), s.sample.rules, s.unreadCounts, s.sample.dateLine, unreadOnly = true, unreadCount = s.unread.size, unreadMessages = s.unread)
+        }
+        shot("110_en_search_tags") { SearchScreen(s.searchTagged, autoFocus = false) }
+        shot("111_en_search_selection") { SearchScreen(s.searchTagged, selectedIds = s.searchSelected, autoFocus = false) }
+        shot("112_en_inbox_category_colors") {
+            InboxScreen(
+                s.inboxColored, s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
+                customFolders = s.coloredCustomFolders, customCounts = mapOf(1L to 0, 2L to 0), builtInColors = s.builtInColors,
+            )
         }
     }
 }

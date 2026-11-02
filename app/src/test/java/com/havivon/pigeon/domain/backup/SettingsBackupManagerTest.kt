@@ -92,6 +92,9 @@ private class Phone(val shift: Long = 0) {
         rules.add("Parcels", RuleMatch.Keyword("parcel"), 0xFF1E88E5L, false)
         val work = folders.add("Work")
         val family = folders.add("Family")
+        // Colours: one category and one built-in folder have one, the rest none
+        folders.setColor(FolderChoice.Custom(work), 0xFF2F80EDL)
+        folders.setColor(FolderChoice.BuiltIn(Folder.Banks), 0xFF1E9E6AL)
         folders.setOverride(FolderKeys.of(dana, listOf("0525550101")), FolderChoice.Custom(work))
         folders.setOverride(FolderKeys.of(bank, listOf("Leumi")), FolderChoice.BuiltIn(Folder.Banks))
         folders.setOverride(FolderKeys.of(group, listOf("0525550103", "0525550104")), FolderChoice.Custom(family))
@@ -118,6 +121,8 @@ private class Phone(val shift: Long = 0) {
             "settings" to s.copy(welcomeDone = false, permissionsAsked = false, autoDeleteCodesSinceMillis = null),
             "rules" to rules.state.value.map { listOf(it.label, it.match, it.argb, it.enabled) },
             "categories" to categories.map { it.name },
+            "categoryColors" to categories.map { it.name to it.argb },
+            "builtInColors" to folders.builtInColorState.value,
             "overrides" to folders.overrideState.value.map { (key, choice) ->
                 val chat = FolderKeys.threadOf(key)?.let { chatOf[it] } ?: key
                 chat to when (choice) {
@@ -163,6 +168,27 @@ class SettingsBackupManagerTest {
         assertEquals(1, report.locksFound)
         assertFalse(report.appLockKeptOff)
         assertFalse(report.messagesUnavailable)
+    }
+
+    @Test
+    fun `the colours of the categories travel with the file, and a version 1 file leaves the built-in ones alone`() = runTest {
+        val a = Phone()
+        a.setUp()
+        val file = parsed(a.exportJson())
+        assertEquals(mapOf("Work" to 0xFF2F80EDL), file.categoryColors)
+        assertEquals(mapOf(Folder.Banks to 0xFF1E9E6AL), file.folderColors)
+
+        val b = Phone()
+        b.folders.setColor(FolderChoice.BuiltIn(Folder.Codes), 0xFFE0559BL)
+        b.manager.restore(file, canLock = true)
+        assertEquals("a version 2 file replaces the built-in colours", mapOf(Folder.Banks to 0xFF1E9E6AL), b.folders.builtInColorState.value)
+        assertEquals(listOf("Work" to 0xFF2F80EDL, "Family" to null), b.folders.folderState.value.map { it.name to it.argb })
+
+        val c = Phone()
+        c.folders.setColor(FolderChoice.BuiltIn(Folder.Codes), 0xFFE0559BL)
+        c.manager.restore(file.copy(categoryColors = emptyMap(), folderColors = null), canLock = true)
+        assertEquals("a version 1 file has none: the phone keeps its own", mapOf(Folder.Codes to 0xFFE0559BL), c.folders.builtInColorState.value)
+        assertTrue(c.folders.folderState.value.all { it.argb == null })
     }
 
     @Test

@@ -219,6 +219,21 @@ interface FolderDao {
     @Query("UPDATE custom_folders SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)
 
+    @Query("UPDATE custom_folders SET argb = :argb WHERE id = :id")
+    suspend fun setFolderColor(id: Long, argb: Long?)
+
+    @Query("SELECT * FROM category_colors")
+    fun observeBuiltInColors(): Flow<List<CategoryColorEntity>>
+
+    @Upsert
+    suspend fun upsertBuiltInColor(entry: CategoryColorEntity)
+
+    @Query("DELETE FROM category_colors WHERE folder = :folder")
+    suspend fun deleteBuiltInColor(folder: String)
+
+    @Query("DELETE FROM category_colors")
+    suspend fun deleteAllBuiltInColors()
+
     @Query("UPDATE custom_folders SET position = :position WHERE id = :id")
     suspend fun setPosition(id: Long, position: Int)
 

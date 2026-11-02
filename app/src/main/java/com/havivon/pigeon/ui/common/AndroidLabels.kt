@@ -26,7 +26,10 @@ fun dateLabels(context: Context): DateLabels = DateLabels(
 )
 
 fun conversationMapper(context: Context, container: AppContainer, labels: DateLabels = dateLabels(context)): ConversationMapper =
-    ConversationMapper(labels, container.codeFinder, container.folderClassifier, context.getString(R.string.inbox_locked_snippet))
+    ConversationMapper(
+        labels, container.codeFinder, container.folderClassifier, context.getString(R.string.inbox_locked_snippet),
+        folderLabel = { context.getString(it.labelRes) },
+    )
 
 /**
  * The built-in folders' names in both of the app's languages ("Banks" and "בנקים", "All" and "הכל"): a category

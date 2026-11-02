@@ -455,8 +455,13 @@
     <string name="folder_create">Create and move</string>
     <string name="folder_save">Save</string>
     <string name="folders_title">Categories</string>
-    <string name="folders_subtitle">Yours, after the built-in ones · drag to reorder</string>
+    <string name="folders_subtitle">Built-in, then yours · tap a dot to color one · drag yours to reorder</string>
+    <string name="folders_builtin_section">Built-in categories</string>
     <string name="folders_section">Your categories</string>
+    <string name="folders_color">Color of %1$s</string>
+    <string name="folder_color_title">Color for “%1$s”</string>
+    <string name="folder_color_label">Color (optional)</string>
+    <string name="folder_color_none">No color</string>
     <string name="folders_none">No categories of your own yet. Long-press a conversation, choose Move to category, then New category.</string>
     <string name="folders_rename">Rename %1$s</string>
     <string name="folders_delete">Delete %1$s</string>

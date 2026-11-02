@@ -4,6 +4,7 @@ import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Favorite
+import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.RuleMatch
@@ -112,14 +113,20 @@ interface BlockedKeywordsRepository {
  * group), so the sender's future messages follow it. Nothing here touches Android's SMS database.
  */
 interface FoldersRepository {
-    /** The user's categories, in their order. */
+    /** The user's categories, in their order, each with its colour if it has one. */
     val folders: Flow<List<CustomFolder>>
+
+    /** The colours the user gave to built-in folders (only those that have one; see [Folder.colourable]). */
+    val builtInColors: Flow<Map<Folder, Long>>
 
     /** Every move by hand, by conversation key. */
     val overrides: Flow<Map<String, FolderChoice>>
 
     /** Adds a category at the end of the list and returns its id. The name is checked by the caller (`FolderNames`). */
-    suspend fun add(name: String): Long
+    suspend fun add(name: String, argb: Long? = null): Long
+
+    /** Gives a built-in folder or a category a colour, or takes it away (null). Ignored for All and Spam. */
+    suspend fun setColor(choice: FolderChoice, argb: Long?)
 
     suspend fun rename(id: Long, name: String)
 

@@ -476,8 +476,13 @@
     <string name="folder_create">צור והעבר</string>
     <string name="folder_save">שמור</string>
     <string name="folders_title">קטגוריות</string>
-    <string name="folders_subtitle">שלך, אחרי המובנות · גוררים כדי לסדר</string>
+    <string name="folders_subtitle">המובנות, ואז שלך · לוחצים על נקודה כדי לצבוע · גוררים את שלך כדי לסדר</string>
+    <string name="folders_builtin_section">קטגוריות מובנות</string>
     <string name="folders_section">הקטגוריות שלך</string>
+    <string name="folders_color">הצבע של %1$s</string>
+    <string name="folder_color_title">צבע ל„%1$s”</string>
+    <string name="folder_color_label">צבע (לא חובה)</string>
+    <string name="folder_color_none">בלי צבע</string>
     <string name="folders_none">אין עדיין קטגוריות משלך. לוחצים לחיצה ארוכה על שיחה, בוחרים „העבר לקטגוריה” ואז „קטגוריה חדשה…”.</string>
     <string name="folders_rename">שינוי השם של %1$s</string>
     <string name="folders_delete">מחיקת %1$s</string>

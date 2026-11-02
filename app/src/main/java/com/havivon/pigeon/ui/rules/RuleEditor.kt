@@ -103,22 +103,7 @@ fun RuleEditorSheetContent(
             hint = state.text.trim().take(MAX_RULE_LABEL).ifEmpty { stringResource(R.string.rules_hint_label) },
         )
         Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            RuleSwatches.forEach { argb ->
-                val selected = argb == state.argb
-                Box(
-                    Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(Color(argb))
-                        .then(if (selected) Modifier.border(3.dp, c.onSurface, CircleShape) else Modifier)
-                        .clickable { onColor(argb) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (selected) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.rules_swatch_selected), tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-            }
-        }
+        SwatchRow(state.argb, onColor)
         Spacer(Modifier.height(14.dp))
         Text(stringResource(R.string.rules_preview_label), color = c.onSurfaceMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
@@ -157,6 +142,31 @@ fun RuleEditorSheetContent(
                 Icon(Icons.Rounded.Delete, contentDescription = null, tint = c.spam, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(R.string.rules_delete), color = c.spam, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/**
+ * The colour swatches of the rules (the app's palette): the chosen one carries a ring and a check. Also used to
+ * colour a category, where [selected] is null for "no colour" (no swatch is then marked).
+ */
+@Composable
+fun SwatchRow(selected: Long?, onPick: (Long) -> Unit, modifier: Modifier = Modifier) {
+    val c = HebTheme.colors
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        RuleSwatches.forEach { argb ->
+            val chosen = argb == selected
+            Box(
+                Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(Color(argb))
+                    .then(if (chosen) Modifier.border(3.dp, c.onSurface, CircleShape) else Modifier)
+                    .clickable { onPick(argb) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (chosen) Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.rules_swatch_selected), tint = Color.White, modifier = Modifier.size(18.dp))
             }
         }
     }

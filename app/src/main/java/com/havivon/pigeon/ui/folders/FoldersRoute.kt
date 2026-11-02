@@ -11,10 +11,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.folders.FolderMoves
 import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.ui.app.LocalNotices
 import com.havivon.pigeon.ui.common.reservedFolderNames
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
@@ -26,6 +28,8 @@ fun FoldersRoute(onBack: () -> Unit) {
     val context = LocalContext.current
     val vm = pigeonViewModel { app -> FoldersViewModel(app.folders, FolderMoves(app.folders, app.spam, reservedFolderNames(context))) }
     val folders by vm.folders.collectAsStateWithLifecycle()
+    val builtInColors by vm.builtInColors.collectAsStateWithLifecycle()
+    val picking by vm.picking.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     var renaming by remember { mutableStateOf<CustomFolder?>(null) }
     var deleting by remember { mutableStateOf<CustomFolder?>(null) }
@@ -35,6 +39,8 @@ fun FoldersRoute(onBack: () -> Unit) {
         onBack = onBack,
         onRename = { renaming = it },
         onDelete = { deleting = it },
+        builtInColors = builtInColors,
+        onColor = vm::pickColorFor,
         onReorder = vm::reorder,
     )
 
@@ -44,12 +50,22 @@ fun FoldersRoute(onBack: () -> Unit) {
             confirm = stringResource(R.string.folder_save),
             initial = folder.name,
             problemOf = { vm.renameProblem(folder, it) },
-            onConfirm = { name ->
+            onConfirm = { name, _ ->
                 renaming = null
                 vm.rename(folder, name)
             },
             onDismiss = { renaming = null },
         )
+    }
+
+    picking?.let { choice ->
+        val name = when (choice) {
+            is FolderChoice.BuiltIn -> stringResource(choice.folder.labelRes)
+            is FolderChoice.Custom -> folders.firstOrNull { it.id == choice.id }?.name.orEmpty()
+        }
+        Dialog(onDismissRequest = vm::dismissPicker) {
+            CategoryColorDialogContent(name, vm.colorOf(choice), onPick = vm::chooseColor)
+        }
     }
 
     val c = HebTheme.colors

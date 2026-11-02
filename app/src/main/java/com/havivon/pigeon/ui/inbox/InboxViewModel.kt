@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.havivon.pigeon.domain.folders.FolderMoves
 import com.havivon.pigeon.domain.folders.FolderNameProblem
+import com.havivon.pigeon.domain.model.Categories
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
@@ -46,9 +47,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
-/** The longest text a reminder keeps of its message. */
-private const val REMINDER_TEXT_LENGTH = 200
-
 data class InboxUiState(
     /** False until the conversations are read for the first time. */
     val loaded: Boolean = false,
@@ -60,6 +58,8 @@ data class InboxUiState(
     val customFolder: Long? = null,
     /** The user's categories, in their order: their chips come after the built-in ones. */
     val customFolders: List<CustomFolder> = emptyList(),
+    /** The colours the user gave to built-in folders (their chips show a dot of it). */
+    val builtInColors: Map<Folder, Long> = emptyMap(),
     /** The "Unread" side of the toggle under the chips is on: the list shows [unread] instead of [conversations]. */
     val unreadOnly: Boolean = false,
     val rules: List<ColorRule> = emptyList(),
@@ -91,21 +91,21 @@ data class InboxUiState(
 class InboxViewModel(
     private val messages: MessageRepository,
     rules: RulesRepository,
-    private val pins: PinsRepository,
-    private val locks: LocksRepository,
+    pins: PinsRepository,
+    locks: LocksRepository,
     spam: SpamRepository,
     folders: FoldersRepository,
     /** "Move to category" ([FolderMoves]): the sheet's moves and new categories. */
-    private val moves: FolderMoves,
-    private val reminders: RemindersRepository,
-    private val scheduler: ReminderScheduler,
+    moves: FolderMoves,
+    reminders: RemindersRepository,
+    scheduler: ReminderScheduler,
     private val mapper: ConversationMapper,
     /** Re-reads the conversations when access changes (a permission granted, the default app changed). */
     accessChanges: Flow<Int>,
     private val dateLine: () -> String,
-    private val cancelNotification: (Long) -> Unit,
+    cancelNotification: (Long) -> Unit,
     /** Whether Pigeon may change the system database (it is the default SMS app); a viewer only reads. */
-    private val canWrite: () -> Boolean = { true },
+    canWrite: () -> Boolean = { true },
     /** Judges spam on the conversations already on the phone ([com.havivon.pigeon.domain.analysis.SpamOnRead]). */
     private val judgeSpam: suspend (List<SmsConversation>, List<SpamVerdict>) -> Unit = { _, _ -> },
     private val now: () -> Long = System::currentTimeMillis,
@@ -119,23 +119,30 @@ class InboxViewModel(
     private val folder = MutableStateFlow<FolderChoice>(FolderChoice.BuiltIn(Folder.All))
     private val unreadOnly = MutableStateFlow(false)
 
+    /** The long-press sheet's actions: shared with the search results (pin, mark read, remind me, lock, move, delete). */
+    val sheet = ConversationSheetActions(messages, pins, locks, moves, reminders, scheduler, viewModelScope, cancelNotification, canWrite, now)
+
     // Nothing passed through Pigeon's incoming hook: judge what is read, so spam still finds its folder
     private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
 
     /** The conversations as the screens draw them, with what the unread rows are mapped from. */
-    private class Mapped(val all: List<Conversation>, val sources: List<SmsConversation>, val rules: List<ColorRule>, val locked: Set<Long>)
+    private class Mapped(val all: List<Conversation>, val sources: List<SmsConversation>, val rules: List<ColorRule>, val locked: Set<Long>, val builtInColors: Map<Folder, Long>)
+
+    /** What conversations are sorted by hand or by colour: the verdicts, the moves, the categories and the colours of the built-in folders. */
+    private data class Sorting(val verdicts: List<SpamVerdict>, val overrides: Map<String, FolderChoice>, val categories: Categories)
 
     private val mapped: Flow<Mapped> = combine(
         accessChanges.flatMapLatest { messages.conversations },
         rules.rules,
         pins.pinnedThreadIds,
         locks.lockedThreadIds,
-        combine(spam.verdicts, folders.overrides, ::Pair),
-    ) { conversations, ruleList, pinned, locked, (verdicts, overrides) ->
+        combine(spam.verdicts, folders.overrides, folders.folders, folders.builtInColors) { v, o, f, b -> Sorting(v, o, Categories(f, b)) },
+    ) { conversations, ruleList, pinned, locked, sorting ->
+        val (verdicts, overrides, categories) = sorting
         spamJudging.offer(conversations, verdicts)
         val t = now()
-        val all = mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts), overrideFor(it, overrides)) }
-        Mapped(all, conversations, ruleList, locked)
+        val all = mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts), overrideFor(it, overrides), categories) }
+        Mapped(all, conversations, ruleList, locked, categories.builtInColors)
     }.conflate()
 
     /** The unread incoming messages as the system has them; null until the first read. */
@@ -160,6 +167,7 @@ class InboxViewModel(
                 folder = (f as? FolderChoice.BuiltIn)?.folder ?: Folder.All,
                 customFolder = (f as? FolderChoice.Custom)?.id,
                 customFolders = custom,
+                builtInColors = m.builtInColors,
                 unreadOnly = only,
                 rules = m.rules,
                 dateLine = dateLine(),
@@ -199,60 +207,33 @@ class InboxViewModel(
         folder.value = FolderChoice.Custom(id)
     }
 
-    /**
-     * "Move to category" from the long-press sheet: to a built-in folder, one of the user's categories, Spam
-     * ("Mark as spam"), or null for the automatic sorting. The sender's later messages follow it.
-     */
-    fun moveTo(c: Conversation, target: FolderChoice?) {
-        viewModelScope.launch { moves.move(c.id, c.addresses, c.isSpam, target) }
-    }
+    // The long-press sheet's actions are [sheet]'s; these keep the names the inbox's screens and tests use
+
+    fun moveTo(c: Conversation, target: FolderChoice?) = sheet.moveTo(c, target)
 
     /** Why [name] cannot be a new category's, or null when it can. */
-    fun folderNameProblem(name: String): FolderNameProblem? = moves.problem(name, state.value.customFolders)
+    fun folderNameProblem(name: String): FolderNameProblem? = sheet.folderNameProblem(name, state.value.customFolders)
 
-    /** "New category…": makes it and moves [c] into it; false (nothing made) when the name cannot be used. */
-    suspend fun createFolderAndMove(c: Conversation, name: String): Boolean =
-        moves.createAndMove(name, c.id, c.addresses, c.isSpam) != null
+    /** "New category…": makes it (coloured [argb], if given) and moves [c] into it; false (nothing made) when the name cannot be used. */
+    suspend fun createFolderAndMove(c: Conversation, name: String, argb: Long? = null): Boolean = sheet.createFolderAndMove(c, name, argb)
 
     /** The toggle under the chips: every message of the folder (false) or only the unread ones (true). It applies to every folder. */
     fun selectUnreadOnly(value: Boolean) {
         unreadOnly.value = value
     }
 
-    fun togglePin(c: Conversation) {
-        viewModelScope.launch { if (c.pinned) pins.unpin(c.id) else pins.pin(c.id) }
-    }
+    fun togglePin(c: Conversation) = sheet.togglePin(c)
 
     /** False, and nothing changes, while Pigeon is not the default SMS app: the screen says so. */
-    fun markRead(c: Conversation): Boolean {
-        if (!canWrite()) return false
-        cancelNotification(c.id)
-        viewModelScope.launch { messages.markThreadRead(c.id) }
-        return true
-    }
+    fun markRead(c: Conversation): Boolean = sheet.markRead(c)
 
-    fun lock(c: Conversation) {
-        viewModelScope.launch { locks.lock(c.id) }
-    }
+    fun lock(c: Conversation) = sheet.lock(c)
 
     /** Only after the user proved who they are (the screen asks). */
-    fun unlock(c: Conversation) {
-        viewModelScope.launch { locks.unlock(c.id) }
-    }
+    fun unlock(c: Conversation) = sheet.unlock(c)
 
-    /**
-     * "Remind me" from the long-press sheet: a reminder on the conversation (not on one message) at
-     * [atMillis], showing its last message. A locked conversation keeps no text in the reminder.
-     * Times that already passed are ignored; returns whether the reminder was saved.
-     */
-    suspend fun remind(c: Conversation, atMillis: Long): Boolean {
-        if (atMillis <= now()) return false
-        val text = if (c.locked) "" else c.snippet.take(REMINDER_TEXT_LENGTH)
-        val id = reminders.add(c.id, null, text, atMillis)
-        scheduler.schedule(reminders.get(id) ?: Reminder(id, c.id, null, text, atMillis, done = false))
-        return true
-    }
+    suspend fun remind(c: Conversation, atMillis: Long): Boolean = sheet.remind(c, atMillis)
 
     /** Null, and nothing is deleted, while Pigeon is not the default SMS app: the screen says so. */
-    fun delete(c: Conversation): PendingDeletion? = if (canWrite()) messages.deleteThreads(setOf(c.id)) else null
+    fun delete(c: Conversation): PendingDeletion? = sheet.delete(c)
 }

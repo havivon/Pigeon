@@ -454,11 +454,11 @@ class ConversationViewModel(
     fun folderNameProblem(name: String): FolderNameProblem? = moves.problem(name, state.value.customFolders)
 
     /** "New category…": makes it and moves the conversation into it; nothing happens for a name that cannot be used. */
-    fun createFolderAndMove(name: String) {
+    fun createFolderAndMove(name: String, argb: Long? = null) {
         val list = addresses()
         val wasSpam = state.value.conversation?.isSpam == true
         appScope.launch {
-            if (moves.createAndMove(name, threadId, list, wasSpam) != null) events.trySend(ConversationEvent.MovedToNew(name))
+            if (moves.createAndMove(name, threadId, list, wasSpam, argb) != null) events.trySend(ConversationEvent.MovedToNew(name))
         }
     }
 

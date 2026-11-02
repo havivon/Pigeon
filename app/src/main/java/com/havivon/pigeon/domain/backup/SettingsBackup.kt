@@ -57,6 +57,15 @@ data class SettingsBackup(
     val rules: List<BackupRule>,
     /** The user's own categories, in their order. */
     val categories: List<String>,
+    /**
+     * The colours of the categories, by name (only those that have one). Version 2 of the file; a version 1 file has none.
+     */
+    val categoryColors: Map<String, Long> = emptyMap(),
+    /**
+     * The colours of the built-in folders. Null when the file does not carry them (version 1): an import then leaves
+     * the phone's as they are.
+     */
+    val folderColors: Map<Folder, Long>? = null,
     val moves: List<BackupMove>,
     /** Chat keys. */
     val pinned: List<String>,
@@ -100,7 +109,7 @@ sealed interface BackupParse {
 /** The limits a file is held to: it comes from outside, so it is never trusted to be small or sane. */
 object BackupLimits {
     const val FORMAT = "pigeon-settings"
-    const val VERSION = 1
+    const val VERSION = 2
     const val MAX_FILE_BYTES = 2 * 1024 * 1024
     const val MAX_LABEL = 100
     const val MAX_VALUE = 200

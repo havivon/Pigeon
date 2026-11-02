@@ -23,8 +23,12 @@ class RoomBackupStore(private val db: PigeonDatabase, private val now: () -> Lon
         val folderDao = db.folders()
         folderDao.deleteAllOverrides()
         folderDao.deleteAllFolders()
+        plan.folderColors?.let { colors ->
+            folderDao.deleteAllBuiltInColors()
+            for ((folder, argb) in colors) if (folder.colourable) folderDao.upsertBuiltInColor(CategoryColorEntity(folder.name, argb))
+        }
         val folderIds = plan.categories.mapIndexed { position, name ->
-            folderDao.insertFolder(CustomFolderEntity(name = name, position = position, createdAtMillis = at))
+            folderDao.insertFolder(CustomFolderEntity(name = name, position = position, createdAtMillis = at, argb = plan.categoryColors.getOrNull(position)))
         }
         for (move in plan.moves) {
             val customId = move.categoryIndex?.let { folderIds.getOrNull(it) }

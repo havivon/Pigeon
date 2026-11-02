@@ -98,18 +98,21 @@ class FolderMoves(
         if (target == null || target == FolderChoice.BuiltIn(Folder.All)) folders.clearOverride(key) else folders.setOverride(key, target)
     }
 
-    /** A new category named [name], with the conversation moved into it; null (nothing made) when the name cannot be used. */
-    suspend fun createAndMove(name: String, threadId: Long, addresses: List<String>, isSpam: Boolean): Long? {
-        val id = create(name) ?: return null
+    /** A new category named [name] (coloured [argb], if given), with the conversation moved into it; null (nothing made) when the name cannot be used. */
+    suspend fun createAndMove(name: String, threadId: Long, addresses: List<String>, isSpam: Boolean, argb: Long? = null): Long? {
+        val id = create(name, argb) ?: return null
         move(threadId, addresses, isSpam, FolderChoice.Custom(id))
         return id
     }
 
-    /** A new category at the end of the list; null when the name cannot be used. */
-    suspend fun create(name: String): Long? {
+    /** A new category at the end of the list, with a colour if [argb] is given; null when the name cannot be used. */
+    suspend fun create(name: String, argb: Long? = null): Long? {
         if (problem(name, folders.folders.first()) != null) return null
-        return folders.add(FolderNames.clean(name))
+        return folders.add(FolderNames.clean(name), argb)
     }
+
+    /** Gives a built-in folder or a category a colour, or takes it away (null). Never touches a message. */
+    suspend fun setColor(choice: FolderChoice, argb: Long?) = folders.setColor(choice, argb)
 
     /** False, and nothing changes, when the name cannot be used. */
     suspend fun rename(id: Long, name: String): Boolean {

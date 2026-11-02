@@ -1,6 +1,9 @@
 package com.havivon.pigeon.ui.search
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,8 +29,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material3.DropdownMenu
@@ -60,8 +65,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
+import com.havivon.pigeon.domain.model.CategoryTag
+import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.rowColor
 import com.havivon.pigeon.ui.components.Avatar
+import com.havivon.pigeon.ui.components.CategoryTagChip
 import com.havivon.pigeon.ui.components.EmptyState
 import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
@@ -70,9 +79,16 @@ import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.SpamAvatar
 import com.havivon.pigeon.ui.components.listBottomPadding
+import com.havivon.pigeon.ui.conversation.SelectionActions
+import com.havivon.pigeon.ui.conversation.SelectionBar
 import com.havivon.pigeon.ui.theme.HebTheme
 
-/** Search with filter chips: sender, has a link, has a code, the last 7 or 30 days. */
+/**
+ * Search with filter chips: sender, has a link, has a code, the last 7 or 30 days. Every result row carries the tag of
+ * its category (in the category's colour, or a matching rule's, else neutral) and is framed by a matching colour rule,
+ * else by its category's colour. A long press on a conversation opens its sheet ([onLongPressConversation]); a long
+ * press on a message starts a selection ([onMessageLongClick]) that the bars at the top and bottom act on.
+ */
 @Composable
 fun SearchScreen(
     state: SearchUiState,
@@ -84,37 +100,68 @@ fun SearchScreen(
     onStarred: () -> Unit = {},
     onRange: (DateRange) -> Unit = {},
     onOpenConversation: (Long) -> Unit = {},
+    onLongPressConversation: (Conversation) -> Unit = {},
+    onMessageClick: (SearchHit) -> Unit = {},
+    onMessageLongClick: (SearchHit) -> Unit = {},
+    /** The selected message results; a selection replaces the search bar with the selection bar. */
+    selectedIds: Set<Long> = emptySet(),
+    selectedStarred: Boolean = false,
+    onClearSelection: () -> Unit = {},
+    onStarSelected: () -> Unit = {},
+    /** Offered only for exactly one selected message. */
+    onRemindSelected: (() -> Unit)? = null,
+    onCopySelected: () -> Unit = {},
+    onShareSelected: () -> Unit = {},
     /** False in the design snapshots, where there is no keyboard to open. */
     autoFocus: Boolean = true,
 ) {
     val c = HebTheme.colors
-    FixedHeaderLayout(
-        Modifier.fillMaxSize().background(c.background).imePadding(),
-        header = { SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus) },
-    ) { top ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
-            when {
-                state.query.isBlank() && !state.filters.any -> item {
-                    EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
+    val selecting = selectedIds.isNotEmpty()
+    val ruleById = state.rules.filter { it.enabled }.associateBy { it.id }
+    Column(Modifier.fillMaxSize().background(c.background).imePadding()) {
+        FixedHeaderLayout(
+            Modifier.weight(1f).fillMaxWidth(),
+            header = {
+                if (selecting) {
+                    SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll = null, onStar = onStarSelected, onRemind = onRemindSelected, onDelete = null)
+                } else {
+                    SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus)
                 }
-                state.isEmpty && !state.searching -> item {
-                    EmptyState(
-                        Icons.Rounded.SearchOff,
-                        // Nothing typed: the filters alone found nothing
-                        if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
-                        stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
-                    )
+            },
+        ) { top ->
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
+                when {
+                    state.query.isBlank() && !state.filters.any -> item {
+                        EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
+                    }
+                    state.isEmpty && !state.searching -> item {
+                        EmptyState(
+                            Icons.Rounded.SearchOff,
+                            // Nothing typed: the filters alone found nothing
+                            if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
+                            stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
+                        )
+                    }
                 }
-            }
-            if (state.conversations.isNotEmpty()) {
-                item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
-                items(state.conversations, key = { "c" + it.id }) { ConversationHit(it, state.query) { onOpenConversation(it.id) } }
-            }
-            if (state.messages.isNotEmpty()) {
-                item { SectionLabel(stringResource(R.string.search_section_messages), Icons.Rounded.Search) }
-                items(state.messages, key = { "m" + it.messageId }) { MessageHit(it, state.query) { onOpenConversation(it.threadId) } }
+                if (state.conversations.isNotEmpty()) {
+                    item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
+                    items(state.conversations, key = { "c" + it.id }) {
+                        ConversationHit(it, ruleById[it.ruleId], state.query, onClick = { onOpenConversation(it.id) }, onLongClick = { onLongPressConversation(it) })
+                    }
+                }
+                if (state.messages.isNotEmpty()) {
+                    item { SectionLabel(stringResource(R.string.search_section_messages), Icons.Rounded.Search) }
+                    items(state.messages, key = { "m" + it.messageId }) {
+                        MessageHit(
+                            it, ruleById[it.ruleId], state.query,
+                            selecting = selecting, selected = it.messageId in selectedIds,
+                            onClick = { onMessageClick(it) }, onLongClick = { onMessageLongClick(it) },
+                        )
+                    }
+                }
             }
         }
+        if (selecting) SelectionActions(selectedIds.size, onCopySelected, onShareSelected)
     }
 }
 
@@ -210,27 +257,44 @@ private fun SenderChip(state: SearchUiState, onSender: (Long?) -> Unit) {
 }
 
 @Composable
-private fun ConversationHit(conv: Conversation, query: String, onClick: () -> Unit) {
-    HitCard(onClick) {
+private fun ConversationHit(conv: Conversation, rule: ColorRule?, query: String, onClick: () -> Unit, onLongClick: () -> Unit) {
+    HitCard(frame = rowColor(rule, conv.category), onClick = onClick, onLongClick = onLongClick) {
         if (conv.isSpam) SpamAvatar(size = 44.dp) else Avatar(conv.name, conv.avatarArgb, size = 44.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            HitTitle(highlighted(conv.name, query), conv.time)
+            HitTitle(highlighted(conv.name, query), conv.time, conv.category, rule)
             Text(conv.snippet, color = HebTheme.colors.onSurfaceMuted, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
 @Composable
-private fun MessageHit(hit: SearchHit, query: String, onClick: () -> Unit) {
-    HitCard(onClick) {
+private fun MessageHit(
+    hit: SearchHit,
+    rule: ColorRule?,
+    query: String,
+    selecting: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val c = HebTheme.colors
+    HitCard(frame = rowColor(rule, hit.category), selected = selected, onClick = onClick, onLongClick = onLongClick) {
+        if (selecting) {
+            Icon(
+                if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = stringResource(if (selected) R.string.thread_message_selected else R.string.thread_message_not_selected),
+                tint = if (selected) c.accent else c.onSurfaceMuted,
+            )
+            Spacer(Modifier.width(10.dp))
+        }
         Avatar(hit.name, hit.avatarArgb, size = 44.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            HitTitle(AnnotatedString(hit.name), hit.time)
+            HitTitle(AnnotatedString(hit.name), hit.time, hit.category, rule)
             Text(
                 highlighted(excerpt(hit.text, query), query),
-                color = HebTheme.colors.onSurface,
+                color = c.onSurface,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
                 maxLines = 2,
@@ -240,8 +304,16 @@ private fun MessageHit(hit: SearchHit, query: String, onClick: () -> Unit) {
     }
 }
 
+/** A result row: framed in [frame] (a matching rule's colour, else the category's) when there is one. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun HitCard(onClick: () -> Unit, content: @Composable RowScope.() -> Unit) {
+private fun HitCard(
+    frame: Long?,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    selected: Boolean = false,
+    content: @Composable RowScope.() -> Unit,
+) {
     val c = HebTheme.colors
     val shape = RoundedCornerShape(20.dp)
     Row(
@@ -251,17 +323,26 @@ private fun HitCard(onClick: () -> Unit, content: @Composable RowScope.() -> Uni
             .shadow(if (c.isDark) 0.dp else 2.dp, shape, spotColor = c.accent.copy(alpha = 0.25f))
             .clip(shape)
             .background(c.surface)
-            .clickable(onClick = onClick)
+            .background(if (selected) c.accent.copy(alpha = 0.13f) else Color.Transparent)
+            .then(if (frame != null) Modifier.border(2.dp, Color(frame), shape) else Modifier)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) { content() }
 }
 
+/** The name, the category tag next to it, and the time. */
 @Composable
-private fun HitTitle(name: AnnotatedString, time: String) {
+private fun HitTitle(name: AnnotatedString, time: String, category: CategoryTag?, rule: ColorRule?) {
     val c = HebTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(name, color = c.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(name, color = c.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        // In the category's colour, else the matching rule's, else neutral (see [tagColor])
+        if (category != null) {
+            Spacer(Modifier.width(6.dp))
+            CategoryTagChip(category, fallbackArgb = rule?.argb)
+        }
+        Spacer(Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
         Text(time, color = c.onSurfaceMuted, fontSize = 12.sp)
     }

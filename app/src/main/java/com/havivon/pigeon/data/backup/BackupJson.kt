@@ -22,8 +22,11 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * [SettingsBackup] as the versioned JSON file `{"format":"pigeon-settings","version":1,...}` (org.json,
+ * [SettingsBackup] as the versioned JSON file `{"format":"pigeon-settings","version":2,...}` (org.json,
  * which Android already has: no new library).
+ *
+ * Version 2 adds the colours of the categories (`categoryColors`, `folderColors`); a version 1 file is still read, and has
+ * none (an import then leaves the phone's colours of the built-in folders as they are).
  *
  * Writing never includes a message body (see `SettingsBackup`). Reading is defensive, since the file comes
  * from outside: a file over [BackupLimits.MAX_FILE_BYTES], not JSON, of another format or of a newer
@@ -65,12 +68,15 @@ object BackupJson {
                         is RuleMatch.Sender -> { put("kind", KIND_SENDER); put("value", m.name) }
                         is RuleMatch.Keyword -> { put("kind", KIND_KEYWORD); put("value", m.word) }
                     }
-                    put("color", "#%08X".format(r.argb and 0xFFFFFFFFL))
+                    put("color", colorText(r.argb))
                     put("enabled", r.enabled)
                 }
             },
         )
         root.put("categories", array(backup.categories) { it })
+        // Version 2: the colours (an object per kind, name to "#AARRGGBB"); a folder or category without one is left out
+        root.put("categoryColors", JSONObject().apply { backup.categoryColors.forEach { (name, argb) -> put(name, colorText(argb)) } })
+        backup.folderColors?.let { colors -> root.put("folderColors", JSONObject().apply { colors.forEach { (folder, argb) -> put(folder.name, colorText(argb)) } }) }
         root.put(
             "categoryMoves",
             array(backup.moves) { m ->
@@ -108,6 +114,8 @@ object BackupJson {
         return root.toString(2)
     }
 
+    private fun colorText(argb: Long): String = "#%08X".format(argb and 0xFFFFFFFFL)
+
     private fun <T> array(items: List<T>, transform: (T) -> Any?): JSONArray =
         JSONArray().also { array -> items.forEach { array.put(transform(it)) } }
 
@@ -142,6 +150,8 @@ object BackupJson {
                 settings = readSettings(root.opt("settings") as? JSONObject),
                 rules = readRules(root),
                 categories = categories,
+                categoryColors = if (version >= 2) readCategoryColors(root, categories) else emptyMap(),
+                folderColors = if (version >= 2) readFolderColors(root) else null,
                 moves = readMoves(root, categories),
                 pinned = root.strings("pinned", BackupLimits.MAX_CHATS, BackupLimits.MAX_KEY),
                 locked = root.strings("locked", BackupLimits.MAX_CHATS, BackupLimits.MAX_KEY),
@@ -194,6 +204,29 @@ object BackupJson {
         return root.strings("categories", BackupLimits.MAX_CATEGORIES, BackupLimits.MAX_CATEGORY_NAME * 4)
             .map { FolderNames.clean(it) }
             .filter { it.isNotEmpty() && it.length <= FolderNames.MAX_LENGTH && seen.add(it.lowercase(Locale.ROOT)) }
+    }
+
+    /** The colour of each category the file names (by the name as read); a colour that is not "#RRGGBB" or "#AARRGGBB" is dropped. */
+    private fun readCategoryColors(root: JSONObject, categories: List<String>): Map<String, Long> {
+        val o = root.opt("categoryColors") as? JSONObject ?: return emptyMap()
+        val byLowerName = categories.associateBy { it.lowercase(Locale.ROOT) }
+        val out = LinkedHashMap<String, Long>()
+        for (key in o.keys()) {
+            val name = byLowerName[FolderNames.clean(key).lowercase(Locale.ROOT)] ?: continue
+            parseColor(o.str(key, 12))?.let { out[name] = it }
+        }
+        return out
+    }
+
+    /** Null when the file does not carry the built-in folders' colours at all (an import then keeps the phone's). */
+    private fun readFolderColors(root: JSONObject): Map<Folder, Long>? {
+        val o = root.opt("folderColors") as? JSONObject ?: return null
+        val out = LinkedHashMap<Folder, Long>()
+        for (key in o.keys()) {
+            val folder = Folder.entries.firstOrNull { it.name == key && it.colourable } ?: continue
+            parseColor(o.str(key, 12))?.let { out[folder] = it }
+        }
+        return out
     }
 
     private fun readMoves(root: JSONObject, categories: List<String>): List<BackupMove> {

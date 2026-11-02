@@ -66,6 +66,7 @@ import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.LabeledTextField
 import com.havivon.pigeon.ui.components.SheetTitle
 import com.havivon.pigeon.ui.components.SpamAvatar
+import com.havivon.pigeon.ui.rules.SwatchRow
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /** The built-in folders a conversation can be moved to, in the chips' order ("All" holds everything, Spam comes last). */
@@ -102,7 +103,7 @@ fun MoveToFolderFlow(
     customFolders: List<CustomFolder>,
     problemOf: (String) -> FolderNameProblem?,
     onMove: (FolderChoice?) -> Unit,
-    onCreate: (String) -> Unit,
+    onCreate: (name: String, argb: Long?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var naming by rememberSaveable { mutableStateOf(false) }
@@ -112,9 +113,10 @@ fun MoveToFolderFlow(
             confirm = stringResource(R.string.folder_create),
             initial = "",
             problemOf = problemOf,
-            onConfirm = { name ->
+            withColor = true,
+            onConfirm = { name, argb ->
                 onDismiss()
-                onCreate(name)
+                onCreate(name, argb)
             },
             onDismiss = onDismiss,
         )
@@ -228,12 +230,18 @@ fun FolderNameDialog(
     confirm: String,
     initial: String,
     problemOf: (String) -> FolderNameProblem?,
-    onConfirm: (String) -> Unit,
+    onConfirm: (name: String, argb: Long?) -> Unit,
     onDismiss: () -> Unit,
+    /** Offers the optional colour (a new category); a rename keeps the colour it has. */
+    withColor: Boolean = false,
 ) {
     var name by rememberSaveable { mutableStateOf(initial) }
+    var argb by rememberSaveable { mutableStateOf<Long?>(null) }
     Dialog(onDismissRequest = onDismiss) {
-        FolderNameDialogContent(title, confirm, name, problemOf(name), onName = { name = it }, onConfirm = { onConfirm(name) }, onDismiss = onDismiss, autoFocus = true)
+        FolderNameDialogContent(
+            title, confirm, name, problemOf(name), onName = { name = it }, onConfirm = { onConfirm(name, argb) }, onDismiss = onDismiss, autoFocus = true,
+            argb = argb, onColor = if (withColor) ({ argb = it }) else null,
+        )
     }
 }
 
@@ -248,6 +256,9 @@ fun FolderNameDialogContent(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     autoFocus: Boolean = false,
+    /** The chosen colour of a new category (null for none) and its change; null [onColor] leaves the colour row out. */
+    argb: Long? = null,
+    onColor: ((Long?) -> Unit)? = null,
 ) {
     val c = HebTheme.colors
     Surface(shape = RoundedCornerShape(28.dp), color = c.surface, modifier = Modifier.fillMaxWidth()) {
@@ -272,6 +283,12 @@ fun FolderNameDialogContent(
                 Text(message.orEmpty(), color = c.spam, fontSize = 13.sp, modifier = Modifier.weight(1f))
                 Text("${name.length}/${FolderNames.MAX_LENGTH}", color = c.onSurfaceMuted, fontSize = 12.sp)
             }
+            if (onColor != null) {
+                Spacer(Modifier.height(10.dp))
+                Text(stringResource(R.string.folder_color_label), color = c.onSurfaceMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                ColorChoice(argb, onColor)
+            }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = c.accent) }
@@ -279,6 +296,38 @@ fun FolderNameDialogContent(
                     Text(confirm, color = if (problem == null) c.accent else c.onSurfaceMuted, fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+}
+
+/**
+ * The colour of a category: the rules' swatches, and "No colour" (the default). [selected] null means no colour.
+ */
+@Composable
+fun ColorChoice(selected: Long?, onChange: (Long?) -> Unit) {
+    val c = HebTheme.colors
+    Column {
+        SwatchRow(selected, onPick = { onChange(it) })
+        Spacer(Modifier.height(10.dp))
+        val none = selected == null
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(if (none) c.accent.copy(alpha = 0.13f) else c.surfaceVariant)
+                .clickable { onChange(null) }
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (none) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = c.accent, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(
+                stringResource(R.string.folder_color_none),
+                color = if (none) c.accent else c.onSurface,
+                fontSize = 14.sp,
+                fontWeight = if (none) FontWeight.Bold else FontWeight.SemiBold,
+            )
         }
     }
 }

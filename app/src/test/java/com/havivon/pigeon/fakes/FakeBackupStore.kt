@@ -27,7 +27,8 @@ class FakeBackupStore(
     override suspend fun replace(plan: RestorePlan): List<Reminder> {
         replaced++
         rules.state.value = plan.rules.mapIndexed { i, r -> r.copy(id = i + 1) }
-        val categories = plan.categories.mapIndexed { i, name -> CustomFolder(i + 1L, name) }
+        val categories = plan.categories.mapIndexed { i, name -> CustomFolder(i + 1L, name, plan.categoryColors.getOrNull(i)) }
+        plan.folderColors?.let { folders.builtInColorState.value = it }
         folders.folderState.value = categories
         folders.overrideState.value = plan.moves.mapNotNull { m ->
             val choice = m.folder?.let { FolderChoice.BuiltIn(it) } ?: m.categoryIndex?.let { categories.getOrNull(it) }?.let { FolderChoice.Custom(it.id) }

@@ -49,6 +49,8 @@ class BackupJsonTest {
             BackupRule("", RuleMatch.Keyword("parcel"), 0x80102030L, false),
         ),
         categories = listOf("Work", "Family"),
+        categoryColors = mapOf("Work" to 0xFF2F80EDL),
+        folderColors = mapOf(Folder.Banks to 0xFF1E9E6AL, Folder.Codes to 0xFFE0559BL),
         moves = listOf(BackupMove("525550123", Folder.Banks, null), BackupMove("group:525550123,525550124", null, "Work")),
         pinned = listOf("525550123"),
         locked = listOf("525550124"),
@@ -67,7 +69,7 @@ class BackupJsonTest {
     fun `the file names its format and version`() {
         val json = BackupJson.encode(sample).replace(" ", "")
         assertTrue(json.contains("\"format\":\"pigeon-settings\""))
-        assertTrue(json.contains("\"version\":1"))
+        assertTrue(json.contains("\"version\":2"))
         assertTrue(json.contains("\"appVersion\":\"0.4.5\""))
         assertTrue(json.contains("\"exportedAt\""))
     }
@@ -77,6 +79,43 @@ class BackupJsonTest {
         val json = BackupJson.encode(sample)
         assertFalse(json.contains("welcome"))
         assertFalse(json.contains("permissionsAsked"))
+    }
+
+    // Colours of the categories (version 2), and the version 1 files that have none
+
+    @Test
+    fun `a version 1 file is still read, with no colours`() {
+        val backup = ok(file(""""categories":["Work"],"categoryColors":{"Work":"#FF2F80ED"},"folderColors":{"Banks":"#FF1E9E6A"}""", version = 1))
+        assertEquals(listOf("Work"), backup.categories)
+        assertTrue("a version 1 file has no colours, whatever it holds", backup.categoryColors.isEmpty())
+        assertNull("so an import keeps the phone's colours of the built-in folders", backup.folderColors)
+    }
+
+    @Test
+    fun `a version 2 file carries the colours of the categories and of the built-in folders`() {
+        val backup = ok(
+            file(
+                """"categories":["Work","Family"],"categoryColors":{"work":"#FF2F80ED","Family":"#E0559B","Nope":"#FF000000"},""" +
+                    """"folderColors":{"Banks":"#FF1E9E6A","Spam":"#FFFF0000","All":"#FFFF0000","Mars":"#FF000000"}""",
+                version = 2,
+            ),
+        )
+        assertEquals(mapOf("Work" to 0xFF2F80EDL, "Family" to 0xFFE0559BL), backup.categoryColors)
+        assertEquals("Spam and All never get a colour, unknown folders are ignored", mapOf(Folder.Banks to 0xFF1E9E6AL), backup.folderColors)
+    }
+
+    @Test
+    fun `a colour that is not a colour is dropped, the category stays`() {
+        val backup = ok(file(""""categories":["Work","Family"],"categoryColors":{"Work":"red","Family":12}""", version = 2))
+        assertEquals(listOf("Work", "Family"), backup.categories)
+        assertTrue(backup.categoryColors.isEmpty())
+    }
+
+    @Test
+    fun `a version 2 file without colours reads as none, and leaves the built-in ones alone`() {
+        val backup = ok(file(""""categories":["Work"]""", version = 2))
+        assertTrue(backup.categoryColors.isEmpty())
+        assertNull(backup.folderColors)
     }
 
     // Refused files
@@ -112,7 +151,7 @@ class BackupJsonTest {
 
     @Test
     fun `a newer version is refused with its own reason`() {
-        assertEquals(BackupError.TooNew, failure(file(version = 2)))
+        assertEquals(BackupError.TooNew, failure(file(version = 3)))
         assertEquals(BackupError.TooNew, failure(file(version = 999)))
     }
 

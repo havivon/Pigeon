@@ -26,6 +26,10 @@ data class PlannedFavorite(
 data class RestorePlan(
     val rules: List<ColorRule>,
     val categories: List<String>,
+    /** The colour of each of [categories] (same order); missing or null for none. */
+    val categoryColors: List<Long?> = emptyList(),
+    /** The built-in folders' colours; null leaves the phone's as they are (a version 1 file has none). */
+    val folderColors: Map<Folder, Long>? = null,
     val moves: List<PlannedMove>,
     val pinnedThreadIds: Set<Long>?,
     val lockedThreadIds: Set<Long>?,

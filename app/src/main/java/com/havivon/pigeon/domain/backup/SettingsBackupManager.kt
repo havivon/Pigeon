@@ -114,6 +114,8 @@ class SettingsBackupManager(
             ),
             rules = rules.rules.first().map { BackupRule(it.label, it.match, it.argb, it.enabled) },
             categories = categories.map { it.name },
+            categoryColors = categories.mapNotNull { c -> c.argb?.let { c.name to it } }.toMap(),
+            folderColors = folders.builtInColors.first(),
             moves = moves,
             pinned = pins.pinnedThreadIds.first().mapNotNull { chatOf[it] }.distinct().sorted(),
             locked = locks.lockedThreadIds.first().mapNotNull { chatOf[it] }.distinct().sorted(),
@@ -177,6 +179,8 @@ class SettingsBackupManager(
         val plan = RestorePlan(
             rules = backup.rules.map { ColorRule(0, it.label, it.match, it.argb, it.enabled) },
             categories = backup.categories,
+            categoryColors = backup.categories.map { backup.categoryColors[it] },
+            folderColors = backup.folderColors,
             moves = moves,
             pinnedThreadIds = pinned.takeIf { canResolve },
             lockedThreadIds = locked.takeIf { canResolve },

@@ -99,6 +99,8 @@ data class CustomFolderEntity(
     /** Its place among the chips, after the built-in folders; lower comes first. */
     val position: Int,
     val createdAtMillis: Long,
+    /** Its colour (ARGB), or null for none. Added in database version 4. */
+    val argb: Long? = null,
 )
 
 /** A conversation the user moved by hand: exactly one of [builtIn] and [customFolderId] is set (see `FolderChoiceCodec`). */
@@ -110,4 +112,11 @@ data class FolderOverrideEntity(
     val builtIn: String?,
     val customFolderId: Long?,
     val setAtMillis: Long,
+)
+
+/** The colour the user gave to a built-in folder, keyed by the enum name ("Banks"). A folder with no row has no colour. */
+@Entity(tableName = "category_colors")
+data class CategoryColorEntity(
+    @PrimaryKey val folder: String,
+    val argb: Long,
 )

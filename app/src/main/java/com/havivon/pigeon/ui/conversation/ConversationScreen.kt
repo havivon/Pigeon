@@ -330,16 +330,20 @@ private fun SpamBanner(onNotSpam: () -> Unit) {
     }
 }
 
+/**
+ * The bar over a selection of messages: how many, star, remind (only for exactly one) and, in a conversation,
+ * delete and select all (null leaves a button out: the search results offer neither).
+ */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun SelectionBar(
+internal fun SelectionBar(
     count: Int,
     allStarred: Boolean,
     onClear: () -> Unit,
-    onSelectAll: () -> Unit,
+    onSelectAll: (() -> Unit)?,
     onStar: () -> Unit,
     onRemind: (() -> Unit)?,
-    onDelete: () -> Unit,
+    onDelete: (() -> Unit)?,
 ) {
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -359,8 +363,8 @@ private fun SelectionBar(
                 onStar,
             )
             if (onRemind != null) HeaderIcon(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onRemind)
-            HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.thread_delete_selected), onDelete)
-            HeaderIcon(Icons.Rounded.SelectAll, stringResource(R.string.common_select_all), onSelectAll)
+            if (onDelete != null) HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.thread_delete_selected), onDelete)
+            if (onSelectAll != null) HeaderIcon(Icons.Rounded.SelectAll, stringResource(R.string.common_select_all), onSelectAll)
         }
     }
 }
@@ -671,7 +675,7 @@ private fun ReminderChip(text: String, set: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit) {
+internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit) {
     val c = HebTheme.colors
     Row(
         Modifier

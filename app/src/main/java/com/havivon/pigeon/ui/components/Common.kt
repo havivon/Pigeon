@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
+import com.havivon.pigeon.domain.model.CategoryTag
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.foundation.text.BasicTextField
@@ -176,6 +178,24 @@ fun RuleTag(label: String, color: Color) {
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
 }
+
+/**
+ * The tag of the category a row is in: its name in the category's colour; in [fallbackArgb] (the colour of a rule
+ * that matches the row) when the category has none; neutral when neither. Spam is always neutral: its tag has no colour.
+ */
+@Composable
+fun CategoryTagChip(tag: CategoryTag, fallbackArgb: Long? = null) {
+    RuleTag(tag.label, (tag.argb ?: fallbackArgb)?.let { Color(it) } ?: HebTheme.colors.onSurfaceMuted)
+}
+
+/** The inbox's rows show the tag only for a category the user coloured (nothing changes for those who never do). */
+@Composable
+fun RowScope.CategoryTagIfColoured(tag: CategoryTag?) {
+    if (tag?.argb == null) return
+    Spacer(Modifier.width(6.dp))
+    CategoryTagChip(tag)
+}
+
 
 @Composable
 fun CountBadge(count: Int) {

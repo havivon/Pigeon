@@ -23,8 +23,10 @@ import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.reminders.QuickReminder
+import com.havivon.pigeon.ui.folders.CategoryColorDialogContent
 import com.havivon.pigeon.ui.folders.FoldersScreen
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.keywords.BlockedKeywordsScreen
@@ -97,6 +99,14 @@ private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
     val folders = listOf(
         CustomFolder(1, if (hebrew) "עבודה" else "Work"),
         CustomFolder(2, if (hebrew) "ועד בית" else "Building committee"),
+        CustomFolder(3, if (hebrew) "חוג כדורסל" else "Basketball club"),
+    )
+
+    /** Categories with colours: Banks and Codes among the built-in ones, and two of the user's (one coloured, one not). */
+    val builtInColors = mapOf(Folder.Personal to RuleSwatches[2], Folder.Banks to RuleSwatches[0], Folder.Deliveries to RuleSwatches[6])
+    val coloredFolders = listOf(
+        CustomFolder(1, if (hebrew) "עבודה" else "Work", RuleSwatches[3]),
+        CustomFolder(2, if (hebrew) "ועד בית" else "Building committee", RuleSwatches[4]),
         CustomFolder(3, if (hebrew) "חוג כדורסל" else "Basketball club"),
     )
 
@@ -187,6 +197,16 @@ class EditingSnapshots {
         shot("93_categories") { FoldersScreen(s.folders) }
         shot("94_categories_reordering_dark", dark = true) { FoldersScreen(s.folders, previewDragging = 2) }
         shot("95_categories_empty") { FoldersScreen(emptyList()) }
+        shot("114_categories_colors") { FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors) }
+        shot("115_categories_colors_dark", dark = true) { FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors) }
+        shot("116_category_color_picker") {
+            FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors)
+            DialogOver { CategoryColorDialogContent(s.coloredFolders[0].name, s.coloredFolders[0].argb, {}) }
+        }
+        shot("117_category_color_picker_none_dark", dark = true) {
+            FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors)
+            DialogOver { CategoryColorDialogContent(s.coloredFolders[2].name, null, {}) }
+        }
         shot("97_import_dialog") {
             SettingsScreen(s.state, s.environment, SettingsActions())
             DialogOver { ImportConfirmContent(s.importSummary, {}, {}) }
@@ -244,6 +264,11 @@ class EditingSnapshotsEnglish {
             Sheet { ReminderChooser(s.reminderTimes, {}, {}) }
         }
         shot("96_en_categories") { FoldersScreen(s.folders) }
+        shot("118_en_categories_colors") { FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors) }
+        shot("119_en_category_color_picker") {
+            FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors)
+            DialogOver { CategoryColorDialogContent(s.coloredFolders[0].name, s.coloredFolders[0].argb, {}) }
+        }
         shot("99_en_import_dialog") {
             SettingsScreen(s.state, s.environment, SettingsActions())
             DialogOver { ImportConfirmContent(s.importSummary, {}, {}) }

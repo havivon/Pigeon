@@ -61,12 +61,14 @@ import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.rowColor
 import com.havivon.pigeon.domain.model.UnreadMessage
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.CountBadge
 import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
+import com.havivon.pigeon.ui.components.CategoryTagIfColoured
 import com.havivon.pigeon.ui.components.RuleTag
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.SpamAvatar
@@ -107,6 +109,8 @@ fun InboxScreen(
     /** The chosen category of the user's; while one is, no built-in chip is chosen. */
     selectedCustom: Long? = null,
     onCustomFolder: (CustomFolder) -> Unit = {},
+    /** The colours the user gave to built-in folders: a dot on their chips. */
+    builtInColors: Map<Folder, Long> = emptyMap(),
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
@@ -117,7 +121,7 @@ fun InboxScreen(
         FixedHeaderLayout(
             Modifier.fillMaxSize(),
             header = {
-                val chips = FolderChips(selectedFolder, folderCounts, customFolders, customCounts, selectedCustom, onFolder, onCustomFolder)
+                val chips = FolderChips(selectedFolder, folderCounts, customFolders, customCounts, selectedCustom, onFolder, onCustomFolder, builtInColors)
                 InboxHeader(dateLine, chips, unreadOnly, unreadCount, onUnreadOnly, onSettings, onSearch)
             },
         ) { top -> InboxList(top, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
@@ -192,6 +196,7 @@ private class FolderChips(
     val selectedCustom: Long?,
     val onFolder: (Folder) -> Unit,
     val onCustom: (CustomFolder) -> Unit,
+    val builtInColors: Map<Folder, Long>,
 )
 
 @Composable
@@ -241,11 +246,11 @@ private fun InboxHeader(
         ) {
             Folder.entries.forEach { folder ->
                 val selected = chips.selectedCustom == null && folder == chips.selected
-                FolderChip(stringResource(folder.labelRes), chips.counts[folder] ?: 0, selected) { chips.onFolder(folder) }
+                FolderChip(stringResource(folder.labelRes), chips.counts[folder] ?: 0, selected, chips.builtInColors[folder]) { chips.onFolder(folder) }
             }
             // The user's own categories, after the built-in ones, in their order
             chips.custom.forEach { f ->
-                FolderChip(f.name, chips.customCounts[f.id] ?: 0, f.id == chips.selectedCustom) { chips.onCustom(f) }
+                FolderChip(f.name, chips.customCounts[f.id] ?: 0, f.id == chips.selectedCustom, f.argb) { chips.onCustom(f) }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -315,7 +320,7 @@ private fun CountDot(count: Int, selected: Boolean) {
 }
 
 @Composable
-private fun FolderChip(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
+private fun FolderChip(label: String, count: Int, selected: Boolean, dotArgb: Long?, onClick: () -> Unit) {
     val c = HebTheme.colors
     Row(
         Modifier
@@ -325,6 +330,11 @@ private fun FolderChip(label: String, count: Int, selected: Boolean, onClick: ()
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The category's colour, when the user gave it one; ringed in white so it shows on the chip, chosen or not
+        if (dotArgb != null) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(Color(dotArgb)).border(1.5.dp, Color.White, CircleShape))
+            Spacer(Modifier.width(7.dp))
+        }
         Text(
             label,
             color = if (!selected) Color.White else if (c.isDark) Color(0xFF3A2596) else c.accent,
@@ -343,7 +353,8 @@ private fun FolderChip(label: String, count: Int, selected: Boolean, onClick: ()
 @Composable
 private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
     val c = HebTheme.colors
-    val ruleColor = rule?.let { Color(it.argb) }
+    // A matching colour rule frames it; without one, the colour of its category (if it has one)
+    val ruleColor = rowColor(rule, conv.category)?.let { Color(it) }
     val shape = RoundedCornerShape(22.dp)
     Column(
         Modifier
@@ -379,6 +390,8 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
 private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
+    // The frame: a matching colour rule first, then the colour of its category
+    val frame = rowColor(rule, conv.category)?.let { Color(it) }
     val unread = conv.unread > 0
     val shape = RoundedCornerShape(20.dp)
     Row(
@@ -388,7 +401,7 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
             .shadow(if (c.isDark) 0.dp else 2.dp, shape, spotColor = c.accent.copy(alpha = 0.25f))
             .clip(shape)
             .background(c.surface)
-            .then(if (ruleColor != null) Modifier.border(2.dp, ruleColor, shape) else Modifier)
+            .then(if (frame != null) Modifier.border(2.dp, frame, shape) else Modifier)
             .combinedClickable(onClick = { onOpen(conv) }, onLongClick = { onLongPress(conv) })
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -410,6 +423,7 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
                     Spacer(Modifier.width(6.dp))
                     RuleTag(rule.label, ruleColor)
                 }
+                CategoryTagIfColoured(conv.category)
                 Spacer(Modifier.weight(1f))
                 Text(conv.time, color = if (unread) c.accent else c.onSurfaceMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
@@ -451,6 +465,7 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
 private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, onOpen: (UnreadMessage) -> Unit, onLongPress: (UnreadMessage) -> Unit) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
+    val frame = rowColor(rule, msg.category)?.let { Color(it) }
     val shape = RoundedCornerShape(20.dp)
     Row(
         Modifier
@@ -459,7 +474,7 @@ private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, onOpen: (Unr
             .shadow(if (c.isDark) 0.dp else 2.dp, shape, spotColor = c.accent.copy(alpha = 0.25f))
             .clip(shape)
             .background(c.surface)
-            .then(if (ruleColor != null) Modifier.border(2.dp, ruleColor, shape) else Modifier)
+            .then(if (frame != null) Modifier.border(2.dp, frame, shape) else Modifier)
             .combinedClickable(onClick = { onOpen(msg) }, onLongClick = { onLongPress(msg) })
             .padding(12.dp),
     ) {
@@ -480,6 +495,7 @@ private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, onOpen: (Unr
                     Spacer(Modifier.width(6.dp))
                     RuleTag(rule.label, ruleColor)
                 }
+                CategoryTagIfColoured(msg.category)
                 Spacer(Modifier.weight(1f))
                 Text(msg.time, color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }

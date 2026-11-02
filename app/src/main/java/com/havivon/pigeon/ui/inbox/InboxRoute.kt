@@ -59,7 +59,6 @@ import com.havivon.pigeon.ui.navigation.pigeonViewModel
 import com.havivon.pigeon.ui.reminders.ReminderSheet
 import com.havivon.pigeon.ui.theme.HebTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessage: (threadId: Long, messageId: Long) -> Unit) {
     val context = LocalContext.current
@@ -78,19 +77,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
-    val notices = LocalNotices.current
-    val auth = LocalAuthenticator.current
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
-    var remindFor by remember { mutableStateOf<Conversation?>(null) }
-    var moveFor by remember { mutableStateOf<Conversation?>(null) }
-    val scope = rememberCoroutineScope()
-    val reminderCreated = stringResource(R.string.thread_reminder_created)
-    val deleted = stringResource(R.string.inbox_conversation_deleted)
-    val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
-    val movedToSpam = stringResource(R.string.thread_moved_to_spam)
-    val movedTo = stringResource(R.string.move_folder_moved)
-    val backToAutomatic = stringResource(R.string.move_folder_automatic_done)
-    val needsDefault = rememberNeedsDefaultNotice()
     val access = LocalDefaultApp.current
 
     InboxScreen(
@@ -104,6 +91,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         customCounts = state.customFolderCounts,
         selectedCustom = state.customFolder,
         onCustomFolder = { vm.selectCustomFolder(it.id) },
+        builtInColors = state.builtInColors,
         onOpen = { openThread(it.id) },
         unreadOnly = state.unreadOnly,
         unreadCount = state.unreadCount,
@@ -121,76 +109,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
 
-    sheetFor?.let { conv ->
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        fun done() {
-            sheetFor = null
-        }
-        ModalBottomSheet(onDismissRequest = ::done, sheetState = sheetState, containerColor = HebTheme.colors.surface) {
-            ConversationActions(
-                conv,
-                onPin = { vm.togglePin(conv); done() },
-                onMarkRead = {
-                    done()
-                    if (!vm.markRead(conv)) needsDefault()
-                },
-                onRemind = {
-                    done()
-                    remindFor = conv
-                },
-                onMove = {
-                    done()
-                    moveFor = conv
-                },
-                onLock = {
-                    done()
-                    when {
-                        conv.locked -> auth.authenticate { ok -> if (ok) vm.unlock(conv) }
-                        auth.available() -> vm.lock(conv)
-                        else -> notices.show(needsScreenLock)
-                    }
-                },
-                onDelete = {
-                    done()
-                    vm.delete(conv)?.let { notices.undo(deleted, it) } ?: needsDefault()
-                },
-            )
-        }
-    }
-
-    moveFor?.let { conv ->
-        val folders = state.customFolders
-        MoveToFolderFlow(
-            conv,
-            folders,
-            problemOf = vm::folderNameProblem,
-            onMove = { target ->
-                vm.moveTo(conv, target)
-                notices.show(
-                    when (target) {
-                        null -> backToAutomatic
-                        FolderChoice.BuiltIn(Folder.Spam) -> movedToSpam
-                        is FolderChoice.BuiltIn -> String.format(movedTo, context.getString(target.folder.labelRes))
-                        is FolderChoice.Custom -> String.format(movedTo, folders.firstOrNull { it.id == target.id }?.name.orEmpty())
-                    },
-                )
-            },
-            onCreate = { name -> scope.launch { if (vm.createFolderAndMove(conv, name)) notices.show(String.format(movedTo, FolderNames.clean(name))) } },
-            onDismiss = { moveFor = null },
-        )
-    }
-
-    remindFor?.let { conv ->
-        ReminderSheet(
-            onChoose = { at ->
-                remindFor = null
-                scope.launch {
-                    if (vm.remind(conv, at)) notices.show(String.format(reminderCreated, dateLabels(context).reminder(at, System.currentTimeMillis(), withTime = true)))
-                }
-            },
-            onDismiss = { remindFor = null },
-        )
-    }
+    ConversationSheets(sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = state.customFolders)
 }
 
 /** The long-press sheet's content: apart from its window, so the design snapshots can draw it. */

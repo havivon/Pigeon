@@ -4,6 +4,8 @@ import com.havivon.pigeon.domain.PhoneNumbers
 import com.havivon.pigeon.domain.analysis.DateTimeExtractor
 import com.havivon.pigeon.domain.folders.FolderKeys
 import com.havivon.pigeon.domain.analysis.RuleMatcher
+import com.havivon.pigeon.domain.model.Categories
+import com.havivon.pigeon.domain.model.CategoryTag
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
@@ -38,6 +40,8 @@ class ConversationMapper(
     private val folders: FolderClassifier,
     /** What a locked conversation shows instead of its last message. */
     private val lockedSnippet: String,
+    /** A built-in folder's name, as the user reads it (the text of a category tag). */
+    private val folderLabel: (Folder) -> String = { it.name },
 ) {
     /** The folder and code of a conversation's last message: the analysis, done again only when that message changes. */
     private data class Analysis(val sender: String?, val address: String, val snippet: String, val userWrote: Boolean, val folder: Folder, val code: String?)
@@ -63,6 +67,8 @@ class ConversationMapper(
          * [verdict] (marking spam drops the move, and a filed sender is not judged again).
          */
         override: FolderChoice? = null,
+        /** The user's categories and their colours, for the conversation's category tag ([categoryTag]). */
+        categories: Categories = Categories.None,
     ): Conversation {
         val isLocked = c.threadId in locked
         val address = c.addresses.firstOrNull().orEmpty()
@@ -95,7 +101,20 @@ class ConversationMapper(
             messageCount = c.incomingCount,
             customFolderId = (moved as? FolderChoice.Custom)?.id,
             folderOverridden = moved != null,
+            category = categoryTag(spam, moved ?: FolderChoice.BuiltIn(analysis.folder), categories),
         )
+    }
+
+    /**
+     * The tag of the category a conversation is in: "Spam" (neutral, with no colour of its own) for spam, otherwise
+     * the user's category or the built-in folder it is in (the move by hand first, else the automatic one), with that
+     * category's colour; null for no category (only "All").
+     */
+    private fun categoryTag(spam: Boolean, where: FolderChoice, categories: Categories): CategoryTag? = when {
+        spam -> CategoryTag(folderLabel(Folder.Spam))
+        where is FolderChoice.Custom -> categories.custom.firstOrNull { it.id == where.id }?.let { CategoryTag(it.name, it.argb) }
+        where is FolderChoice.BuiltIn && where.folder != Folder.All -> CategoryTag(folderLabel(where.folder), categories.colorOf(where))
+        else -> null
     }
 
     /** A message's time as the lists show it: the time today, otherwise the day or the date. */
@@ -145,6 +164,7 @@ class ConversationMapper(
                     ruleId = RuleMatcher.firstMatch(rules, sources[m.threadId]?.contactName, m.address, if (isLocked) "" else m.body)?.id,
                     code = code,
                     locked = isLocked,
+                    category = conversation?.category,
                 )
             }
         // Messages that left the list (read, deleted) take their cached code with them

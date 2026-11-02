@@ -39,6 +39,7 @@ import com.havivon.pigeon.ui.conversation.ConversationEvent
 import com.havivon.pigeon.ui.conversation.ConversationViewModel
 import com.havivon.pigeon.ui.conversation.FIRST_PAGE
 import com.havivon.pigeon.ui.conversation.limitToReach
+import com.havivon.pigeon.ui.inbox.ConversationSheetActions
 import com.havivon.pigeon.ui.inbox.InboxViewModel
 import com.havivon.pigeon.ui.search.DateRange
 import com.havivon.pigeon.ui.search.SearchFilters
@@ -50,7 +51,9 @@ import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.ui.spam.groupSpam
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -794,7 +797,7 @@ class ViewModelsTest {
     fun `search waits for typing to pause, then shows names and messages`() = runTest {
         messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny"), conversation(2, "Verify"))
         messages.searchResults = found
-        val vm = SearchViewModel(messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now }, work = main.dispatcher)
+        val vm = search(locked = null)
         collect(vm.state)
         vm.setQuery("Dan")
         vm.setQuery("Danny")
@@ -896,8 +899,14 @@ class ViewModelsTest {
 
     // Search filters without typing
 
-    private fun TestScope.search() = SearchViewModel(
-        messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now }, lockedThreads = locks.state, work = main.dispatcher,
+    /** The long-press sheet's actions, as the inbox and the search both build them. */
+    private fun TestScope.sheetActions(canWrite: Boolean = true) = ConversationSheetActions(
+        messages, pins, locks, moves, reminders, scheduler, CoroutineScope(UnconfinedTestDispatcher(testScheduler)), { cancelled += it }, { canWrite }, { Now },
+    )
+
+    private fun TestScope.search(locked: Flow<Set<Long>>? = locks.state, canWrite: Boolean = true) = SearchViewModel(
+        messages, mapper, labels, AnalysisSeams.codeFinder, rules, pins, spam, folders, favorites, sheetActions(canWrite), "Me",
+        now = { Now }, lockedThreads = locked ?: flowOf(emptySet()), work = main.dispatcher,
     )
 
     @Test
@@ -939,9 +948,7 @@ class ViewModelsTest {
         favorites.star(11, 1, "0525550100", "Danny", "Gate code 4590", millis(2026, 10, 30, 10, 0))
         favorites.star(12, 3, "0535550100", "Secret", "Hidden", millis(2026, 10, 30, 11, 0))
         locks.state.value = setOf(3L)
-        val vm = SearchViewModel(
-            messages, mapper, labels, AnalysisSeams.codeFinder, now = { Now }, lockedThreads = locks.state, favorites = favorites.state, work = main.dispatcher,
-        )
+        val vm = search()
         collect(vm.state)
         vm.toggleStarred()
         advanceTimeBy(300)

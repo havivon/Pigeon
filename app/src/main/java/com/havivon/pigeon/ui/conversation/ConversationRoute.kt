@@ -258,7 +258,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
             state.customFolders,
             problemOf = vm::folderNameProblem,
             onMove = vm::moveTo,
-            onCreate = vm::createFolderAndMove,
+            onCreate = { name, argb -> vm.createFolderAndMove(name, argb) },
             onDismiss = { moveSheet = false },
         )
     }

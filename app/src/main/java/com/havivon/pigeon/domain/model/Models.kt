@@ -11,10 +11,17 @@ enum class Folder(@StringRes val labelRes: Int) {
     Codes(R.string.common_folder_codes),
     Deliveries(R.string.common_folder_deliveries),
     Spam(R.string.common_folder_spam),
+    ;
+
+    /** Whether the user can give this folder a colour: not "All" (it holds everything), nor Spam (it keeps its own red). */
+    val colourable: Boolean get() = this != All && this != Spam
 }
 
-/** A category the user made ("Work", "Family"): a chip after the built-in folders, in the user's order. */
-data class CustomFolder(val id: Long, val name: String)
+/**
+ * A category the user made ("Work", "Family"): a chip after the built-in folders, in the user's order.
+ * [argb] is its colour, if the user gave it one (none by default).
+ */
+data class CustomFolder(val id: Long, val name: String, val argb: Long? = null)
 
 /**
  * Where the user put a conversation by hand ("Move to category"), ahead of the automatic sorting: one of
@@ -25,6 +32,35 @@ sealed interface FolderChoice {
     data class BuiltIn(val folder: Folder) : FolderChoice
     data class Custom(val id: Long) : FolderChoice
 }
+
+/**
+ * The categories as a row is labelled with them: the user's own ([custom], with their colours) and the colours
+ * the user gave to built-in folders ([builtInColors]; Personal, Banks, Insurance, Codes and Deliveries can have
+ * one, All and Spam never do: spam keeps its own red).
+ */
+data class Categories(val custom: List<CustomFolder> = emptyList(), val builtInColors: Map<Folder, Long> = emptyMap()) {
+    /** The colour of [choice], or null for none. */
+    fun colorOf(choice: FolderChoice): Long? = when (choice) {
+        is FolderChoice.BuiltIn -> if (choice.folder.colourable) builtInColors[choice.folder] else null
+        is FolderChoice.Custom -> custom.firstOrNull { it.id == choice.id }?.argb
+    }
+
+    companion object {
+        val None = Categories()
+    }
+}
+
+/**
+ * The small label saying which category a conversation (or one of its messages) is in. [argb] is the category's
+ * own colour, null when the user gave it none (the tag is then neutral, or takes the colour of a rule that matches).
+ */
+data class CategoryTag(val label: String, val argb: Long? = null)
+
+/**
+ * What colours a row: a matching colour rule first (the user's explicit choice for that sender or word), then the
+ * colour of the category it is in, then nothing.
+ */
+fun rowColor(rule: ColorRule?, category: CategoryTag?): Long? = rule?.argb ?: category?.argb
 
 /** Why the spam filter flagged a conversation. The UI turns each reason into text. */
 sealed interface SpamReason {
@@ -99,6 +135,8 @@ data class Conversation(
     val customFolderId: Long? = null,
     /** The user moved it by hand ([folder] or [customFolderId] is theirs, not the automatic sorting's). */
     val folderOverridden: Boolean = false,
+    /** Which category it is in, with that category's colour; null when it is in none (only "All"). */
+    val category: CategoryTag? = null,
 ) {
     val isSpam: Boolean get() = spamReasons.isNotEmpty()
 }
@@ -121,6 +159,8 @@ data class UnreadMessage(
     val code: String? = null,
     /** Behind fingerprint or screen lock: no text, no code. */
     val locked: Boolean = false,
+    /** The category of its conversation, with that category's colour; null when it is in none. */
+    val category: CategoryTag? = null,
 )
 
 data class Message(

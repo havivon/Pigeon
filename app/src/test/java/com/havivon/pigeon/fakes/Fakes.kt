@@ -305,11 +305,21 @@ class FakeFolders(initial: List<CustomFolder> = emptyList()) : FoldersRepository
     val overrideState = MutableStateFlow<Map<String, FolderChoice>>(emptyMap())
     private var nextId = (initial.maxOfOrNull { it.id } ?: 0) + 1
     override val folders: Flow<List<CustomFolder>> = folderState
+    val builtInColorState = MutableStateFlow<Map<Folder, Long>>(emptyMap())
+    override val builtInColors: Flow<Map<Folder, Long>> = builtInColorState
     override val overrides: Flow<Map<String, FolderChoice>> = overrideState
-    override suspend fun add(name: String): Long {
+    override suspend fun add(name: String, argb: Long?): Long {
         val id = nextId++
-        folderState.update { it + CustomFolder(id, name) }
+        folderState.update { it + CustomFolder(id, name, argb) }
         return id
+    }
+    override suspend fun setColor(choice: FolderChoice, argb: Long?) {
+        when (choice) {
+            is FolderChoice.Custom -> folderState.update { list -> list.map { if (it.id == choice.id) it.copy(argb = argb) else it } }
+            is FolderChoice.BuiltIn -> if (choice.folder.colourable) {
+                builtInColorState.update { if (argb == null) it - choice.folder else it + (choice.folder to argb) }
+            }
+        }
     }
     override suspend fun rename(id: Long, name: String) = folderState.update { list -> list.map { if (it.id == id) it.copy(name = name) else it } }
     override suspend fun delete(id: Long) {

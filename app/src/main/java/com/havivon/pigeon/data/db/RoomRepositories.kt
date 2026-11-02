@@ -6,6 +6,7 @@ import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Favorite
+import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.Reminder
 import com.havivon.pigeon.domain.model.RuleMatch
@@ -169,14 +170,28 @@ class RoomBlockedKeywordsRepository(db: PigeonDatabase, private val now: () -> L
 class RoomFoldersRepository(private val db: PigeonDatabase, private val now: () -> Long = System::currentTimeMillis) : FoldersRepository {
     private val dao = db.folders()
 
-    override val folders: Flow<List<CustomFolder>> = dao.observeFolders().map { list -> list.map { CustomFolder(it.id, it.name) } }
+    override val folders: Flow<List<CustomFolder>> = dao.observeFolders().map { list -> list.map { CustomFolder(it.id, it.name, it.argb) } }
+
+    override val builtInColors: Flow<Map<Folder, Long>> = dao.observeBuiltInColors().map { list ->
+        list.mapNotNull { e -> Folder.entries.firstOrNull { it.name == e.folder && it.colourable }?.let { it to e.argb } }.toMap()
+    }
 
     override val overrides: Flow<Map<String, FolderChoice>> = dao.observeOverrides().map { list ->
         list.mapNotNull { e -> FolderChoiceCodec.decode(e.builtIn, e.customFolderId)?.let { e.key to it } }.toMap()
     }
 
-    override suspend fun add(name: String): Long = db.withTransaction {
-        dao.insertFolder(CustomFolderEntity(name = name, position = dao.nextPosition(), createdAtMillis = now()))
+    override suspend fun add(name: String, argb: Long?): Long = db.withTransaction {
+        dao.insertFolder(CustomFolderEntity(name = name, position = dao.nextPosition(), createdAtMillis = now(), argb = argb))
+    }
+
+    override suspend fun setColor(choice: FolderChoice, argb: Long?) {
+        when (choice) {
+            is FolderChoice.Custom -> dao.setFolderColor(choice.id, argb)
+            is FolderChoice.BuiltIn -> {
+                if (!choice.folder.colourable) return
+                if (argb == null) dao.deleteBuiltInColor(choice.folder.name) else dao.upsertBuiltInColor(CategoryColorEntity(choice.folder.name, argb))
+            }
+        }
     }
 
     override suspend fun rename(id: Long, name: String) = dao.rename(id, name)
