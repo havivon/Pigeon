@@ -43,7 +43,7 @@ class BackupJsonTest {
     private val sample = SettingsBackup(
         exportedAtMillis = 1_793_000_000_000L,
         appVersion = "0.4.5",
-        settings = BackupSettings(AppLanguage.Hebrew, AppTheme.Dark, AppIcon.Origami, true, false, true, false, true),
+        settings = BackupSettings(AppLanguage.Hebrew, AppTheme.Dark, AppIcon.Origami, true, false, true, false, true, blockSpamOnPhone = false, autoCopyCodes = true),
         rules = listOf(
             BackupRule("Bank", RuleMatch.Sender("Leumi"), 0xFFE53935L, true),
             BackupRule("", RuleMatch.Keyword("parcel"), 0x80102030L, false),
@@ -72,6 +72,17 @@ class BackupJsonTest {
         assertTrue(json.contains("\"version\":2"))
         assertTrue(json.contains("\"appVersion\":\"0.4.5\""))
         assertTrue(json.contains("\"exportedAt\""))
+    }
+
+    @Test
+    fun `blocking on the phone and copying codes go in the file, and an older file without them leaves them alone`() {
+        val json = BackupJson.encode(sample).replace(" ", "")
+        assertTrue(json.contains("\"blockSpamOnPhone\":false"))
+        assertTrue(json.contains("\"autoCopyCodes\":true"))
+        val older = ok(file(""""settings":{"lockScreenText":false}""", version = 2)).settings
+        assertEquals(false, older.lockScreenText)
+        assertNull(older.blockSpamOnPhone)
+        assertNull(older.autoCopyCodes)
     }
 
     @Test

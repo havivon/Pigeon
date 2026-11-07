@@ -111,7 +111,8 @@ class MessageNotifier(
         }
 
         val address = (lines.lastOrNull { !it.type.outgoing } ?: lines.last()).address
-        val title = contacts.displayName(address) ?: address
+        val contactName = contacts.displayName(address)
+        val title = contactName ?: address
         val me = Person.Builder().setName(context.getString(R.string.thread_sender_me)).build()
         // No contact photos are read: the sender's picture is the whole Pigeon icon, not the grey silhouette
         val appIcon = AppIconBitmap.bitmap(context)
@@ -124,7 +125,7 @@ class MessageNotifier(
             .setContentText(lines.last().body)
             .setWhen(lines.last().dateMillis)
             .addAction(replyAction(threadId, address))
-        lines.lastOrNull { !it.type.outgoing }?.let { codeFinder.find(it.body) }?.let { builder.addAction(copyCodeAction(threadId, it)) }
+        lines.lastOrNull { !it.type.outgoing }?.let { codeFinder.find(it.body, it.address, knownPerson = contactName != null) }?.let { builder.addAction(copyCodeAction(threadId, it)) }
         notify(TAG_THREAD, notificationId(threadId), builder)
     }
 

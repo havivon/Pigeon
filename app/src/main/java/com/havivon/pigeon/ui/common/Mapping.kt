@@ -52,7 +52,7 @@ class ConversationMapper(
     private fun analysis(c: SmsConversation, address: String): Analysis {
         analyses[c.threadId]?.takeIf { it.sender == c.contactName && it.address == address && it.snippet == c.snippet && it.userWrote == c.userWrote }
             ?.let { return it }
-        return Analysis(c.contactName, address, c.snippet, c.userWrote, folders.classify(c), codeFinder.find(c.snippet)).also { analyses[c.threadId] = it }
+        return Analysis(c.contactName, address, c.snippet, c.userWrote, folders.classify(c), codeFinder.find(c.snippet, address, c.contactName != null || c.userWrote)).also { analyses[c.threadId] = it }
     }
 
     fun map(
@@ -153,7 +153,7 @@ class ConversationMapper(
                     return@mapNotNull null
                 }
                 val isLocked = m.threadId in locked
-                val code = if (isLocked) null else unreadCodes.getOrPut(m.id) { codeFinder.find(m.body).orEmpty() }.ifEmpty { null }
+                val code = if (isLocked) null else unreadCodes.getOrPut(m.id) { codeFinder.find(m.body, m.address, sources[m.threadId]?.let { it.contactName != null || it.userWrote } == true).orEmpty() }.ifEmpty { null }
                 UnreadMessage(
                     messageId = m.id,
                     threadId = m.threadId,

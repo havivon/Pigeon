@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.Edit
@@ -57,15 +58,17 @@ import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
+import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.ReorderDragState
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /**
- * The user's own categories (Settings → Messages → Categories): the handle drags one to a new place (the
- * chips follow this order), the pencil renames it and the bin deletes it (its conversations go back to the
- * automatic sorting). New ones are made from "Move to category".
+ * The user's own categories (Settings → Messages → Categories): "New category" makes one (a name and an optional
+ * colour), the handle drags one to a new place (the chips follow this order), the pencil renames it and the bin
+ * deletes it (its conversations go back to the automatic sorting). New ones are also made from "Move to category".
+ * The built-in categories only take a colour.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -74,6 +77,8 @@ fun FoldersScreen(
     onBack: () -> Unit = {},
     onRename: (CustomFolder) -> Unit = {},
     onDelete: (CustomFolder) -> Unit = {},
+    /** "New category": opens the name dialog. */
+    onNew: () -> Unit = {},
     /** The colours the user gave to built-in folders (the rows above their own categories). */
     builtInColors: Map<Folder, Long> = emptyMap(),
     /** The colour dot of a row was tapped: opens the picker for that built-in folder or category. */
@@ -117,6 +122,15 @@ fun FoldersScreen(
                 BuiltInCard(folder, builtInColors[folder], onColor = { onColor(FolderChoice.BuiltIn(folder)) })
             }
             item(key = "yours") { SectionLabel(stringResource(R.string.folders_section)) }
+            item(key = "new") {
+                PillButton(
+                    stringResource(R.string.folders_add),
+                    Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth(),
+                    icon = Icons.Rounded.Add,
+                    filled = true,
+                    onClick = onNew,
+                )
+            }
             if (order.isEmpty()) {
                 item(key = "none") {
                     Text(

@@ -15,14 +15,20 @@ import androidx.annotation.StringRes
 object SensitiveClipboard {
 
     fun copy(context: Context, label: String, text: String, @StringRes confirmation: Int) {
-        val clip = ClipData.newPlainText(label, text)
-        clip.description.extras = PersistableBundle().apply {
-            putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE", true)
-        }
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+        copySilently(context, label, text)
         // Android 13+ shows its own "copied" confirmation
         if (Build.VERSION.SDK_INT < 33) {
             Handler(Looper.getMainLooper()).post { Toast.makeText(context, confirmation, Toast.LENGTH_SHORT).show() }
         }
+    }
+
+    /** The same without a toast of Pigeon's own (Android 13+ still shows its confirmation); [extras] go on the clip's description. */
+    fun copySilently(context: Context, label: String, text: String, extras: Map<String, String> = emptyMap()) {
+        val clip = ClipData.newPlainText(label, text)
+        clip.description.extras = PersistableBundle().apply {
+            putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE", true)
+            for ((k, v) in extras) putString(k, v)
+        }
+        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
     }
 }

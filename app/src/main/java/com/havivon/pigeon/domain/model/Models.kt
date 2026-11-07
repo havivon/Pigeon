@@ -94,6 +94,11 @@ sealed interface SpamReason {
     data object MoneyAmount : SpamReason
     /** Long English text in capital letters. */
     data object AllCaps : SpamReason
+    /**
+     * The number is on the phone's own blocked list (Android's `BlockedNumberContract`), where Google Messages,
+     * Samsung Messages and the Phone app put the numbers the user blocked.
+     */
+    data object BlockedOnPhone : SpamReason
 }
 
 sealed interface RuleMatch {

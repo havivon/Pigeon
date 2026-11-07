@@ -483,7 +483,7 @@
     <string name="folder_color_title">צבע ל„%1$s”</string>
     <string name="folder_color_label">צבע (לא חובה)</string>
     <string name="folder_color_none">בלי צבע</string>
-    <string name="folders_none">אין עדיין קטגוריות משלך. לוחצים לחיצה ארוכה על שיחה, בוחרים „העבר לקטגוריה” ואז „קטגוריה חדשה…”.</string>
+    <string name="folders_none">אין עדיין קטגוריות משלך. לוחצים על „קטגוריה חדשה”, או לחיצה ארוכה על שיחה ואז „העבר לקטגוריה”.</string>
     <string name="folders_rename">שינוי השם של %1$s</string>
     <string name="folders_delete">מחיקת %1$s</string>
     <string name="folders_delete_title">למחוק את „%1$s”?</string>
@@ -531,4 +531,56 @@
     <string name="backup_note_chats">נמצאו %1$d מתוך %2$d שיחות מוצמדות או נעולות</string>
     <string name="backup_note_app_lock">נעילת האפליקציה נשארת כבויה: קודם מגדירים נעילת מסך בטלפון</string>
     <string name="backup_note_no_messages">שיחות מוצמדות ונעולות, תזכורות והודעות מסומנות לא שונו: Pigeon לא יכול לקרוא עכשיו את ההודעות שלך</string>
+
+    <!-- 0.4.7: the phone's blocked numbers, codes copied automatically, a New category button -->
+    <string name="spam_reason_blocked_on_phone">חסום בטלפון</string>
+    <string name="phone_unblock_title">לבטל את החסימה גם בטלפון?</string>
+    <string name="phone_unblock_body_one">‏%1$s חסום בטלפון הזה, ולכן הוא לא יכול להתקשר אליך או לשלוח לך הודעות באף אפליקציה. ביטול החסימה מוציא אותו מרשימת המספרים החסומים של הטלפון.</string>
+    <plurals name="phone_unblock_body_many">
+        <item quantity="one">מספר אחד חסום בטלפון הזה, ולכן הוא לא יכול להתקשר אליך או לשלוח לך הודעות באף אפליקציה. ביטול החסימה מוציא אותו מרשימת המספרים החסומים של הטלפון.</item>
+        <item quantity="two">%1$d מספרים חסומים בטלפון הזה, ולכן הם לא יכולים להתקשר אליך או לשלוח לך הודעות באף אפליקציה. ביטול החסימה מוציא אותם מרשימת המספרים החסומים של הטלפון.</item>
+        <item quantity="other">%1$d מספרים חסומים בטלפון הזה, ולכן הם לא יכולים להתקשר אליך או לשלוח לך הודעות באף אפליקציה. ביטול החסימה מוציא אותם מרשימת המספרים החסומים של הטלפון.</item>
+    </plurals>
+    <string name="phone_unblock_confirm">בטל חסימה</string>
+    <string name="phone_unblock_keep">השאר חסום</string>
+    <string name="phone_unblocked">החסימה בטלפון בוטלה</string>
+
+    <string name="settings_blocked_numbers">מספרים חסומים</string>
+    <plurals name="settings_blocked_numbers_count">
+        <item quantity="one">מספר אחד חסום בטלפון</item>
+        <item quantity="two">%1$d מספרים חסומים בטלפון</item>
+        <item quantity="other">%1$d מספרים חסומים בטלפון</item>
+    </plurals>
+    <string name="settings_blocked_numbers_none">אין מספרים חסומים בטלפון</string>
+    <string name="settings_blocked_numbers_unavailable">הרשימה של הטלפון, גלויה לאפליקציית ברירת המחדל ל-SMS</string>
+    <string name="settings_block_on_phone">חסום שולחי ספאם בכל הטלפון</string>
+    <string name="settings_block_on_phone_note">„סמן כספאם” חוסם גם את המספר: מספרים חסומים לא יכולים להתקשר או לשלוח הודעות, בשום אפליקציה.</string>
+    <string name="settings_auto_copy">העתק קודים אוטומטית</string>
+    <string name="settings_auto_copy_note">המקלדת תציע את הקוד להדבקה; הוא נמחק אחרי 3 דקות</string>
+
+    <string name="blocked_title">מספרים חסומים</string>
+    <string name="blocked_subtitle">חסומים בכל הטלפון, בכל האפליקציות</string>
+    <string name="blocked_info">המספרים האלה לא יכולים להתקשר אליך או לשלוח לך הודעות. זו הרשימה של הטלפון עצמו: מספרים שחסמת ב-Google Messages, בהודעות של סמסונג או באפליקציית הטלפון מופיעים כאן, ו-Pigeon מעביר אותם לספאם. את תיקיות הספאם שלהן האפליקציות האלה שומרות לעצמן, ואף אפליקציה אחרת לא יכולה לקרוא אותן.</string>
+    <string name="blocked_field">מספר לחסימה</string>
+    <string name="blocked_hint">לדוגמה 050-1234567</string>
+    <string name="blocked_add">חסום מספר</string>
+    <string name="blocked_invalid">זה לא מספר טלפון</string>
+    <string name="blocked_duplicate">המספר הזה כבר חסום</string>
+    <string name="blocked_failed">הטלפון לא אישר</string>
+    <string name="blocked_section_empty">חסומים בטלפון</string>
+    <plurals name="blocked_section">
+        <item quantity="one">מספר חסום אחד</item>
+        <item quantity="two">%1$d מספרים חסומים</item>
+        <item quantity="other">%1$d מספרים חסומים</item>
+    </plurals>
+    <string name="blocked_none">אין מספרים חסומים.</string>
+    <string name="blocked_unblock">ביטול החסימה של %1$s</string>
+    <string name="blocked_unblock_title">לבטל את החסימה של %1$s?</string>
+    <string name="blocked_unblock_body">הוא יוכל שוב להתקשר ולשלוח לך הודעות, בכל האפליקציות בטלפון.</string>
+    <string name="blocked_unavailable_title">רק כאפליקציית ברירת המחדל</string>
+    <string name="blocked_unavailable_body">‏Android מראה את המספרים החסומים של הטלפון רק לאפליקציית ברירת המחדל ל-SMS. הופכים את Pigeon לברירת המחדל כדי לראות ולשנות אותם.</string>
+    <string name="blocked_added">נחסם בטלפון</string>
+
+    <string name="folders_add">קטגוריה חדשה</string>
+    <string name="folders_created">הקטגוריה נוצרה</string>
 </resources>

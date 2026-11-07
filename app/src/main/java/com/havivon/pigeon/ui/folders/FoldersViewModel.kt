@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** The Categories screen: the user's categories, renamed, deleted and reordered through [moves]. */
+/** The Categories screen: the user's categories, made, renamed, deleted and reordered through [moves]. */
 class FoldersViewModel(folders: FoldersRepository, private val moves: FolderMoves) : ViewModel() {
 
     val folders: StateFlow<List<CustomFolder>> = folders.folders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -45,6 +45,14 @@ class FoldersViewModel(folders: FoldersRepository, private val moves: FolderMove
         val choice = _picking.value ?: return
         _picking.value = null
         viewModelScope.launch { moves.setColor(choice, argb) }
+    }
+
+    /** Why [name] cannot be a new category's, or null when it can. */
+    fun newProblem(name: String): FolderNameProblem? = moves.problem(name, folders.value)
+
+    /** "New category": at the end of the list, with a colour if [argb] is given; [done] hears whether it was made. */
+    fun create(name: String, argb: Long?, done: (Boolean) -> Unit = {}) {
+        viewModelScope.launch { done(moves.create(name, argb) != null) }
     }
 
     /** Why [name] cannot be the new name of [folder], or null when it can (its own name is free). */

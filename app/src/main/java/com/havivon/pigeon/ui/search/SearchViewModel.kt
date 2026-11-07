@@ -128,7 +128,7 @@ fun filterResults(results: SearchResults, filters: SearchFilters, nowMillis: Lon
         (filters.threadId == null || m.threadId == filters.threadId) &&
             (since == null || m.dateMillis >= since) &&
             (!filters.hasLink || LinkAnalyzer.findLinks(m.body).isNotEmpty()) &&
-            (!filters.hasCode || codeFinder.find(m.body) != null)
+            (!filters.hasCode || codeFinder.find(m.body, m.address, knownPerson = false) != null)
     }
     val conversations = if (filters.hasLink || filters.hasCode || filters.starred) {
         emptyList()

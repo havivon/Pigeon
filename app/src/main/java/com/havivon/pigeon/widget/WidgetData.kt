@@ -92,7 +92,7 @@ object WidgetDataBuilder {
     ): CodeWidgetData? {
         for (m in incoming.take(CODE_SEARCH_DEPTH)) {
             if (m.type.outgoing || m.threadId in excludedThreads) continue
-            val code = codeFinder.find(m.body) ?: continue
+            val code = codeFinder.find(m.body, m.address, knownPerson = false) ?: continue
             return CodeWidgetData(code, senderOf(m), m.threadId, ((nowMillis - m.dateMillis) / 60_000L).coerceAtLeast(0))
         }
         return null

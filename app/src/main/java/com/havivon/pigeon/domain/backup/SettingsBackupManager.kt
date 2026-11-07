@@ -111,6 +111,8 @@ class SettingsBackupManager(
                 blockScreenshots = s.blockScreenshots,
                 appLock = s.appLock,
                 autoDeleteCodes = s.autoDeleteCodes,
+                blockSpamOnPhone = s.blockSpamOnPhone,
+                autoCopyCodes = s.autoCopyCodes,
             ),
             rules = rules.rules.first().map { BackupRule(it.label, it.match, it.argb, it.enabled) },
             categories = categories.map { it.name },
@@ -221,6 +223,8 @@ class SettingsBackupManager(
             blockScreenshots = file.blockScreenshots ?: current.blockScreenshots,
             appLock = if (lockKeptOff) current.appLock else file.appLock ?: current.appLock,
             autoDeleteCodes = autoDelete,
+            blockSpamOnPhone = file.blockSpamOnPhone ?: current.blockSpamOnPhone,
+            autoCopyCodes = file.autoCopyCodes ?: current.autoCopyCodes,
             // As the switch does it: counting starts when the feature is turned on, so existing history is never wiped
             autoDeleteCodesSinceMillis = when {
                 !autoDelete -> null

@@ -15,7 +15,10 @@ import com.havivon.pigeon.domain.seam.FolderClassifier as FolderSeam
 /** The analysis behind the platform's seams (see `domain/seam`), passed to `AppContainer` by `PigeonApp`. */
 object AnalysisSeams {
 
-    val codeFinder: CodeFinder = CodeFinder { CodeExtractor.extract(it) }
+    val codeFinder: CodeFinder = object : CodeFinder {
+        override fun find(body: String): String? = CodeExtractor.extract(body)
+        override fun find(body: String, address: String, knownPerson: Boolean): String? = CodeExtractor.extract(body, address, knownPerson)
+    }
 
     /**
      * The inbox folder of a conversation, from its last message. Spam is not decided here: it comes

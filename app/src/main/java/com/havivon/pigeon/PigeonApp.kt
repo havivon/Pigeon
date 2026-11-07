@@ -39,5 +39,7 @@ class PigeonApp : Application() {
         BinPurgeWorker.schedule(this)
         // Off the main thread: the widgets only need keeping current if one is placed
         container.appScope.launch { container.widgets.ensureRunning() }
+        // A number blocked on the phone after the user's "Not spam" is spam again: watch the phone's list
+        container.appScope.launch { container.phoneSpam.syncForever() }
     }
 }

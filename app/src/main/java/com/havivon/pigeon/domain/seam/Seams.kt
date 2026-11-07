@@ -15,6 +15,14 @@ fun interface CodeFinder {
     /** The code, or null when the message has none. Must be fast and pure: it runs on every notification. */
     fun find(body: String): String?
 
+    /**
+     * The same, knowing who sent it: [address] as the system stores it, and [knownPerson] for a saved contact or
+     * someone the user wrote to. A message that is only a number ("66655") is a code from a service or a stranger,
+     * not from a friend; a short text with one number in it is a code only from a sender id ("HAREL"). The
+     * default ignores the sender.
+     */
+    fun find(body: String, address: String, knownPerson: Boolean): String? = find(body)
+
     companion object {
         val None = CodeFinder { null }
     }

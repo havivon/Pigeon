@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -22,7 +23,7 @@ import com.havivon.pigeon.ui.common.reservedFolderNames
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
 import com.havivon.pigeon.ui.theme.HebTheme
 
-/** The Categories screen on real data: rename (a dialog), delete (after a confirmation) and reorder. */
+/** The Categories screen on real data: a new category and rename (a dialog), delete (after a confirmation) and reorder. */
 @Composable
 fun FoldersRoute(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -33,16 +34,34 @@ fun FoldersRoute(onBack: () -> Unit) {
     val notices = LocalNotices.current
     var renaming by remember { mutableStateOf<CustomFolder?>(null) }
     var deleting by remember { mutableStateOf<CustomFolder?>(null) }
+    var creating by rememberSaveable { mutableStateOf(false) }
+    val created = stringResource(R.string.folders_created)
 
     FoldersScreen(
         folders = folders,
         onBack = onBack,
         onRename = { renaming = it },
         onDelete = { deleting = it },
+        onNew = { creating = true },
         builtInColors = builtInColors,
         onColor = vm::pickColorFor,
         onReorder = vm::reorder,
     )
+
+    if (creating) {
+        FolderNameDialog(
+            title = stringResource(R.string.folder_new_title),
+            confirm = stringResource(R.string.folder_create),
+            initial = "",
+            problemOf = vm::newProblem,
+            withColor = true,
+            onConfirm = { name, argb ->
+                creating = false
+                vm.create(name, argb) { ok -> if (ok) notices.show(created) }
+            },
+            onDismiss = { creating = false },
+        )
+    }
 
     renaming?.let { folder ->
         FolderNameDialog(

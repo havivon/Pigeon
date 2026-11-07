@@ -74,6 +74,10 @@ data class AppSettings(
      * it are deleted, so turning the feature on never wipes the user's existing history.
      */
     val autoDeleteCodesSinceMillis: Long? = null,
+    /** "Mark as spam" also puts the number on the phone's own blocked list, so it cannot call or text in any app. */
+    val blockSpamOnPhone: Boolean = true,
+    /** A one-time code that arrives is copied, so the keyboard offers it; it is cleared after a few minutes. */
+    val autoCopyCodes: Boolean = true,
     val welcomeDone: Boolean = false,
     /** Whether the app has asked (once, after becoming the default) for notifications and contacts. */
     val permissionsAsked: Boolean = false,

@@ -26,6 +26,7 @@ object SpamReasonCodec {
     private const val CONTACT_ELSEWHERE = "contact_elsewhere"
     private const val MONEY_AMOUNT = "money_amount"
     private const val ALL_CAPS = "all_caps"
+    private const val BLOCKED_ON_PHONE = "blocked_on_phone"
     private const val KEYWORD = "keyword:"
     private const val BLOCKED_KEYWORD = "blocked:"
 
@@ -46,6 +47,7 @@ object SpamReasonCodec {
             SpamReason.ContactElsewhere -> CONTACT_ELSEWHERE
             SpamReason.MoneyAmount -> MONEY_AMOUNT
             SpamReason.AllCaps -> ALL_CAPS
+            SpamReason.BlockedOnPhone -> BLOCKED_ON_PHONE
             // A line break inside the word would split the reason
             is SpamReason.Keyword -> KEYWORD + r.word.oneLine()
             is SpamReason.BlockedKeyword -> BLOCKED_KEYWORD + r.word.oneLine()
@@ -71,6 +73,7 @@ object SpamReasonCodec {
             line == CONTACT_ELSEWHERE -> SpamReason.ContactElsewhere
             line == MONEY_AMOUNT -> SpamReason.MoneyAmount
             line == ALL_CAPS -> SpamReason.AllCaps
+            line == BLOCKED_ON_PHONE -> SpamReason.BlockedOnPhone
             line.startsWith(KEYWORD) -> SpamReason.Keyword(line.removePrefix(KEYWORD))
             line.startsWith(BLOCKED_KEYWORD) -> SpamReason.BlockedKeyword(line.removePrefix(BLOCKED_KEYWORD))
             else -> null

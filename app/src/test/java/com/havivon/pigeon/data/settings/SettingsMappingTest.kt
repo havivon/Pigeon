@@ -28,6 +28,8 @@ class SettingsMappingTest {
         assertFalse(s.autoDeleteCodes)
         assertNull(s.autoDeleteCodesSinceMillis)
         assertFalse(s.welcomeDone)
+        assertTrue("Mark as spam blocks on the phone, as in Google Messages", s.blockSpamOnPhone)
+        assertTrue("codes are copied for the keyboard", s.autoCopyCodes)
     }
 
     @Test
@@ -44,6 +46,8 @@ class SettingsMappingTest {
             SettingsKeys.AUTO_DELETE_CODES_SINCE to 1234L,
             SettingsKeys.WELCOME_DONE to true,
             SettingsKeys.PERMISSIONS_ASKED to true,
+            SettingsKeys.BLOCK_SPAM_ON_PHONE to false,
+            SettingsKeys.AUTO_COPY_CODES to false,
         )
         assertEquals(
             AppSettings(
@@ -58,6 +62,8 @@ class SettingsMappingTest {
                 autoDeleteCodesSinceMillis = 1234L,
                 welcomeDone = true,
                 permissionsAsked = true,
+                blockSpamOnPhone = false,
+                autoCopyCodes = false,
             ),
             prefs.toAppSettings(),
         )

@@ -28,10 +28,12 @@ data class BackupSettings(
     val blockScreenshots: Boolean? = null,
     val appLock: Boolean? = null,
     val autoDeleteCodes: Boolean? = null,
+    val blockSpamOnPhone: Boolean? = null,
+    val autoCopyCodes: Boolean? = null,
 ) {
     /** How many settings the file holds. */
     val count: Int
-        get() = listOf<Any?>(language, theme, appIcon, lockScreenText, widgetsShowText, blockScreenshots, appLock, autoDeleteCodes).count { it != null }
+        get() = listOf<Any?>(language, theme, appIcon, lockScreenText, widgetsShowText, blockScreenshots, appLock, autoDeleteCodes, blockSpamOnPhone, autoCopyCodes).count { it != null }
 }
 
 /** A colour rule. [argb] is a full ARGB value, as in `ColorRule`. */

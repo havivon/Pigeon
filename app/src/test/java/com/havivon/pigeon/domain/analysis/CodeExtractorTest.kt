@@ -153,4 +153,86 @@ class CodeExtractorTest {
         assertEquals("482913", CodeExtractor.extract(noise + "קוד האימות הוא 482913"))
         assertNull(CodeExtractor.extract("קוד" + " ".repeat(200) + "482913"))
     }
+
+    // A message that is only the code, without a cue word ("HAREL" sent "66655")
+
+    @Test
+    fun aMessageThatIsOnlyANumberIsACode() {
+        val cases = listOf(
+            "66655" to "66655",
+            "  482913 " to "482913",
+            "G-123456" to "123456",
+            "123 456" to "123456",
+            "1234-5678" to "12345678",
+            "קוד: 7781" to "7781",
+            "Code - 7781" to "7781",
+            "482913." to "482913",
+            "(482913)" to "482913",
+            "‏482913‏" to "482913",
+            "<#> 482913" to "482913",
+            "🔐 918273" to "918273",
+        )
+        for ((text, code) in cases) {
+            assertEquals(text, code, CodeExtractor.extract(text))
+            assertEquals("from a sender id: $text", code, CodeExtractor.extract(text, "HAREL"))
+            assertEquals("from a stranger's number: $text", code, CodeExtractor.extract(text, "+972541234567"))
+        }
+    }
+
+    @Test
+    fun aNumberThatLooksLikeSomethingElseIsNotACode() {
+        val cases = listOf(
+            "2026", "1999", "15:30", "054-1234567", "0541234567", "+972541234567", "₪120", "₪1200", "1200₪", "1200 ש\"ח",
+            "12/11", "12.11", "15.11.2026", "15112026", "20261115", "1200%", "#1234", "*2345", "••1234", "123", "123456789",
+            "12 34", "1,250", "K7P2QD", "",
+        )
+        for (text in cases) {
+            assertNull(text, CodeExtractor.extract(text))
+            assertNull("from a sender id: $text", CodeExtractor.extract(text, "HAREL"))
+        }
+    }
+
+    /** Decided: a friend's "1234" is a message (a gate code, a PIN they share), not a one-time code to file under Codes or delete after a day. */
+    @Test
+    fun aKnownPersonsBareNumberIsAMessage() {
+        assertNull(CodeExtractor.extract("1234", "+972541234567", knownPerson = true))
+        assertNull(CodeExtractor.extract("66655", "HAREL", knownPerson = true))
+        assertEquals("a stranger's number may send a code", "1234", CodeExtractor.extract("1234", "+972541234567", knownPerson = false))
+        assertEquals("a cue word still counts for a contact", "4590", CodeExtractor.extract("הקוד לשער 4590", "+972541234567", knownPerson = true))
+    }
+
+    @Test
+    fun aShortMessageFromASenderIdWithOneNumberIsACode() {
+        val cases = listOf(
+            "HAREL: 66655" to "66655",
+            "66655 לכניסה לאזור האישי" to "66655",
+            "Your Harel login: 482913" to "482913",
+            "482913 בתוקף ל-10 דקות" to "482913",
+            "Use G-123456 to sign in" to "123456",
+        )
+        for ((text, code) in cases) {
+            assertEquals(text, code, CodeExtractor.extract(text, "HAREL"))
+            assertNull("only from a sender id: $text", CodeExtractor.extract(text, "+972541234567"))
+            assertNull("only with the sender known: $text", CodeExtractor.extract(text))
+        }
+    }
+
+    @Test
+    fun aShortMessageWithAnAmountDatePhoneOrOtherNumberIsNotACode() {
+        val cases = listOf(
+            "Your order 123456 has shipped",
+            "הזמנה 482913 נשלחה",
+            "אסמכתא 556677",
+            "שולם ₪120, תודה 556677",
+            "תור ב-12/11 בשעה 4455",
+            "חייגו 03-1234567 ונציג 4455",
+            "Flight 4455 boards now",
+            "4455 or 6677?",
+            "Points balance: 4500",
+            "Happy 2026 from Harel",
+            "4455 and ref 99887766",
+            "שלום! 66655 " + "ועוד מילים רבות שהופכות את ההודעה לארוכה",
+        )
+        for (text in cases) assertNull(text, CodeExtractor.extract(text, "HAREL"))
+    }
 }

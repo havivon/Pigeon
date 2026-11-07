@@ -40,6 +40,9 @@ sealed interface Screen {
     /** The user's own categories, opened from the settings. */
     data object Folders : Screen
 
+    /** The phone's blocked numbers, opened from the settings. */
+    data object BlockedNumbers : Screen
+
     /** The recycle bin, opened from the settings only. */
     data object RecycleBin : Screen
 }

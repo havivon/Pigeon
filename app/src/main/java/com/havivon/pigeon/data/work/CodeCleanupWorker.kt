@@ -40,7 +40,7 @@ fun codesToDelete(
 ): List<Long> =
     candidates.filter { c ->
         c.dateMillis >= sinceMillis && c.dateMillis <= nowMillis - CODE_MAX_AGE_MILLIS && c.id !in starred &&
-            codeFinder.find(c.body) != null && !fromContact(c.address)
+            !fromContact(c.address) && codeFinder.find(c.body, c.address, knownPerson = false) != null
     }.map { it.id }
 
 /**

@@ -86,7 +86,7 @@ private class Phone(val shift: Long = 0) {
         settings.state.value = AppSettings(
             language = AppLanguage.Hebrew, theme = AppTheme.Dark, appIcon = AppIcon.Origami, lockScreenText = false,
             widgetsShowText = false, blockScreenshots = true, appLock = false, autoDeleteCodes = true, autoDeleteCodesSinceMillis = Now - 1000,
-            welcomeDone = true, permissionsAsked = true,
+            welcomeDone = true, permissionsAsked = true, blockSpamOnPhone = false, autoCopyCodes = false,
         )
         rules.add("Bank", RuleMatch.Sender("Leumi"), 0xFFE53935L, true)
         rules.add("Parcels", RuleMatch.Keyword("parcel"), 0xFF1E88E5L, false)
@@ -471,7 +471,7 @@ class SettingsBackupManagerTest {
         val a = Phone()
         a.setUp()
         val summary = parsed(a.exportJson()).summary()
-        assertEquals(8, summary.settings)
+        assertEquals(10, summary.settings)
         assertEquals(2, summary.rules)
         assertEquals(2, summary.categories)
         assertEquals(3, summary.moves)

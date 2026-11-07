@@ -20,6 +20,8 @@ interface SettingsRepository {
     suspend fun setAppLock(value: Boolean)
     suspend fun setAutoDeleteCodes(value: Boolean)
     suspend fun setAutoDeleteCodesSince(millis: Long?)
+    suspend fun setBlockSpamOnPhone(value: Boolean)
+    suspend fun setAutoCopyCodes(value: Boolean)
     suspend fun setWelcomeDone(value: Boolean)
     suspend fun setPermissionsAsked(value: Boolean)
 

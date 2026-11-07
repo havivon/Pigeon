@@ -26,6 +26,11 @@ import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.domain.reminders.QuickReminder
+import com.havivon.pigeon.ui.blocked.BlockedEntry
+import com.havivon.pigeon.ui.blocked.BlockedNumbersScreen
+import com.havivon.pigeon.ui.blocked.BlockedNumbersState
+import com.havivon.pigeon.ui.blocked.BlockProblem
+import com.havivon.pigeon.ui.blocked.PhoneUnblockContent
 import com.havivon.pigeon.ui.folders.CategoryColorDialogContent
 import com.havivon.pigeon.ui.folders.FoldersScreen
 import com.havivon.pigeon.ui.inbox.InboxScreen
@@ -64,6 +69,17 @@ private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
         ruleCount = sample.rules.size,
         keywordCount = 3,
         folderCount = 3,
+        blockedNumberCount = 3,
+    )
+
+    /** The phone's blocked numbers: made-up 555 numbers, one saved as a contact. */
+    val blocked = BlockedNumbersState(
+        entries = listOf(
+            BlockedEntry("+972525550188"),
+            BlockedEntry("0525550142", if (hebrew) "מוקד מכירות" else "Sales line"),
+            BlockedEntry("+12025550175"),
+        ),
+        loaded = true,
     )
 
     /** Notifications not allowed yet and exact alarms off, so the rows that ask for them show. */
@@ -207,6 +223,18 @@ class EditingSnapshots {
             FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors)
             DialogOver { CategoryColorDialogContent(s.coloredFolders[2].name, null, {}) }
         }
+        shot("120_blocked_numbers") { BlockedNumbersScreen(s.blocked) }
+        shot("121_blocked_numbers_duplicate_dark", dark = true) { BlockedNumbersScreen(s.blocked.copy(draft = "052-5550188", problem = BlockProblem.Duplicate)) }
+        shot("122_blocked_numbers_viewer") { BlockedNumbersScreen(BlockedNumbersState(available = false, loaded = true)) }
+        shot("123_blocked_numbers_empty") { BlockedNumbersScreen(BlockedNumbersState(loaded = true)) }
+        shot("124_unblock_on_phone") {
+            BlockedNumbersScreen(s.blocked)
+            DialogOver { PhoneUnblockContent(listOf("052-5550188"), {}, {}) }
+        }
+        shot("125_unblock_on_phone_many_dark", dark = true) {
+            BlockedNumbersScreen(s.blocked)
+            DialogOver { PhoneUnblockContent(listOf("052-5550188", "052-5550142"), {}, {}) }
+        }
         shot("97_import_dialog") {
             SettingsScreen(s.state, s.environment, SettingsActions())
             DialogOver { ImportConfirmContent(s.importSummary, {}, {}) }
@@ -265,6 +293,12 @@ class EditingSnapshotsEnglish {
         }
         shot("96_en_categories") { FoldersScreen(s.folders) }
         shot("118_en_categories_colors") { FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors) }
+        shot("126_en_blocked_numbers") { BlockedNumbersScreen(s.blocked) }
+        shot("127_en_blocked_numbers_viewer") { BlockedNumbersScreen(BlockedNumbersState(available = false, loaded = true)) }
+        shot("128_en_unblock_on_phone") {
+            BlockedNumbersScreen(s.blocked)
+            DialogOver { PhoneUnblockContent(listOf("052-5550188"), {}, {}) }
+        }
         shot("119_en_category_color_picker") {
             FoldersScreen(s.coloredFolders, builtInColors = s.builtInColors)
             DialogOver { CategoryColorDialogContent(s.coloredFolders[0].name, s.coloredFolders[0].argb, {}) }

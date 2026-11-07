@@ -61,14 +61,20 @@ import com.havivon.pigeon.ui.onboarding.RestrictedSettingsHelp
 import com.havivon.pigeon.ui.onboarding.DefaultAppWelcome
 import com.havivon.pigeon.ui.onboarding.PermissionsExplainer
 import com.havivon.pigeon.ui.rules.RulesRoute
+import com.havivon.pigeon.ui.blocked.BlockedNumbersRoute
+import com.havivon.pigeon.ui.blocked.PhoneUnblockOffer
 import com.havivon.pigeon.ui.search.SearchRoute
 import com.havivon.pigeon.ui.settings.SettingsRoute
 import com.havivon.pigeon.ui.spam.SpamRoute
 import com.havivon.pigeon.ui.theme.HebTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** A result this fast means the system showed no dialog at all (it suppresses its request after a refusal). */
 private const val SUPPRESSED_DIALOG_MS = 1000L
+
+/** How long after the app comes back the copied code's clearing is tried (see [com.havivon.pigeon.domain.codes.CodeAutoCopy.clearIfDue]). */
+private const val CLIPBOARD_FOCUS_DELAY_MS = 700L
 
 /** Away for less than this (a share, the dialer, the browser), the app does not lock again. */
 private const val LOCK_GRACE_MS = 10_000L
@@ -111,6 +117,22 @@ fun PigeonShell(navigator: Navigator, authenticator: BiometricAuthenticator) {
         onDispose { }
     }
 
+    // A copied code that is due to be cleared: Android lets Pigeon look at the clipboard only while it is on screen
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    // The window takes the focus a moment after the resume, and the clipboard needs it
+                    delay(CLIPBOARD_FOCUS_DELAY_MS)
+                    container.codeAutoCopy.clearIfDue()
+                }
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+
     CompositionLocalProvider(LocalNotices provides notices, LocalAuthenticator provides authenticator) {
         Box(Modifier.fillMaxSize()) {
             DefaultAppGate(settings) {
@@ -124,6 +146,7 @@ fun PigeonShell(navigator: Navigator, authenticator: BiometricAuthenticator) {
                 Snackbar(data, containerColor = c.onSurface, contentColor = c.surface, actionColor = if (c.isDark) c.background else c.surfaceVariant)
             }
             LockGate(settings, navigator, authenticator, topLocked, locked)
+            PhoneUnblockOffer(container.phoneSpam, notices)
         }
     }
 }
@@ -182,6 +205,7 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
             Screen.Rules -> RulesRoute(onBack = { navigator.pop() })
             Screen.BlockedKeywords -> BlockedKeywordsRoute(onBack = { navigator.pop() })
             Screen.Folders -> FoldersRoute(onBack = { navigator.pop() })
+            Screen.BlockedNumbers -> BlockedNumbersRoute(onBack = { navigator.pop() })
             Screen.RecycleBin -> BinRoute(onBack = { navigator.pop() })
         }
     }

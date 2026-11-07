@@ -462,7 +462,7 @@
     <string name="folder_color_title">Color for “%1$s”</string>
     <string name="folder_color_label">Color (optional)</string>
     <string name="folder_color_none">No color</string>
-    <string name="folders_none">No categories of your own yet. Long-press a conversation, choose Move to category, then New category.</string>
+    <string name="folders_none">No categories of your own yet. Tap New category, or long-press a conversation and choose Move to category.</string>
     <string name="folders_rename">Rename %1$s</string>
     <string name="folders_delete">Delete %1$s</string>
     <string name="folders_delete_title">Delete “%1$s”?</string>
@@ -509,4 +509,53 @@
     <string name="backup_note_chats">%1$d of %2$d pinned or locked chats found</string>
     <string name="backup_note_app_lock">App lock stays off: set a screen lock on the phone first</string>
     <string name="backup_note_no_messages">Pinned and locked chats, reminders and starred messages were not changed: Pigeon cannot read your messages right now</string>
+
+    <!-- 0.4.7: the phone's blocked numbers, codes copied automatically, a New category button -->
+    <string name="spam_reason_blocked_on_phone">Blocked on this phone</string>
+    <string name="phone_unblock_title">Unblock on the whole phone too?</string>
+    <string name="phone_unblock_body_one">%1$s is blocked on this phone, so it can\'t call or text you in any app. Unblocking takes it off the phone\'s blocked numbers.</string>
+    <plurals name="phone_unblock_body_many">
+        <item quantity="one">%1$d number is blocked on this phone, so it can\'t call or text you in any app. Unblocking takes it off the phone\'s blocked numbers.</item>
+        <item quantity="other">%1$d numbers are blocked on this phone, so they can\'t call or text you in any app. Unblocking takes them off the phone\'s blocked numbers.</item>
+    </plurals>
+    <string name="phone_unblock_confirm">Unblock</string>
+    <string name="phone_unblock_keep">Keep blocked</string>
+    <string name="phone_unblocked">Unblocked on this phone</string>
+
+    <string name="settings_blocked_numbers">Blocked numbers</string>
+    <plurals name="settings_blocked_numbers_count">
+        <item quantity="one">%1$d number blocked on this phone</item>
+        <item quantity="other">%1$d numbers blocked on this phone</item>
+    </plurals>
+    <string name="settings_blocked_numbers_none">None blocked on this phone</string>
+    <string name="settings_blocked_numbers_unavailable">The phone\'s list, shown to the default SMS app</string>
+    <string name="settings_block_on_phone">Block spam senders on the whole phone</string>
+    <string name="settings_block_on_phone_note">Mark as spam also blocks the number: blocked numbers can\'t call or text you, in any app.</string>
+    <string name="settings_auto_copy">Copy codes automatically</string>
+    <string name="settings_auto_copy_note">The keyboard offers the code to paste; it is cleared after 3 minutes</string>
+
+    <string name="blocked_title">Blocked numbers</string>
+    <string name="blocked_subtitle">Blocked on the whole phone, in every app</string>
+    <string name="blocked_info">These numbers can\'t call or text you. It\'s the phone\'s own list: numbers you block in Google Messages, Samsung Messages or the Phone app show here too, and Pigeon puts them in Spam. Those apps keep their own spam folders to themselves; no other app can read them.</string>
+    <string name="blocked_field">Number to block</string>
+    <string name="blocked_hint">For example 050-1234567</string>
+    <string name="blocked_add">Block number</string>
+    <string name="blocked_invalid">That isn\'t a phone number</string>
+    <string name="blocked_duplicate">This number is blocked already</string>
+    <string name="blocked_failed">The phone didn\'t allow it</string>
+    <string name="blocked_section_empty">Blocked on this phone</string>
+    <plurals name="blocked_section">
+        <item quantity="one">%1$d blocked number</item>
+        <item quantity="other">%1$d blocked numbers</item>
+    </plurals>
+    <string name="blocked_none">No blocked numbers.</string>
+    <string name="blocked_unblock">Unblock %1$s</string>
+    <string name="blocked_unblock_title">Unblock %1$s?</string>
+    <string name="blocked_unblock_body">It will be able to call and text you again, in every app on the phone.</string>
+    <string name="blocked_unavailable_title">Only as the default SMS app</string>
+    <string name="blocked_unavailable_body">Android shows the phone\'s blocked numbers only to the default SMS app. Make Pigeon the default to see and change them.</string>
+    <string name="blocked_added">Blocked on this phone</string>
+
+    <string name="folders_add">New category</string>
+    <string name="folders_created">Category created</string>
 </resources>

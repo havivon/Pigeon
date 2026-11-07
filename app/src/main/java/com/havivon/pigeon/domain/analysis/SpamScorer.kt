@@ -667,7 +667,7 @@ object SpamScorer {
      */
     private fun isServiceNotice(sms: IncomingSms, words: List<String>): Boolean =
         SERVICE_WORDS.any { Text.containsWords(words, it) } ||
-            CodeExtractor.extract(sms.body) != null ||
+            CodeExtractor.extract(sms.body, sms.address, knownPerson = sms.isContact || sms.userWrote) != null ||
             FolderClassifier.serviceFolder(sms) in SERVICE_FOLDERS
 
     /** A well-known brand's sender id ([KNOWN_BRANDS]) or a known bank, insurer or courier. */

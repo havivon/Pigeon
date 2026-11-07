@@ -37,7 +37,7 @@ object FolderClassifier {
     /** Classifies [sms]. Pass [spam] when the verdict is already computed, to avoid scoring twice. */
     fun classify(sms: IncomingSms, spam: SpamVerdict = SpamScorer.score(sms)): Folder {
         if (spam.isSpam) return Folder.Spam
-        if (CodeExtractor.extract(sms.body) != null) return Folder.Codes
+        if (CodeExtractor.extract(sms.body, sms.address, knownPerson = sms.isContact || sms.userWrote) != null) return Folder.Codes
         val known = sms.isContact || sms.userWrote
         val service = serviceFolder(sms)
         if (service != null) return if (isAd(sms.body, Text.words(sms.body))) Folder.All else service

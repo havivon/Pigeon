@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.ui.theme.HebTheme
@@ -35,6 +36,8 @@ fun LabeledTextField(
     onDone: () -> Unit = {},
     /** Takes the focus (and the keyboard) as soon as it shows. */
     autoFocus: Boolean = false,
+    /** The keyboard to show: text, or the phone pad for a number. */
+    keyboardType: KeyboardType = KeyboardType.Text,
 ) {
     val focus = remember { FocusRequester() }
     if (autoFocus) LaunchedEffect(Unit) { focus.requestFocus() }
@@ -47,7 +50,7 @@ fun LabeledTextField(
         singleLine = true,
         textStyle = TextStyle(color = c.onSurface, fontSize = 16.sp),
         cursorBrush = SolidColor(c.accent),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = Modifier.fillMaxWidth().focusRequester(focus),
         decorationBox = { inner ->

@@ -3,7 +3,16 @@ package com.havivon.pigeon.data
 import android.content.Context
 import android.util.Log
 import com.havivon.pigeon.PigeonApp
+import com.havivon.pigeon.data.blocking.AndroidSystemBlockList
+import com.havivon.pigeon.data.blocking.SeenBlockedPrefs
+import com.havivon.pigeon.data.codes.AndroidCodeClipboard
+import com.havivon.pigeon.data.codes.CodeClipboardWorker
+import com.havivon.pigeon.data.codes.PendingClearPrefs
 import com.havivon.pigeon.data.contacts.AndroidContactsRepository
+import com.havivon.pigeon.domain.blocking.BlockedOnPhone
+import com.havivon.pigeon.domain.blocking.PhoneAwareSpamRepository
+import com.havivon.pigeon.domain.blocking.SystemBlockList
+import com.havivon.pigeon.domain.codes.CodeAutoCopy
 import com.havivon.pigeon.data.db.BinDatabase
 import com.havivon.pigeon.data.db.PigeonDatabase
 import com.havivon.pigeon.data.db.RoomBinRepository
@@ -51,6 +60,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -88,7 +98,17 @@ class AppContainer(
     val rules: RulesRepository by lazy { RoomRulesRepository(database) }
     val favorites: FavoritesRepository by lazy { RoomFavoritesRepository(database) }
     val reminders: RemindersRepository by lazy { RoomRemindersRepository(database) }
-    val spam: SpamRepository by lazy { RoomSpamRepository(database) }
+    /**
+     * The spam verdicts, with the phone's own blocked list in them ([PhoneAwareSpamRepository]): a number blocked in
+     * any app is spam here, and "Mark as spam" blocks it on the phone (the setting).
+     */
+    val phoneSpam: PhoneAwareSpamRepository by lazy {
+        PhoneAwareSpamRepository(RoomSpamRepository(database), systemBlockList, { settings.settings.first().blockSpamOnPhone }, SeenBlockedPrefs(app))
+    }
+    val spam: SpamRepository by lazy { phoneSpam }
+
+    /** Android's blocked numbers, shared by every messaging and phone app; readable only as the default SMS app. */
+    val systemBlockList: SystemBlockList by lazy { AndroidSystemBlockList(app, ::canWrite, accessChanges, appScope) }
     val locks: LocksRepository by lazy { RoomLocksRepository(database) }
     val blockedKeywords: BlockedKeywordsRepository by lazy { RoomBlockedKeywordsRepository(database) }
     val pins: PinsRepository by lazy { RoomPinsRepository(database) }
@@ -128,7 +148,24 @@ class AppContainer(
         ReminderNotifier(app, reminders, messages, contacts, locks, settings, reminderScheduler)
     }
     private val hook: IncomingMessageHook by lazy { incomingHook(this) }
-    val incomingSms: IncomingSmsHandler by lazy { IncomingSmsHandler(ProviderSmsStore(app), hook, notifier) }
+    val incomingSms: IncomingSmsHandler by lazy {
+        IncomingSmsHandler(ProviderSmsStore(app), hook, notifier, afterNotify = { codeAutoCopy.onArrived(it) })
+    }
+
+    /** Copies the code of a message that just arrived, and clears it a few minutes later (the setting). */
+    val codeAutoCopy: CodeAutoCopy by lazy {
+        CodeAutoCopy(
+            codeFinder, AndroidCodeClipboard(app), PendingClearPrefs(app),
+            enabled = { settings.settings.first().autoCopyCodes },
+            isLocked = { locks.isLocked(it) },
+            isBlocked = { address -> systemBlockList.numbers.first()?.let { BlockedOnPhone.isOn(it, address) } == true },
+            knownPerson = { address, threadId ->
+                contacts.displayName(address) != null ||
+                    (threadId > 0 && messages.recentMessages(threadId, SPAM_ON_READ_DEPTH).any { it.type.outgoing })
+            },
+            scheduleClear = { CodeClipboardWorker.schedule(app, it) },
+        )
+    }
 
     /**
      * Spam for the messages already on the phone: a viewer's (they never pass through [incomingSms]), and,

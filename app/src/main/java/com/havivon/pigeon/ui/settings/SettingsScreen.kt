@@ -28,6 +28,9 @@ import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.GppBad
+import androidx.compose.material.icons.rounded.PhoneDisabled
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.FileDownload
@@ -98,6 +101,9 @@ data class SettingsActions(
     val onOpenRules: () -> Unit = {},
     val onOpenKeywords: () -> Unit = {},
     val onOpenFolders: () -> Unit = {},
+    val onOpenBlockedNumbers: () -> Unit = {},
+    val onBlockSpamOnPhone: (Boolean) -> Unit = {},
+    val onAutoCopyCodes: (Boolean) -> Unit = {},
     val onOpenRecycleBin: () -> Unit = {},
     val onExportSettings: () -> Unit = {},
     val onImportSettings: () -> Unit = {},
@@ -187,6 +193,25 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                     )
                     RowDivider()
                     NavRow(
+                        Icons.Rounded.PhoneDisabled,
+                        stringResource(R.string.settings_blocked_numbers),
+                        when (val n = state.blockedNumberCount) {
+                            null -> stringResource(R.string.settings_blocked_numbers_unavailable)
+                            0 -> stringResource(R.string.settings_blocked_numbers_none)
+                            else -> pluralStringResource(R.plurals.settings_blocked_numbers_count, n, n)
+                        },
+                        actions.onOpenBlockedNumbers,
+                    )
+                    RowDivider()
+                    SwitchRow(
+                        Icons.Rounded.GppBad,
+                        stringResource(R.string.settings_block_on_phone),
+                        stringResource(R.string.settings_block_on_phone_note),
+                        s.blockSpamOnPhone,
+                        onChange = actions.onBlockSpamOnPhone,
+                    )
+                    RowDivider()
+                    NavRow(
                         Icons.Rounded.Category,
                         stringResource(R.string.settings_folders),
                         if (state.folderCount == 0) stringResource(R.string.settings_folders_none)
@@ -207,6 +232,14 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         stringResource(R.string.settings_auto_delete_note),
                         s.autoDeleteCodes,
                         onChange = actions.onAutoDeleteCodes,
+                    )
+                    RowDivider()
+                    SwitchRow(
+                        Icons.Rounded.ContentPaste,
+                        stringResource(R.string.settings_auto_copy),
+                        stringResource(R.string.settings_auto_copy_note),
+                        s.autoCopyCodes,
+                        onChange = actions.onAutoCopyCodes,
                     )
                 }
             }

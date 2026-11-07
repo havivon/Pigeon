@@ -31,6 +31,8 @@ internal object SettingsKeys {
     val AUTO_DELETE_CODES_SINCE = longPreferencesKey("auto_delete_codes_since")
     val WELCOME_DONE = booleanPreferencesKey("welcome_done")
     val PERMISSIONS_ASKED = booleanPreferencesKey("permissions_asked")
+    val BLOCK_SPAM_ON_PHONE = booleanPreferencesKey("block_spam_on_phone")
+    val AUTO_COPY_CODES = booleanPreferencesKey("auto_copy_codes")
 }
 
 /** Reads the settings, with the defaults of [AppSettings] for anything never set (or unknown). */
@@ -48,6 +50,8 @@ internal fun Preferences.toAppSettings(): AppSettings {
         autoDeleteCodesSinceMillis = this[SettingsKeys.AUTO_DELETE_CODES_SINCE],
         welcomeDone = this[SettingsKeys.WELCOME_DONE] ?: defaults.welcomeDone,
         permissionsAsked = this[SettingsKeys.PERMISSIONS_ASKED] ?: defaults.permissionsAsked,
+        blockSpamOnPhone = this[SettingsKeys.BLOCK_SPAM_ON_PHONE] ?: defaults.blockSpamOnPhone,
+        autoCopyCodes = this[SettingsKeys.AUTO_COPY_CODES] ?: defaults.autoCopyCodes,
     )
 }
 
@@ -96,6 +100,8 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
     override suspend fun setAppLock(value: Boolean) = put(SettingsKeys.APP_LOCK, value)
     override suspend fun setWelcomeDone(value: Boolean) = put(SettingsKeys.WELCOME_DONE, value)
     override suspend fun setPermissionsAsked(value: Boolean) = put(SettingsKeys.PERMISSIONS_ASKED, value)
+    override suspend fun setBlockSpamOnPhone(value: Boolean) = put(SettingsKeys.BLOCK_SPAM_ON_PHONE, value)
+    override suspend fun setAutoCopyCodes(value: Boolean) = put(SettingsKeys.AUTO_COPY_CODES, value)
 
     /** Turning it on starts the count again from now; turning it off forgets when it started. */
     override suspend fun setAutoDeleteCodes(value: Boolean) {
@@ -120,6 +126,8 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
             it[SettingsKeys.BLOCK_SCREENSHOTS] = values.blockScreenshots
             it[SettingsKeys.APP_LOCK] = values.appLock
             it[SettingsKeys.AUTO_DELETE_CODES] = values.autoDeleteCodes
+            it[SettingsKeys.BLOCK_SPAM_ON_PHONE] = values.blockSpamOnPhone
+            it[SettingsKeys.AUTO_COPY_CODES] = values.autoCopyCodes
             val since = values.autoDeleteCodesSinceMillis
             if (since == null) it.remove(SettingsKeys.AUTO_DELETE_CODES_SINCE) else it[SettingsKeys.AUTO_DELETE_CODES_SINCE] = since
         }

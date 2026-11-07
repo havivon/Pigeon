@@ -36,6 +36,8 @@ class IncomingSmsHandler(
     private val hook: IncomingMessageHook,
     private val notifier: NewMessageNotifier,
     private val now: () -> Long = System::currentTimeMillis,
+    /** After a stored message passed the analysis and was notified (not for spam): copies its code (`CodeAutoCopy`). */
+    private val afterNotify: suspend (StoredIncomingSms) -> Unit = {},
     /** Logs a failed step, by the exception type only: its message could quote the text. */
     private val log: (String) -> Unit = { Log.w(TAG, it) },
 ) {
@@ -63,6 +65,7 @@ class IncomingSmsHandler(
                 // Stored, but its conversation could not be read back: still tell the user, with the text
                 guarded("Notification") { notifier.notifyUnsaved(sms.address, sms.body, receivedAt) }
             }
+            guarded("After notification") { afterNotify(stored) }
         }
     }
 

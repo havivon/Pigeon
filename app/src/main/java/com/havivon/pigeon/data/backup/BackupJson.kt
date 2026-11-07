@@ -57,6 +57,8 @@ object BackupJson {
                 s.blockScreenshots?.let { put("blockScreenshots", it) }
                 s.appLock?.let { put("appLock", it) }
                 s.autoDeleteCodes?.let { put("autoDeleteCodes", it) }
+                s.blockSpamOnPhone?.let { put("blockSpamOnPhone", it) }
+                s.autoCopyCodes?.let { put("autoCopyCodes", it) }
             },
         )
         root.put(
@@ -174,6 +176,8 @@ object BackupJson {
             blockScreenshots = o.opt("blockScreenshots") as? Boolean,
             appLock = o.opt("appLock") as? Boolean,
             autoDeleteCodes = o.opt("autoDeleteCodes") as? Boolean,
+            blockSpamOnPhone = o.opt("blockSpamOnPhone") as? Boolean,
+            autoCopyCodes = o.opt("autoCopyCodes") as? Boolean,
         )
     }
 

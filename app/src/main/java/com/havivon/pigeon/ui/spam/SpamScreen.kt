@@ -383,4 +383,5 @@ private fun SpamReason.label(): String = when (this) {
     SpamReason.ContactElsewhere -> stringResource(R.string.spam_reason_contact_elsewhere)
     SpamReason.MoneyAmount -> stringResource(R.string.spam_reason_money_amount)
     SpamReason.AllCaps -> stringResource(R.string.spam_reason_all_caps)
+    SpamReason.BlockedOnPhone -> stringResource(R.string.spam_reason_blocked_on_phone)
 }

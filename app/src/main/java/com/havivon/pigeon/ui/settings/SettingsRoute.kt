@@ -49,7 +49,11 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
     val container = remember { AppContainer.from(context) }
     val vm = pigeonViewModel { app ->
         val appContext = context.applicationContext
-        SettingsViewModel(app.settings, app.rules, app.blockedKeywords, app.folders, AppIconSwitcher.current(appContext)) { AppIconSwitcher.set(appContext, it) }
+        SettingsViewModel(
+            app.settings, app.rules, app.blockedKeywords, app.folders, AppIconSwitcher.current(appContext),
+            applyIcon = { AppIconSwitcher.set(appContext, it) },
+            blockedNumbers = app.systemBlockList.numbers,
+        )
     }
     val state by vm.state.collectAsStateWithLifecycle()
 
@@ -125,6 +129,9 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onOpenRules = { navigate(Screen.Rules) },
             onOpenKeywords = { navigate(Screen.BlockedKeywords) },
             onOpenFolders = { navigate(Screen.Folders) },
+            onOpenBlockedNumbers = { navigate(Screen.BlockedNumbers) },
+            onBlockSpamOnPhone = vm::setBlockSpamOnPhone,
+            onAutoCopyCodes = vm::setAutoCopyCodes,
             onOpenRecycleBin = { navigate(Screen.RecycleBin) },
             onExportSettings = { exportRequest.launch("pigeon-settings-${LocalDate.now()}.json") },
             onImportSettings = { importRequest.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
