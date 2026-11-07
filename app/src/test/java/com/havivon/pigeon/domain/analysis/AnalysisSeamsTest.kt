@@ -57,6 +57,32 @@ class AnalysisSeamsTest {
     }
 
     @Test
+    fun `a sender already in spam stays silent even with an innocent new message`() = runTest {
+        val spam = FakeSpam()
+        spam.markSpam("+972551234567", 7, listOf(SpamReason.UnknownSender))
+        val hook = SpamFilterHook(FakeContacts(), spam, FakeBlockedKeywords())
+        // The +972 / 05 forms are the same sender
+        assertEquals(IncomingVerdict.Silent, hook.onStored(stored("0551234567", "נפגש מחר בעשר?")))
+    }
+
+    @Test
+    fun `a new conversation of a sender already in spam joins its spam`() = runTest {
+        val spam = FakeSpam()
+        spam.markSpam("+972551234567", 3, listOf(SpamReason.UnknownSender))
+        val hook = SpamFilterHook(FakeContacts(), spam, FakeBlockedKeywords())
+        assertEquals(IncomingVerdict.Silent, hook.onStored(stored("+972551234567", "שלום")))
+        assertTrue(spam.verdictState.value.any { it.threadId == 7L })
+    }
+
+    @Test
+    fun `a thread already in spam stays silent`() = runTest {
+        val spam = FakeSpam()
+        spam.markSpam("PROMO", 7, listOf(SpamReason.UnknownSender))
+        val hook = SpamFilterHook(FakeContacts(), spam, FakeBlockedKeywords())
+        assertEquals(IncomingVerdict.Silent, hook.onStored(stored("PROMO", "עדכון")))
+    }
+
+    @Test
     fun `a blocked keyword sends a plain message to spam`() = runTest {
         val spam = FakeSpam()
         val hook = SpamFilterHook(FakeContacts(), spam, FakeBlockedKeywords(listOf("הלוואה")))

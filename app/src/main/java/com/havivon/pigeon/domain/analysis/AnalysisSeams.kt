@@ -67,6 +67,15 @@ class SpamFilterHook(
     override suspend fun onStored(message: StoredIncomingSms): IncomingVerdict {
         if (message.threadId > 0 && userWroteIn(message.threadId)) return IncomingVerdict.Notify
         if (filedByUser(message.address)) return IncomingVerdict.Notify
+        // A sender already in the spam folder (the filter's verdict, the user's "Mark as spam", or a number blocked on
+        // the phone) stays there: its new message is silent (no notification, no lock-screen line, no badge) whatever
+        // its own text scores, and joins the sender's spam
+        val known = spam.verdictFor(message.address)
+            ?: spam.verdicts.first().firstOrNull { message.threadId > 0 && it.threadId == message.threadId }
+        if (known != null && !spam.isNotSpam(message.address)) {
+            if (known.threadId != message.threadId) spam.markSpam(message.address, message.threadId, known.reasons)
+            return IncomingVerdict.Silent
+        }
         val name = contacts.displayName(message.address)
         val verdict = SpamScorer.score(
             IncomingSms(
