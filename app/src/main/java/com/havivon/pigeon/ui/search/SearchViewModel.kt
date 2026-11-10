@@ -12,6 +12,7 @@ import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.Favorite
 import com.havivon.pigeon.domain.model.FolderChoice
+import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.SearchResults
 import com.havivon.pigeon.domain.model.SmsConversation
 import com.havivon.pigeon.domain.model.SmsMessage
@@ -94,7 +95,14 @@ data class SearchHit(
     val dateMillis: Long = 0,
     val senderName: String? = null,
     val starred: Boolean = false,
+    /** Its conversation as the inbox has it (for the sheet's category, spam and lock actions); null when the system no longer lists it. */
+    val conversation: Conversation? = null,
 )
+
+/** What a delete of the selection removed: [messages] messages and [conversations] conversations, all brought back by one undo of [deletion]. */
+data class DeletedSelection(val messages: Int, val conversations: Int, val deletion: PendingDeletion) {
+    val count: Int get() = messages + conversations
+}
 
 /** A sender the "sender" chip can narrow the results to. */
 data class SenderOption(val threadId: Long, val name: String)
@@ -116,6 +124,9 @@ data class SearchUiState(
 
 /** The colour of a result's category tag: the category's own, else that of the colour rule that matches the row, else none (a neutral tag). */
 fun tagColor(category: CategoryTag, rule: ColorRule?): Long? = category.argb ?: rule?.argb
+
+/** The tag every search result shows: its category's, else "No category" ([noCategory], with no colour of its own: neutral, muted). */
+fun resultTag(category: CategoryTag?, noCategory: String): CategoryTag = category ?: CategoryTag(noCategory)
 
 /**
  * Applies the filter chips to what the repository found. Conversations (matched by name or number)
@@ -285,6 +296,7 @@ class SearchViewModel(
                     dateMillis = m.dateMillis,
                     senderName = source?.contactName,
                     starred = m.id in sort.starredIds,
+                    conversation = conversation,
                 )
             },
             senders = if (q.isBlank() && f.threadId == null) {
@@ -316,10 +328,27 @@ class SearchViewModel(
         clearSelection()
     }
 
-    // Multi-select of message results
+    // Multi-select. The "Select" button in the header starts selection mode (a check circle on every row, a tap toggles a result);
+    // "Select" in a result's long-press sheet starts it with that result. Message and conversation results can be mixed.
 
-    /** A long press on a message result starts the selection with it. */
+    private val _selectedConversations = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** The selected conversation results, by conversation id. */
+    val selectedConversations: StateFlow<Set<Long>> = _selectedConversations.asStateFlow()
+
+    private val _selecting = MutableStateFlow(false)
+
+    /** Whether selection mode is on, even before anything is selected; ✕ or Back leaves it. */
+    val selecting: StateFlow<Boolean> = _selecting.asStateFlow()
+
+    /** The header's "Select" button: selection mode with nothing selected yet. */
+    fun startSelecting() {
+        _selecting.value = true
+    }
+
+    /** Starts selecting with this message result (from its sheet). */
     fun select(messageId: Long) {
+        _selecting.value = true
         _selected.value = _selected.value + messageId
     }
 
@@ -327,19 +356,99 @@ class SearchViewModel(
         _selected.value = _selected.value.let { if (messageId in it) it - messageId else it + messageId }
     }
 
+    /** Starts selecting with this conversation result (from its sheet). */
+    fun selectConversation(threadId: Long) {
+        _selecting.value = true
+        _selectedConversations.value = _selectedConversations.value + threadId
+    }
+
+    fun toggleSelectedConversation(threadId: Long) {
+        _selectedConversations.value = _selectedConversations.value.let { if (threadId in it) it - threadId else it + threadId }
+    }
+
+    /** Leaves selection mode and forgets the selection. */
     fun clearSelection() {
         if (_selected.value.isNotEmpty()) _selected.value = emptySet()
+        if (_selectedConversations.value.isNotEmpty()) _selectedConversations.value = emptySet()
+        _selecting.value = false
+    }
+
+    /** "Select all": every result, messages and conversations. */
+    fun selectAll() {
+        _selecting.value = true
+        _selectedConversations.value = state.value.conversations.map { it.id }.toSet()
+        _selected.value = state.value.messages.map { it.messageId }.toSet()
+    }
+
+    /** The conversations the selection acts on: the selected conversation results and the conversations the selected messages are in (each once). */
+    fun selectedConversationList(): List<Conversation> =
+        (state.value.conversations.filter { it.id in _selectedConversations.value } + selectedHits().mapNotNull { it.conversation }).distinctBy { it.id }
+
+    /** How many results are selected, of both kinds. */
+    fun selectedCount(): Int = selectedHits().size + state.value.conversations.count { it.id in _selectedConversations.value }
+
+    /** "Mark as read" on the selection's conversations; null, and nothing changes, while Pigeon is not the default SMS app. */
+    fun markSelectedRead(): Int? {
+        val read = sheet.markAllRead(selectedConversationList()) ?: return null
+        clearSelection()
+        return read
+    }
+
+    /** "Mark as spam" on the selection's conversations. */
+    fun markSelectedSpam() {
+        sheet.markSpamAll(selectedConversationList())
+        clearSelection()
+    }
+
+    /** "Move to category" for the selection's conversations (null: back to the automatic sorting). */
+    fun moveSelected(target: FolderChoice?) {
+        sheet.moveAll(selectedConversationList(), target)
+        clearSelection()
+    }
+
+    /** A new category that the selection's conversations are moved into; false (nothing made, selection kept) when the name cannot be used. */
+    suspend fun createFolderAndMoveSelected(name: String, argb: Long?): Boolean {
+        val list = selectedConversationList()
+        if (!sheet.createFolderAndMoveAll(list, name, argb)) return false
+        clearSelection()
+        return true
+    }
+
+    /**
+     * Deletes the selected messages and conversations, with one undo for all. Null, and the selection stays, while Pigeon
+     * is not the default SMS app (or when nothing is selected): the screen says so.
+     */
+    fun deleteSelected(): DeletedSelection? {
+        val threadIds = state.value.conversations.filter { it.id in _selectedConversations.value }.map { it.id }.toSet()
+        val messageIds = selectedHits().map { it.messageId }.toSet()
+        if (threadIds.isEmpty() && messageIds.isEmpty()) return null
+        val parts = listOfNotNull(
+            if (messageIds.isEmpty()) null else (sheet.deleteMessages(messageIds) ?: return null),
+            if (threadIds.isEmpty()) null else (sheet.deleteConversations(threadIds) ?: run { return null }),
+        )
+        clearSelection()
+        return DeletedSelection(messageIds.size, threadIds.size, object : PendingDeletion {
+            override fun undo(): Boolean = parts.map { it.undo() }.all { it }
+        })
+    }
+
+    /** Deletes one message result (from its sheet), with undo; null while Pigeon is not the default SMS app. */
+    fun deleteMessage(hit: SearchHit): PendingDeletion? = sheet.deleteMessages(setOf(hit.messageId))
+
+    /** Stars a message result, or removes its star when it has one (from its sheet). */
+    fun toggleStar(hit: SearchHit) = starOrUnstar(listOf(hit))
+
+    /** One or more results as text, oldest first: "[time] name: text" per line (as in a conversation). */
+    fun textOf(hits: List<SearchHit>): String {
+        val names = hits.associate { it.messageId to it.name }
+        return formatForCopy(hits.map { it.asMessage() }, labels, me) { names[it.id].orEmpty() }
     }
 
     /** The selected results still in the list (a result that left it, or a chat locked meanwhile, is not acted on). */
     private fun selectedHits(): List<SearchHit> = state.value.messages.filter { it.messageId in _selected.value }
 
     /** The selected messages as one text, oldest first, whoever sent them: "[time] name: text" per line (as in a conversation). */
-    fun selectedText(): String {
-        val hits = selectedHits()
-        val names = hits.associate { it.messageId to it.name }
-        return formatForCopy(hits.map { it.asMessage() }, labels, me) { names[it.id].orEmpty() }
-    }
+    fun selectedText(): String = textOf(selectedHits())
 
     private fun SearchHit.asMessage() =
         SmsMessage(messageId, threadId, address, text, dateMillis, 0, if (outgoing) SmsType.Sent else SmsType.Inbox, read = true, subId = null)
@@ -351,6 +460,10 @@ class SearchViewModel(
     fun starSelected() {
         val chosen = selectedHits()
         clearSelection()
+        starOrUnstar(chosen)
+    }
+
+    private fun starOrUnstar(chosen: List<SearchHit>) {
         viewModelScope.launch {
             if (chosen.all { it.starred }) {
                 chosen.forEach { favorites.unstar(it.messageId) }
@@ -361,11 +474,17 @@ class SearchViewModel(
     }
 
     /**
-     * "Remind me about this message": a reminder at [atMillis] on the one selected message (only offered for exactly
+     * "Remind me": a reminder at [atMillis] on the one selected message, or on the one selected conversation (only offered for exactly
      * one); true when it was saved. Times that already passed are ignored.
      */
     suspend fun remindSelected(atMillis: Long): Boolean {
-        val hit = selectedHits().singleOrNull() ?: return false
+        if (selectedCount() != 1) return false
+        if (selectedHits().isEmpty()) {
+            val conversation = state.value.conversations.first { it.id in _selectedConversations.value }
+            clearSelection()
+            return sheet.remind(conversation, atMillis)
+        }
+        val hit = selectedHits().single()
         clearSelection()
         return sheet.remindMessage(hit.threadId, hit.messageId, hit.text, atMillis)
     }

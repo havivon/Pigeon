@@ -66,8 +66,8 @@ fun conversation(
 class FakeMessageRepository : MessageRepository {
     val threads = MutableStateFlow<List<SmsConversation>>(emptyList())
     val allMessages = MutableStateFlow<List<SmsMessage>>(emptyList())
-    private val hiddenMessages = MutableStateFlow<Set<Long>>(emptySet())
-    private val hiddenThreads = MutableStateFlow<Set<Long>>(emptySet())
+    val hiddenMessages = MutableStateFlow<Set<Long>>(emptySet())
+    val hiddenThreads = MutableStateFlow<Set<Long>>(emptySet())
     val markedRead = mutableListOf<Long>()
     var searchResults: SearchResults = SearchResults.Empty
     val searched = mutableListOf<String>()

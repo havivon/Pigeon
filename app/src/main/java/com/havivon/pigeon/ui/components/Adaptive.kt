@@ -70,6 +70,25 @@ fun nameLineWidths(room: Int, nameWidth: Int, tagsWidth: Int, minTagWidth: Int, 
     return if (tags < minTagWidth) NameLineWidths(minOf(nameWidth, room), 0) else NameLineWidths(nameKeeps, minOf(tags, tagsWidth))
 }
 
+/** Where the tags of a name line go: after the name, on a line of their own under it, or nowhere (left out). */
+enum class TagPlacement { Beside, Under, Dropped }
+
+/**
+ * Where the tags ([tagsWidth] px, with their gap) go on a name line with [room] px for the name and the tags. Beside the
+ * name when they fit there (see [nameLineWidths]). When they do not: with [underWhenTight] (the search results, whose
+ * tag must always be seen) under the name; otherwise (the inbox) shortened beside it, and left out when too narrow.
+ * A row with no tags ([tagsWidth] 0) is [TagPlacement.Beside].
+ */
+fun tagPlacement(room: Int, nameWidth: Int, tagsWidth: Int, minTagWidth: Int, underWhenTight: Boolean = false): TagPlacement {
+    if (tagsWidth <= 0) return TagPlacement.Beside
+    val tags = nameLineWidths(room, nameWidth, tagsWidth, minTagWidth).tags
+    return when {
+        underWhenTight -> if (tags >= tagsWidth) TagPlacement.Beside else TagPlacement.Under
+        tags > 0 -> TagPlacement.Beside
+        else -> TagPlacement.Dropped
+    }
+}
+
 /** The widest a row's time may get, as a share of the row: past it, the time is shortened, not the name. */
 const val TIME_MAX_FRACTION = 0.38f
 
@@ -125,6 +144,8 @@ fun TrailingOrBelow(
  * The first line of a row: [name] at the start, the [tags] right after it, the [time] at the end, centred. The name
  * has priority: the time is capped at [TIME_MAX_FRACTION] of the line and shortened past it, and the tags shorten
  * (or leave) before the name does (see [nameLineWidths]). Each part is expected to be one line with an ellipsis.
+ * With [tagsUnderWhenTight] the tags never leave: when they do not fit beside the name they go on a line of their own
+ * under it, at its start (see [tagPlacement]). [tagGap] separates the tags from the name; beside the name only.
  */
 @Composable
 fun NameLine(
@@ -133,6 +154,9 @@ fun NameLine(
     modifier: Modifier = Modifier,
     tags: (@Composable () -> Unit)? = null,
     timeGap: Dp = 8.dp,
+    tagsUnderWhenTight: Boolean = false,
+    tagGap: Dp = 0.dp,
+    underGap: Dp = 2.dp,
 ) {
     Layout(
         content = {
@@ -149,19 +173,30 @@ fun NameLine(
         val room = width - timeP.width - (if (timeP.width > 0) timeGap.roundToPx() else 0)
         val nameM = measurables.slot(Slot.Main)
         val tagsM = measurables.firstOrNull { it.layoutId == Slot.Tags }
-        val widths = nameLineWidths(
-            room,
-            nameM.maxIntrinsicWidth(Constraints.Infinity),
-            tagsM?.maxIntrinsicWidth(Constraints.Infinity) ?: 0,
-            minTagWidth = 28.dp.roundToPx(),
+        val gap = tagGap.roundToPx()
+        val tagsNeed = tagsM?.maxIntrinsicWidth(Constraints.Infinity)?.let { if (it > 0) it + gap else 0 } ?: 0
+        val placement = tagPlacement(
+            room, nameM.maxIntrinsicWidth(Constraints.Infinity), tagsNeed, minTagWidth = 28.dp.roundToPx(), underWhenTight = tagsUnderWhenTight,
         )
+        if (tagsM != null && tagsNeed > 0 && placement == TagPlacement.Under) {
+            val nameP = nameM.measure(Constraints(maxWidth = room.coerceAtLeast(0)))
+            val tagsP = tagsM.measure(Constraints(maxWidth = width))
+            val lineH = maxOf(nameP.height, timeP.height, constraints.minHeight)
+            val h = lineH + underGap.roundToPx() + tagsP.height
+            return@Layout layout(width, h) {
+                nameP.placeRelative(0, centre(lineH, nameP.height))
+                timeP.placeRelative(width - timeP.width, centre(lineH, timeP.height))
+                tagsP.placeRelative(0, lineH + underGap.roundToPx())
+            }
+        }
+        val tagsRoom = if (tagsM != null && placement == TagPlacement.Beside) nameLineWidths(room, nameM.maxIntrinsicWidth(Constraints.Infinity), tagsNeed, 28.dp.roundToPx()).tags else 0
         // All the room the tags leave: the name takes its own width of it (as in a Row), so its text is drawn where a Row would draw it
-        val nameP = nameM.measure(Constraints(maxWidth = (room - widths.tags).coerceAtLeast(0)))
-        val tagsP = if (tagsM != null && widths.tags > 0) tagsM.measure(Constraints(maxWidth = widths.tags)) else null
+        val nameP = nameM.measure(Constraints(maxWidth = (room - tagsRoom).coerceAtLeast(0)))
+        val tagsP = if (tagsM != null && tagsRoom > gap) tagsM.measure(Constraints(maxWidth = tagsRoom - gap)) else null
         val h = maxOf(nameP.height, tagsP?.height ?: 0, timeP.height, constraints.minHeight)
         layout(width, h) {
             nameP.placeRelative(0, centre(h, nameP.height))
-            tagsP?.placeRelative(nameP.width, centre(h, tagsP.height))
+            tagsP?.placeRelative(nameP.width + gap, centre(h, tagsP.height))
             timeP.placeRelative(width - timeP.width, centre(h, timeP.height))
         }
     }

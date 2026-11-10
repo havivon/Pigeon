@@ -36,6 +36,32 @@
     <string name="common_share">Share</string>
     <string name="common_select_all">Select all</string>
     <string name="common_suspected_spam">Suspected spam</string>
+    <string name="search_select_button">Select</string>
+    <plurals name="search_results_deleted">
+        <item quantity="one">%1$d result deleted</item>
+        <item quantity="other">%1$d results deleted</item>
+    </plurals>
+    <string name="search_no_category">No category</string>
+    <string name="search_action_open">Open conversation</string>
+    <string name="search_action_open_message">Open in conversation</string>
+    <string name="search_action_select">Select</string>
+    <string name="search_action_copy">Copy text</string>
+    <string name="search_action_delete_message">Delete message</string>
+    <string name="search_not_spam_done">Moved out of Spam</string>
+    <string name="search_selection_title">Selected results</string>
+    <plurals name="search_selected_count">
+        <item quantity="one">%1$d result selected</item>
+        <item quantity="other">%1$d results selected</item>
+    </plurals>
+    <plurals name="search_move_applies_to">
+        <item quantity="one">This sender, now and later</item>
+        <item quantity="other">%1$d senders, now and later</item>
+    </plurals>
+    <plurals name="search_conversations_deleted">
+        <item quantity="one">Conversation deleted</item>
+        <item quantity="other">%1$d conversations deleted</item>
+    </plurals>
+    <string name="search_marked_read">Marked as read</string>
     <string name="common_folder_all">All categories</string>
     <string name="common_folder_personal">Personal</string>
     <string name="common_folder_banks">Banks</string>

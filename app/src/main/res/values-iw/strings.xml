@@ -36,6 +36,36 @@
     <string name="common_share">שתף</string>
     <string name="common_select_all">בחר הכל</string>
     <string name="common_suspected_spam">חשוד כספאם</string>
+    <string name="search_select_button">סמן</string>
+    <plurals name="search_results_deleted">
+        <item quantity="one">תוצאה אחת נמחקה</item>
+        <item quantity="two">%1$d תוצאות נמחקו</item>
+        <item quantity="other">%1$d תוצאות נמחקו</item>
+    </plurals>
+    <string name="search_no_category">ללא קטגוריה</string>
+    <string name="search_action_open">פתח שיחה</string>
+    <string name="search_action_open_message">פתח בשיחה</string>
+    <string name="search_action_select">בחר</string>
+    <string name="search_action_copy">העתק טקסט</string>
+    <string name="search_action_delete_message">מחק הודעה</string>
+    <string name="search_not_spam_done">הוסרה מספאם</string>
+    <string name="search_selection_title">תוצאות שנבחרו</string>
+    <plurals name="search_selected_count">
+        <item quantity="one">תוצאה אחת נבחרה</item>
+        <item quantity="two">%1$d תוצאות נבחרו</item>
+        <item quantity="other">%1$d תוצאות נבחרו</item>
+    </plurals>
+    <plurals name="search_move_applies_to">
+        <item quantity="one">השולח הזה, גם בעתיד</item>
+        <item quantity="two">%1$d שולחים, גם בעתיד</item>
+        <item quantity="other">%1$d שולחים, גם בעתיד</item>
+    </plurals>
+    <plurals name="search_conversations_deleted">
+        <item quantity="one">השיחה נמחקה</item>
+        <item quantity="two">%1$d שיחות נמחקו</item>
+        <item quantity="other">%1$d שיחות נמחקו</item>
+    </plurals>
+    <string name="search_marked_read">סומנה כנקראה</string>
     <string name="common_folder_all">כל הקטגוריות</string>
     <string name="common_folder_personal">אישי</string>
     <string name="common_folder_banks">בנקים</string>

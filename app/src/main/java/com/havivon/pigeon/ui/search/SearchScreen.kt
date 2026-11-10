@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -87,15 +88,16 @@ import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.SpamAvatar
 import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.conversation.SelectionActions
-import com.havivon.pigeon.ui.conversation.SelectionBar
 import com.havivon.pigeon.ui.theme.HebTheme
 import java.time.LocalDate
 
 /**
  * Search with filter chips: sender, has a link, has a code, starred, and a date or a range of days (the quick choices and a range picker in a sheet). Every result row carries the tag of
  * its category (in the category's colour, or a matching rule's, else neutral) and is framed by a matching colour rule,
- * else by its category's colour. A long press on a conversation opens its sheet ([onLongPressConversation]); a long
- * press on a message starts a selection ([onMessageLongClick]) that the bars at the top and bottom act on.
+ * else by its category's colour. A tap on a result opens it ([onConversationClick], [onMessageClick]); a long press opens
+ * its sheet of actions ([onConversationLongClick], [onMessageLongClick]). The "Select" button in the header
+ * ([onStartSelecting]) starts selection mode: a check circle on every row, a tap toggles a result, and the bars at the
+ * top and bottom act on what is selected.
  */
 @Composable
 fun SearchScreen(
@@ -107,26 +109,28 @@ fun SearchScreen(
     onHasCode: () -> Unit = {},
     onStarred: () -> Unit = {},
     onDates: (DaySpan?) -> Unit = {},
-    onOpenConversation: (Long) -> Unit = {},
-    onLongPressConversation: (Conversation) -> Unit = {},
+    onConversationClick: (Conversation) -> Unit = {},
+    onConversationLongClick: (Conversation) -> Unit = {},
     onMessageClick: (SearchHit) -> Unit = {},
     onMessageLongClick: (SearchHit) -> Unit = {},
-    /** The selected message results; a selection replaces the search bar with the selection bar. */
+    /** The selected message results, or (one kind at a time) the selected conversation results; a selection replaces the search bar with the selection bar. */
     selectedIds: Set<Long> = emptySet(),
-    selectedStarred: Boolean = false,
+    selectedConversationIds: Set<Long> = emptySet(),
     onClearSelection: () -> Unit = {},
-    onStarSelected: () -> Unit = {},
-    /** Offered only for exactly one selected message. */
-    onRemindSelected: (() -> Unit)? = null,
-    onCopySelected: () -> Unit = {},
-    onShareSelected: () -> Unit = {},
+    onSelectAll: () -> Unit = {},
+    /** Selection mode is on (check circles on the rows), even with nothing selected yet. */
+    selectionMode: Boolean = false,
+    /** The header's "Select" button, which is shown only when there are results. */
+    onStartSelecting: () -> Unit = {},
+    /** What the bar at the bottom offers on the selection (see [selectionActions]). */
+    actions: List<SelectionAction> = emptyList(),
     /** False in the design snapshots, where there is no keyboard to open. */
     autoFocus: Boolean = true,
     /** The day the date chip and its quick choices count from; fixed in the design snapshots. */
     today: LocalDate = remember { LocalDate.now() },
 ) {
     val c = HebTheme.colors
-    val selecting = selectedIds.isNotEmpty()
+    val selecting = selectionMode || selectedIds.isNotEmpty() || selectedConversationIds.isNotEmpty()
     val ruleById = state.rules.filter { it.enabled }.associateBy { it.id }
     // Kept over a rotation, the picker and all
     var datesOpen by rememberSaveable { mutableStateOf(false) }
@@ -141,9 +145,9 @@ fun SearchScreen(
             enabled = !selecting,
             header = {
                 if (selecting) {
-                    SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll = null, onStar = onStarSelected, onRemind = onRemindSelected, onDelete = null)
+                    SearchSelectionBar(selectedIds.size + selectedConversationIds.size, onClearSelection, onSelectAll)
                 } else {
-                    SearchHeader(header, state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus)
+                    SearchHeader(header, state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus, onStartSelecting)
                 }
             },
         ) {
@@ -164,7 +168,11 @@ fun SearchScreen(
                 if (state.conversations.isNotEmpty()) {
                     item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
                     items(state.conversations, key = { "c" + it.id }) {
-                        ConversationHit(it, ruleById[it.ruleId], state.query, onClick = { onOpenConversation(it.id) }, onLongClick = { onLongPressConversation(it) })
+                        ConversationHit(
+                            it, ruleById[it.ruleId], state.query,
+                            selecting = selecting, selected = it.id in selectedConversationIds,
+                            onClick = { onConversationClick(it) }, onLongClick = { onConversationLongClick(it) },
+                        )
                     }
                 }
                 if (state.messages.isNotEmpty()) {
@@ -179,7 +187,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (selecting) SelectionActions(selectedIds.size, onCopySelected, onShareSelected)
+        if (selecting && actions.isNotEmpty()) SearchSelectionActions(actions)
     }
     if (datesOpen) {
         DateFilterSheet(
@@ -208,6 +216,7 @@ private fun SearchHeader(
     onDates: (DaySpan?) -> Unit,
     today: LocalDate,
     autoFocus: Boolean,
+    onStartSelecting: () -> Unit,
 ) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -245,6 +254,8 @@ private fun SearchHeader(
                 }
                 if (state.query.isNotEmpty()) HeaderIcon(Icons.Rounded.Close, stringResource(R.string.search_clear)) { onQuery("") }
             }
+            // Selection mode, once there is something to select
+            if (!state.isEmpty) HeaderIcon(Icons.Rounded.Checklist, stringResource(R.string.search_select_button), onStartSelecting)
         }
         // Scrolls away with the results (slides up under the search field)
         Column(Modifier.collapsible(collapse)) {
@@ -303,8 +314,17 @@ private fun SenderChip(state: SearchUiState, onSender: (Long?) -> Unit) {
 }
 
 @Composable
-private fun ConversationHit(conv: Conversation, rule: ColorRule?, query: String, onClick: () -> Unit, onLongClick: () -> Unit) {
-    HitCard(frame = rowColor(rule, conv.category), onClick = onClick, onLongClick = onLongClick) {
+private fun ConversationHit(
+    conv: Conversation,
+    rule: ColorRule?,
+    query: String,
+    selecting: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    HitCard(frame = rowColor(rule, conv.category), selected = selected, onClick = onClick, onLongClick = onLongClick) {
+        if (selecting) SelectMark(selected)
         if (conv.isSpam) SpamAvatar(size = 44.dp) else Avatar(conv.name, conv.avatarArgb, size = 44.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -326,14 +346,7 @@ private fun MessageHit(
 ) {
     val c = HebTheme.colors
     HitCard(frame = rowColor(rule, hit.category), selected = selected, onClick = onClick, onLongClick = onLongClick) {
-        if (selecting) {
-            Icon(
-                if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = stringResource(if (selected) R.string.thread_message_selected else R.string.thread_message_not_selected),
-                tint = if (selected) c.accent else c.onSurfaceMuted,
-            )
-            Spacer(Modifier.width(10.dp))
-        }
+        if (selecting) SelectMark(selected)
         Avatar(hit.name, hit.avatarArgb, size = 44.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -348,6 +361,18 @@ private fun MessageHit(
             )
         }
     }
+}
+
+/** The check circle at the start of a row while selecting. */
+@Composable
+private fun SelectMark(selected: Boolean) {
+    val c = HebTheme.colors
+    Icon(
+        if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+        contentDescription = stringResource(if (selected) R.string.thread_message_selected else R.string.thread_message_not_selected),
+        tint = if (selected) c.accent else c.onSurfaceMuted,
+    )
+    Spacer(Modifier.width(10.dp))
 }
 
 /** A result row: framed in [frame] (a matching rule's colour, else the category's) when there is one. */
@@ -377,20 +402,21 @@ private fun HitCard(
     ) { content() }
 }
 
-/** The name, the category tag next to it, and the time. */
+/**
+ * The name, the category tag and the time. Every result has a tag (see [resultTag]): next to the name when it fits, otherwise on
+ * a line of its own under it; never left out.
+ */
 @Composable
 private fun HitTitle(name: AnnotatedString, time: String, category: CategoryTag?, rule: ColorRule?) {
     val c = HebTheme.colors
+    val tag = resultTag(category, stringResource(R.string.search_no_category))
     NameLine(
         name = { Text(name, color = c.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         // In the category's colour, else the matching rule's, else neutral (see [tagColor])
-        tags = if (category == null) null else ({
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(Modifier.width(6.dp))
-                CategoryTagChip(category, fallbackArgb = rule?.argb)
-            }
-        }),
+        tags = { CategoryTagChip(tag, fallbackArgb = rule?.argb) },
         time = { Text(time, color = c.onSurfaceMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        tagsUnderWhenTight = true,
+        tagGap = 6.dp,
     )
 }
 

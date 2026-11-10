@@ -1,7 +1,5 @@
 package com.havivon.pigeon.ui.search
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,6 +15,7 @@ import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.folders.FolderMoves
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.ui.app.LocalNotices
+import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.reservedFolderNames
@@ -45,15 +44,58 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
     val state by vm.state.collectAsStateWithLifecycle()
     val query by vm.queryText.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
+    val selectedConversations by vm.selectedConversations.collectAsStateWithLifecycle()
+    val selectionMode by vm.selecting.collectAsStateWithLifecycle()
     val customFolders by vm.customFolders.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     val scope = rememberCoroutineScope()
+    // The long-press sheets: of a conversation result, of a message result
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
+    var messageSheetFor by remember { mutableStateOf<SearchHit?>(null) }
     var remindSheet by remember { mutableStateOf(false) }
+    var moveSheet by remember { mutableStateOf(false) }
     val reminderCreated = stringResource(R.string.thread_reminder_created)
+    val needsDefault = rememberNeedsDefaultNotice()
+    val markedRead = stringResource(R.string.search_marked_read)
+    val movedToSpam = stringResource(R.string.thread_moved_to_spam)
+    val selecting = selectionMode
+    val count = selected.size + selectedConversations.size
 
     // Back leaves the selection first
-    BackHandler(enabled = selected.isNotEmpty()) { vm.clearSelection() }
+    BackHandler(enabled = selecting) { vm.clearSelection() }
+
+    val actions = selectionActions(
+        hasMessages = selected.isNotEmpty(),
+        count = count,
+        allStarred = vm.allSelectedStarred(),
+        onCopy = {
+            SensitiveClipboard.copy(context, context.getString(R.string.app_name), vm.selectedText(), R.string.thread_copied)
+            vm.clearSelection()
+        },
+        onShare = {
+            shareText(context, vm.selectedText())
+            vm.clearSelection()
+        },
+        onStar = vm::starSelected,
+        onMarkRead = { if (vm.markSelectedRead() != null) notices.show(markedRead) else needsDefault() },
+        onMove = { moveSheet = true },
+        onSpam = {
+            vm.markSelectedSpam()
+            notices.show(movedToSpam)
+        },
+        onDelete = {
+            vm.deleteSelected()?.let { d ->
+                val plural = when {
+                    d.conversations == 0 -> R.plurals.thread_messages_deleted
+                    d.messages == 0 -> R.plurals.search_conversations_deleted
+                    else -> R.plurals.search_results_deleted
+                }
+                val message = context.resources.getQuantityString(plural, d.count, d.count)
+                notices.undo(message, d.deletion)
+            } ?: needsDefault()
+        },
+        onRemind = if (count == 1) ({ remindSheet = true }) else null,
+    )
 
     SearchScreen(
         state = state.copy(query = query, searching = state.searching || state.query != query),
@@ -64,33 +106,31 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
         onHasCode = vm::toggleHasCode,
         onStarred = vm::toggleStarred,
         onDates = vm::setDates,
-        onOpenConversation = openThread,
-        // The same sheet as in the inbox
-        onLongPressConversation = { sheetFor = it },
-        // A tap adds or removes a result while selecting, otherwise opens the conversation at that message
-        onMessageClick = { hit -> if (selected.isNotEmpty()) vm.toggleSelected(hit.messageId) else openMessage(hit.threadId, hit.messageId) },
-        onMessageLongClick = { hit -> if (selected.isEmpty()) vm.select(hit.messageId) else vm.toggleSelected(hit.messageId) },
+        // A tap opens the result (while selecting: adds or removes it); a long press opens its sheet of actions (while selecting: adds or removes it too)
+        onConversationClick = { conv -> if (selecting) vm.toggleSelectedConversation(conv.id) else openThread(conv.id) },
+        onConversationLongClick = { conv -> if (selecting) vm.toggleSelectedConversation(conv.id) else sheetFor = conv },
+        onMessageClick = { hit -> if (selecting) vm.toggleSelected(hit.messageId) else openMessage(hit.threadId, hit.messageId) },
+        onMessageLongClick = { hit -> if (selecting) vm.toggleSelected(hit.messageId) else messageSheetFor = hit },
+        selectionMode = selecting,
+        onStartSelecting = vm::startSelecting,
         selectedIds = selected,
-        selectedStarred = vm.allSelectedStarred(),
+        selectedConversationIds = selectedConversations,
         onClearSelection = vm::clearSelection,
-        onStarSelected = vm::starSelected,
-        onRemindSelected = if (selected.size == 1) ({ remindSheet = true }) else null,
-        onCopySelected = {
-            SensitiveClipboard.copy(context, context.getString(R.string.app_name), vm.selectedText(), R.string.thread_copied)
-            vm.clearSelection()
-        },
-        onShareSelected = {
-            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, vm.selectedText())
-            try {
-                context.startActivity(Intent.createChooser(send, null))
-            } catch (_: ActivityNotFoundException) {
-                // No app can take text: nothing to offer
-            }
-            vm.clearSelection()
-        },
+        onSelectAll = vm::selectAll,
+        actions = if (count > 0) actions else emptyList(),
     )
 
-    ConversationSheets(sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = customFolders)
+    // The inbox's own sheet, with open, spam and select added (the long press)
+    ConversationSheets(
+        sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = customFolders,
+        onOpen = { openThread(it.id) }, onSelect = { vm.selectConversation(it.id) }, withSpam = true,
+    )
+    MessageSheet(
+        messageSheetFor, vm, customFolders, onDone = { messageSheetFor = null },
+        onOpen = { openMessage(it.threadId, it.messageId) }, onSelect = { vm.select(it.messageId) },
+    )
+
+    if (moveSheet) MoveSelectionFlow(vm, customFolders, onDismiss = { moveSheet = false })
 
     if (remindSheet) {
         ReminderSheet(

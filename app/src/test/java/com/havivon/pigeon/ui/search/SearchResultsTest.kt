@@ -131,9 +131,11 @@ class SearchResultsTest {
         assertEquals(CategoryTag("Personal"), s.tagOfMessage(10))
         assertEquals(CategoryTag("Personal"), s.tagOfMessage(11))
         assertEquals(CategoryTag("Banks"), s.tagOfMessage(20))
-        // No category: only "All", so no tag
+        // No category (only "All"): the state holds none, and the row shows the "No category" tag in its place
         assertNull(s.tagOfConversation(3))
         assertNull(s.tagOfMessage(30))
+        assertEquals(CategoryTag("No category"), resultTag(s.tagOfConversation(3), "No category"))
+        assertEquals(CategoryTag("No category"), resultTag(s.tagOfMessage(30), "No category"))
         // Spam: tagged "Spam", neutral
         assertEquals(CategoryTag("Spam", null), s.tagOfConversation(4))
         assertEquals(CategoryTag("Spam", null), s.tagOfMessage(40))
@@ -183,6 +185,27 @@ class SearchResultsTest {
         assertNull("no category, no tag", stranger.category)
         assertNull(stranger.ruleId)
         assertNull("no colour anywhere: neutral", tagColor(CategoryTag("Personal"), null))
+    }
+
+    @Test
+    fun `every result row has a tag, and the no-category and spam tags are neutral`() = runTest {
+        seed()
+        val s = found()
+        val none = "No category"
+        val tags = s.conversations.map { resultTag(it.category, none) } + s.messages.map { resultTag(it.category, none) }
+        assertEquals(s.conversations.size + s.messages.size, tags.size)
+        assertTrue(tags.all { it.label.isNotBlank() })
+        assertNull("no category: neutral", tagColor(resultTag(null, none), null))
+        assertEquals("a rule colours the tag of a row with no category, as it does any other", orange, tagColor(resultTag(null, none), ColorRule(1, "R", RuleMatch.Sender("x"), orange)))
+        assertNull("spam: neutral", tagColor(resultTag(s.tagOfMessage(40), none), null))
+        assertEquals("a category keeps its own tag", CategoryTag("Banks"), resultTag(CategoryTag("Banks"), none))
+    }
+
+    @Test
+    fun `a category's own colour wins over a rule's in the tag`() {
+        val rule = ColorRule(1, "R", RuleMatch.Sender("x"), orange)
+        assertEquals(green, tagColor(CategoryTag("Banks", green), rule))
+        assertEquals(orange, tagColor(CategoryTag("Personal"), rule))
     }
 
     @Test
@@ -380,5 +403,215 @@ class SearchResultsTest {
         assertEquals("only the visible one is copied", "[11:02] Danny: The address: 12 Maple Street", vm.selectedText())
         vm.starSelected()
         assertEquals(listOf(11L), favorites.state.value.map { it.messageId })
+    }
+
+    // The tap sheet of a result and the selection's actions
+
+    @Test
+    fun `a message result carries its conversation, for the tap sheet's category, spam and lock actions`() = runTest {
+        seed()
+        val s = found()
+        assertEquals(1L, s.messages.first { it.messageId == 11L }.conversation?.id)
+        assertEquals(false, s.messages.first { it.messageId == 11L }.conversation?.isSpam)
+        assertEquals("a spam result's conversation says so, so the sheet offers Not spam", true, s.messages.first { it.messageId == 40L }.conversation?.isSpam)
+        assertEquals(CategoryTag("Banks"), s.messages.first { it.messageId == 20L }.conversation?.category)
+    }
+
+    @Test
+    fun `a message result's sheet stars, unstars, deletes with undo and copies in the conversation's format`() = runTest {
+        seed()
+        val vm = search()
+        val s = found(vm)
+        val hit = s.messages.first { it.messageId == 11L }
+        vm.toggleStar(hit)
+        assertEquals(listOf(11L), favorites.state.value.map { it.messageId })
+        advanceTimeBy(300)
+        vm.toggleStar(vm.state.value.messages.first { it.messageId == 11L })
+        assertTrue("the second tap removes the star", favorites.state.value.isEmpty())
+        assertEquals("[11:02] Danny: The address: 12 Maple Street", vm.textOf(listOf(hit)))
+        val pending = vm.deleteMessage(hit)
+        assertNotNull(pending)
+        assertEquals(setOf(11L), messages.hiddenMessages.value)
+        assertTrue(pending!!.undo())
+        assertTrue(messages.hiddenMessages.value.isEmpty())
+        assertNull("a viewer deletes nothing", search(canWrite = false).deleteMessage(hit))
+        assertTrue(messages.hiddenMessages.value.isEmpty())
+    }
+
+    @Test
+    fun `the sheet's spam and not spam move the conversation of a message result`() = runTest {
+        seed()
+        val vm = search()
+        val s = found(vm)
+        vm.sheet.markSpam(s.messages.first { it.messageId == 30L }.conversation!!)
+        advanceTimeBy(300)
+        assertEquals(CategoryTag("Spam"), vm.state.value.tagOfMessage(30))
+        vm.sheet.notSpam(vm.state.value.messages.first { it.messageId == 40L }.conversation!!)
+        advanceTimeBy(300)
+        assertFalse(vm.state.value.messages.first { it.messageId == 40L }.conversation!!.isSpam)
+    }
+
+    @Test
+    fun `the header's select button starts selection mode with nothing chosen, taps toggle, leaving clears it`() = runTest {
+        seed()
+        val vm = search()
+        found(vm)
+        assertFalse(vm.selecting.value)
+        vm.startSelecting()
+        assertTrue("selection mode, nothing selected yet", vm.selecting.value && vm.selectedCount() == 0)
+        vm.toggleSelected(11)
+        vm.toggleSelectedConversation(2)
+        assertEquals("messages and conversations can be selected together", 2, vm.selectedCount())
+        vm.toggleSelected(11)
+        assertTrue("an empty selection stays in the mode until it is left", vm.selecting.value)
+        vm.clearSelection()
+        assertFalse(vm.selecting.value)
+        assertTrue(vm.selected.value.isEmpty() && vm.selectedConversations.value.isEmpty())
+    }
+
+    @Test
+    fun `select in a result's sheet starts the mode with that result, and select all takes every result`() = runTest {
+        seed()
+        val vm = search()
+        found(vm)
+        vm.select(11)
+        assertTrue(vm.selecting.value)
+        assertEquals(setOf(11L), vm.selected.value)
+        vm.selectConversation(2)
+        assertEquals("both kinds at once", setOf(2L), vm.selectedConversations.value)
+        vm.selectAll()
+        assertEquals(setOf(1L, 2L, 3L, 4L), vm.selectedConversations.value)
+        assertEquals(setOf(10L, 11L, 20L, 30L, 40L), vm.selected.value)
+        vm.toggleSelectedConversation(3)
+        assertEquals(setOf(1L, 2L, 4L), vm.selectedConversations.value)
+        vm.setQuery("Mapl")
+        assertFalse("a new search leaves the mode", vm.selecting.value)
+    }
+
+    @Test
+    fun `moving the selected messages moves each sender's conversation once, to a category or a new one`() = runTest {
+        seed()
+        val work = folders.add("Work")
+        val vm = search()
+        found(vm)
+        // Two messages of Danny and one of Leumi: two conversations
+        vm.select(10)
+        vm.toggleSelected(11)
+        vm.toggleSelected(20)
+        assertEquals(listOf(1L, 2L), vm.selectedConversationList().map { it.id })
+        vm.moveSelected(FolderChoice.Custom(work))
+        advanceTimeBy(300)
+        assertEquals(CategoryTag("Work"), vm.state.value.tagOfMessage(11))
+        assertEquals(CategoryTag("Work"), vm.state.value.tagOfMessage(20))
+        assertNull("the unselected sender stays where it was", vm.state.value.tagOfMessage(30))
+        assertTrue("the selection is done", vm.selected.value.isEmpty())
+
+        vm.select(11)
+        vm.toggleSelected(30)
+        assertTrue(vm.createFolderAndMoveSelected("Family", green))
+        advanceTimeBy(300)
+        assertEquals(CategoryTag("Family", green), vm.state.value.tagOfMessage(11))
+        assertEquals(CategoryTag("Family", green), vm.state.value.tagOfMessage(30))
+        vm.select(11)
+        assertFalse("a name a built-in folder has makes nothing", vm.createFolderAndMoveSelected("banks", null))
+        assertEquals("and the selection stays", setOf(11L), vm.selected.value)
+    }
+
+    @Test
+    fun `marking the selection as spam and as read acts on the senders of the selected messages`() = runTest {
+        seed()
+        val vm = search()
+        found(vm)
+        vm.select(20)
+        vm.toggleSelected(30)
+        assertEquals(1, vm.markSelectedRead())
+        assertEquals(listOf(listOf(2L)), messages.markedReadBatches)
+        assertTrue(vm.selected.value.isEmpty())
+        vm.select(30)
+        vm.markSelectedSpam()
+        advanceTimeBy(300)
+        assertEquals(CategoryTag("Spam"), vm.state.value.tagOfMessage(30))
+        assertNull("spam stays neutral", vm.state.value.tagOfMessage(30)?.argb)
+    }
+
+    @Test
+    fun `deleting the selection is one undo, for messages and for conversations`() = runTest {
+        seed()
+        val vm = search()
+        found(vm)
+        vm.select(10)
+        vm.toggleSelected(30)
+        val deleted = vm.deleteSelected()!!
+        assertEquals(2, deleted.count)
+        assertEquals(0, deleted.conversations)
+        assertEquals(setOf(10L, 30L), messages.hiddenMessages.value)
+        assertTrue(vm.selected.value.isEmpty())
+        assertTrue("one undo brings them all back", deleted.deletion.undo())
+        assertTrue(messages.hiddenMessages.value.isEmpty())
+
+        vm.selectConversation(1)
+        vm.toggleSelectedConversation(2)
+        val conversations = vm.deleteSelected()!!
+        assertEquals(0, conversations.messages)
+        assertEquals(2, conversations.count)
+        assertEquals(setOf(1L, 2L), messages.hiddenThreads.value)
+        conversations.deletion.undo()
+        assertTrue(messages.hiddenThreads.value.isEmpty())
+        assertNull("nothing selected, nothing deleted", vm.deleteSelected())
+
+        // Both kinds together: one undo brings both back
+        vm.select(30)
+        vm.selectConversation(4)
+        val both = vm.deleteSelected()!!
+        assertEquals(1, both.messages)
+        assertEquals(1, both.conversations)
+        assertEquals(setOf(30L), messages.hiddenMessages.value)
+        assertEquals(setOf(4L), messages.hiddenThreads.value)
+        assertTrue(both.deletion.undo())
+        assertTrue(messages.hiddenMessages.value.isEmpty() && messages.hiddenThreads.value.isEmpty())
+    }
+
+    @Test
+    fun `as a viewer the selection deletes and marks read nothing, and stays selected`() = runTest {
+        seed()
+        val vm = search(canWrite = false)
+        found(vm)
+        vm.select(11)
+        assertNull(vm.deleteSelected())
+        assertNull(vm.markSelectedRead())
+        assertEquals(setOf(11L), vm.selected.value)
+        assertTrue(messages.hiddenMessages.value.isEmpty())
+        assertTrue(messages.markedReadBatches.isEmpty())
+        vm.clearSelection()
+        vm.select(40)
+        vm.markSelectedSpam()
+        advanceTimeBy(300)
+        assertEquals("a move is Pigeon's own data, so it works", CategoryTag("Spam"), vm.state.value.tagOfMessage(40))
+    }
+
+    @Test
+    fun `reminding about a single selected conversation or message is offered and saved`() = runTest {
+        seed()
+        val vm = search()
+        found(vm)
+        vm.selectConversation(2)
+        assertTrue(vm.remindSelected(Now + 3_600_000))
+        assertNull(reminders.state.value.single().messageId)
+        vm.select(11)
+        vm.toggleSelected(10)
+        assertFalse("not for two", vm.remindSelected(Now + 3_600_000))
+    }
+
+    @Test
+    fun `a locked chat's results are not shown, so no sheet or selection can reveal them`() = runTest {
+        seed()
+        val vm = search()
+        found(vm)
+        locks.state.value = setOf(1L)
+        advanceTimeBy(300)
+        assertTrue(vm.state.value.messages.none { it.threadId == 1L })
+        vm.select(11)
+        assertTrue("a selected result that went away is not copied", vm.selectedText().isEmpty())
+        assertTrue("nor acted on", vm.selectedConversationList().isEmpty())
     }
 }

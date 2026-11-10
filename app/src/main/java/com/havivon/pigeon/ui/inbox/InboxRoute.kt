@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.inbox
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -7,6 +9,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Report
+import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DoneAll
@@ -149,10 +155,15 @@ internal fun ConversationActions(
     onMove: () -> Unit,
     onLock: () -> Unit,
     onDelete: () -> Unit,
+    /** Only the search's sheet has these: open the conversation, mark it as spam (or "Not spam"), start a selection with it. */
+    onOpen: (() -> Unit)? = null,
+    onSpam: (() -> Unit)? = null,
+    onSelect: (() -> Unit)? = null,
 ) {
-    Column(Modifier.navigationBarsPadding().padding(horizontal = 12.dp).padding(bottom = 16.dp)) {
+    Column(Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp).padding(bottom = 16.dp)) {
         SheetTitle(conv.name) { if (conv.isSpam) SpamAvatar(size = 42.dp) else Avatar(conv.name, conv.avatarArgb, size = 42.dp) }
         Spacer(Modifier.height(6.dp))
+        if (onOpen != null) SheetAction(Icons.AutoMirrored.Rounded.OpenInNew, stringResource(R.string.search_action_open), onClick = onOpen)
         SheetAction(Icons.Rounded.PushPin, stringResource(if (conv.pinned) R.string.action_unpin else R.string.action_pin), onClick = onPin)
         if (conv.unread > 0) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
         SheetAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind)
@@ -162,6 +173,14 @@ internal fun ConversationActions(
             stringResource(if (conv.locked) R.string.action_unlock_chat else R.string.action_lock_chat),
             onClick = onLock,
         )
+        if (onSpam != null) {
+            SheetAction(
+                if (conv.isSpam) Icons.Rounded.VerifiedUser else Icons.Rounded.Report,
+                stringResource(if (conv.isSpam) R.string.spam_not_spam else R.string.action_mark_spam),
+                onClick = onSpam,
+            )
+        }
+        if (onSelect != null) SheetAction(Icons.Rounded.CheckCircle, stringResource(R.string.search_action_select), onClick = onSelect)
         SheetAction(Icons.Rounded.Delete, stringResource(R.string.action_delete_conversation), danger = true, onClick = onDelete)
     }
 }

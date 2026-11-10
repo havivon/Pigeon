@@ -4,6 +4,7 @@ import com.havivon.pigeon.domain.folders.FolderMoves
 import com.havivon.pigeon.domain.folders.FolderNameProblem
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.Reminder
@@ -122,4 +123,32 @@ class ConversationSheetActions(
     /** "New category…": makes it (coloured [argb], if given) and moves [c] into it; false (nothing made) when the name cannot be used. */
     suspend fun createFolderAndMove(c: Conversation, name: String, argb: Long? = null): Boolean =
         moves.createAndMove(name, c.id, c.addresses, c.isSpam, argb) != null
+
+    /** "Mark as spam" (the sender's later messages follow it). */
+    fun markSpam(c: Conversation) = moveTo(c, FolderChoice.BuiltIn(Folder.Spam))
+
+    /** "Not spam": back to the automatic sorting, which teaches the filter. */
+    fun notSpam(c: Conversation) = moveTo(c, null)
+
+    /** "Move to category" for several conversations at once (the search's selection); each is moved as [moveTo] does. */
+    fun moveAll(list: List<Conversation>, target: FolderChoice?) {
+        val seen = HashSet<Long>()
+        list.filter { seen.add(it.id) }.forEach { moveTo(it, target) }
+    }
+
+    /** "Mark as spam" for several conversations at once. */
+    fun markSpamAll(list: List<Conversation>) = moveAll(list, FolderChoice.BuiltIn(Folder.Spam))
+
+    /** A new category (coloured [argb], if given) that all of [list] are moved into; false (nothing made) when the name cannot be used. */
+    suspend fun createFolderAndMoveAll(list: List<Conversation>, name: String, argb: Long? = null): Boolean {
+        val id = moves.create(name, argb) ?: return false
+        moveAll(list, FolderChoice.Custom(id))
+        return true
+    }
+
+    /** Null, and nothing is deleted, while Pigeon is not the default SMS app: the screen says so. Undo within the window brings the messages back. */
+    fun deleteMessages(ids: Set<Long>): PendingDeletion? = if (canWrite()) messages.deleteMessages(ids) else null
+
+    /** The same for several conversations at once. */
+    fun deleteConversations(ids: Set<Long>): PendingDeletion? = if (canWrite()) messages.deleteThreads(ids) else null
 }

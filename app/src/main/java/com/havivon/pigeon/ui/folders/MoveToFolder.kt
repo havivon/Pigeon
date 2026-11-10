@@ -105,6 +105,8 @@ fun MoveToFolderFlow(
     onMove: (FolderChoice?) -> Unit,
     onCreate: (name: String, argb: Long?) -> Unit,
     onDismiss: () -> Unit,
+    /** For several conversations at once (the search's selection): says whom the move applies to; nothing is "current" or "unchanged" then. */
+    subtitle: String? = null,
 ) {
     var naming by rememberSaveable { mutableStateOf(false) }
     if (naming) {
@@ -129,10 +131,11 @@ fun MoveToFolderFlow(
             customFolders,
             onChoose = { target ->
                 onDismiss()
-                val unchanged = target == currentFolder(conversation) && (conversation.folderOverridden || conversation.isSpam)
+                val unchanged = subtitle == null && target == currentFolder(conversation) && (conversation.folderOverridden || conversation.isSpam)
                 if (!unchanged) onMove(target)
             },
             onNew = { naming = true },
+            subtitleOverride = subtitle,
         )
     }
 }
@@ -145,9 +148,11 @@ fun MoveToFolderContent(
     /** The chosen place; null is "Automatic". */
     onChoose: (FolderChoice?) -> Unit,
     onNew: () -> Unit,
+    /** Replaces the line under the title (see [MoveToFolderFlow]); also turns off the check on the current place. */
+    subtitleOverride: String? = null,
 ) {
-    val current = currentFolder(conversation)
-    val subtitle = if (FolderKeys.bySender(conversation.addresses)) {
+    val current = if (subtitleOverride != null) null else currentFolder(conversation)
+    val subtitle = subtitleOverride ?: if (FolderKeys.bySender(conversation.addresses)) {
         stringResource(R.string.move_folder_sender, conversation.name)
     } else {
         stringResource(R.string.move_folder_group)

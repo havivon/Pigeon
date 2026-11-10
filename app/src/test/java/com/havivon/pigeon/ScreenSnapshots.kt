@@ -164,6 +164,8 @@ internal class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
         conversations = listOf(
             danny.copy(category = CategoryTag(personal)),
             noa.copy(category = CategoryTag(work, blue)),
+            // A result in no category: the "No category" tag, neutral and muted
+            danny.copy(id = 7, category = null),
         ),
         messages = listOf(
             SearchHit(5, 2, danny.name, search.messages[0].text, danny.time, danny.avatarArgb, false, category = CategoryTag(personal)),
@@ -178,6 +180,7 @@ internal class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
                 if (hebrew) "זכית בפרס ברחוב הרצל! bit.ly/x7Kq9" else "You won a prize on Maple Street! bit.ly/x7Kq9", "13:02", 0xFFE53935, false,
                 category = CategoryTag(if (hebrew) "ספאם" else "Spam"),
             ),
+            SearchHit(43, 7, danny.name, search.messages[0].text, danny.time, danny.avatarArgb, false),
         ),
         senders = emptyList(),
     )

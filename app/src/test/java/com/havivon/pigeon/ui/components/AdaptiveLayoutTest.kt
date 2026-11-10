@@ -109,6 +109,32 @@ class AdaptiveLayoutTest {
     }
 
     @Test
+    fun `search tags beside the name when they fit whole`() {
+        assertEquals(TagPlacement.Beside, tagPlacement(room = 200, nameWidth = 100, tagsWidth = 60, minTagWidth = 28, underWhenTight = true))
+        // A long name still keeps 60% of the line beside a short tag
+        assertEquals(TagPlacement.Beside, tagPlacement(room = 250, nameWidth = 300, tagsWidth = 80, minTagWidth = 28, underWhenTight = true))
+    }
+
+    @Test
+    fun `search tags move under the name when they do not fit, and are never dropped`() {
+        // Shortened beside the name for the inbox, but a search row moves them under it
+        assertEquals(TagPlacement.Beside, tagPlacement(room = 250, nameWidth = 300, tagsWidth = 150, minTagWidth = 28))
+        assertEquals(TagPlacement.Under, tagPlacement(room = 250, nameWidth = 300, tagsWidth = 150, minTagWidth = 28, underWhenTight = true))
+        // Too narrow to read beside the name: the inbox leaves them out, a search row puts them under
+        assertEquals(TagPlacement.Dropped, tagPlacement(room = 100, nameWidth = 300, tagsWidth = 80, minTagWidth = 50))
+        assertEquals(TagPlacement.Under, tagPlacement(room = 100, nameWidth = 300, tagsWidth = 80, minTagWidth = 50, underWhenTight = true))
+        assertEquals(TagPlacement.Under, tagPlacement(room = 0, nameWidth = 300, tagsWidth = 80, minTagWidth = 28, underWhenTight = true))
+        for (room in 0..400 step 10) for (name in listOf(0, 50, 300)) for (tags in listOf(20, 80, 500)) {
+            assertTrue(tagPlacement(room, name, tags, 28, underWhenTight = true) != TagPlacement.Dropped)
+        }
+    }
+
+    @Test
+    fun `no tags is never under or dropped`() {
+        assertEquals(TagPlacement.Beside, tagPlacement(room = 0, nameWidth = 300, tagsWidth = 0, minTagWidth = 28, underWhenTight = true))
+    }
+
+    @Test
     fun `the time takes at most its share of the line`() {
         assertTrue(TIME_MAX_FRACTION in 0.3f..0.4f)
     }
