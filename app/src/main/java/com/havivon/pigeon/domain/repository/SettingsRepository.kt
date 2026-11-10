@@ -13,6 +13,9 @@ interface SettingsRepository {
 
     suspend fun setLanguage(value: AppLanguage)
     suspend fun setTheme(value: AppTheme)
+
+    /** Stores a skin's id; an unknown one is stored as the default (Sunset). */
+    suspend fun setSkin(id: String)
     suspend fun setAppIcon(value: AppIcon)
     suspend fun setLockScreenText(value: Boolean)
     suspend fun setWidgetsShowText(value: Boolean)

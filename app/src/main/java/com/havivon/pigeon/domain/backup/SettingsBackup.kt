@@ -30,10 +30,12 @@ data class BackupSettings(
     val autoDeleteCodes: Boolean? = null,
     val blockSpamOnPhone: Boolean? = null,
     val autoCopyCodes: Boolean? = null,
+    /** A skin's id (see `SkinIds`); a file from before skins (0.6.0) has none. */
+    val skin: String? = null,
 ) {
     /** How many settings the file holds. */
     val count: Int
-        get() = listOf<Any?>(language, theme, appIcon, lockScreenText, widgetsShowText, blockScreenshots, appLock, autoDeleteCodes, blockSpamOnPhone, autoCopyCodes).count { it != null }
+        get() = listOf<Any?>(language, theme, appIcon, lockScreenText, widgetsShowText, blockScreenshots, appLock, autoDeleteCodes, blockSpamOnPhone, autoCopyCodes, skin).count { it != null }
 }
 
 /** A colour rule. [argb] is a full ARGB value, as in `ColorRule`. */

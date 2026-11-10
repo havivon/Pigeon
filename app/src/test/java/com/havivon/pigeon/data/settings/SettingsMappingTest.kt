@@ -30,6 +30,7 @@ class SettingsMappingTest {
         assertFalse(s.welcomeDone)
         assertTrue("Mark as spam blocks on the phone, as in Google Messages", s.blockSpamOnPhone)
         assertTrue("codes are copied for the keyboard", s.autoCopyCodes)
+        assertEquals("the app's original look", "sunset", s.skin)
     }
 
     @Test
@@ -67,6 +68,13 @@ class SettingsMappingTest {
             ),
             prefs.toAppSettings(),
         )
+    }
+
+    @Test
+    fun `a stored skin is read, and one this version does not know reads as Sunset`() {
+        assertEquals("pomegranate", mutablePreferencesOf(SettingsKeys.SKIN to "pomegranate").toAppSettings().skin)
+        assertEquals("sunset", mutablePreferencesOf(SettingsKeys.SKIN to "neon").toAppSettings().skin)
+        assertEquals("sunset", mutablePreferencesOf(SettingsKeys.SKIN to "").toAppSettings().skin)
     }
 
     @Test

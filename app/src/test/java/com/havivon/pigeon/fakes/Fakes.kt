@@ -5,6 +5,7 @@ import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.AppTheme
+import com.havivon.pigeon.domain.model.SkinIds
 import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Contact
@@ -300,6 +301,7 @@ class FakeSettings(initial: AppSettings = AppSettings()) : SettingsRepository {
     override val settings: Flow<AppSettings> = state
     override suspend fun setLanguage(value: AppLanguage) = state.update { it.copy(language = value) }
     override suspend fun setTheme(value: AppTheme) = state.update { it.copy(theme = value) }
+    override suspend fun setSkin(id: String) = state.update { it.copy(skin = SkinIds.orDefault(id)) }
     override suspend fun setAppIcon(value: AppIcon) = state.update { it.copy(appIcon = value) }
     override suspend fun setLockScreenText(value: Boolean) = state.update { it.copy(lockScreenText = value) }
     override suspend fun setWidgetsShowText(value: Boolean) = state.update { it.copy(widgetsShowText = value) }

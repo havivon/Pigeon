@@ -15,6 +15,7 @@ import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppTheme
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.RuleMatch
+import com.havivon.pigeon.domain.model.SkinIds
 import java.time.Instant
 import java.util.Locale
 import org.json.JSONArray
@@ -26,7 +27,9 @@ import org.json.JSONObject
  * which Android already has: no new library).
  *
  * Version 2 adds the colours of the categories (`categoryColors`, `folderColors`); a version 1 file is still read, and has
- * none (an import then leaves the phone's colours of the built-in folders as they are).
+ * none (an import then leaves the phone's colours of the built-in folders as they are). The skin (`settings.skin`, 0.6.0)
+ * is an optional field of version 2: a file without it leaves the phone's skin as it is, and an id this version does not
+ * know (a skin added later) imports as Sunset.
  *
  * Writing never includes a message body (see `SettingsBackup`). Reading is defensive, since the file comes
  * from outside: a file over [BackupLimits.MAX_FILE_BYTES], not JSON, of another format or of a newer
@@ -51,6 +54,7 @@ object BackupJson {
             JSONObject().apply {
                 s.language?.let { put("language", it.name.lowercase(Locale.ROOT)) }
                 s.theme?.let { put("theme", it.name.lowercase(Locale.ROOT)) }
+                s.skin?.let { put("skin", it) }
                 s.appIcon?.let { put("appIcon", it.name.lowercase(Locale.ROOT)) }
                 s.lockScreenText?.let { put("lockScreenText", it) }
                 s.widgetsShowText?.let { put("widgetsShowText", it) }
@@ -170,6 +174,8 @@ object BackupJson {
         return BackupSettings(
             language = o.enum<AppLanguage>("language"),
             theme = o.enum<AppTheme>("theme"),
+            // Present but not text: dropped, like any wrong type; text naming no skin: Sunset
+            skin = (o.opt("skin") as? String)?.let { SkinIds.orDefault(it.trim().lowercase(Locale.ROOT)) },
             appIcon = o.enum<AppIcon>("appIcon"),
             lockScreenText = o.opt("lockScreenText") as? Boolean,
             widgetsShowText = o.opt("widgetsShowText") as? Boolean,

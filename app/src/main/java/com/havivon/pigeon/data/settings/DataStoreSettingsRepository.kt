@@ -14,6 +14,7 @@ import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
 import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.AppTheme
+import com.havivon.pigeon.domain.model.SkinIds
 import com.havivon.pigeon.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.map
 internal object SettingsKeys {
     val LANGUAGE = stringPreferencesKey("language")
     val THEME = stringPreferencesKey("theme")
+    val SKIN = stringPreferencesKey("skin")
     val APP_ICON = stringPreferencesKey("app_icon")
     val LOCK_SCREEN_TEXT = booleanPreferencesKey("lock_screen_text")
     val WIDGETS_SHOW_TEXT = booleanPreferencesKey("widgets_show_text")
@@ -41,6 +43,7 @@ internal fun Preferences.toAppSettings(): AppSettings {
     return AppSettings(
         language = this[SettingsKeys.LANGUAGE]?.let { v -> AppLanguage.entries.firstOrNull { it.name == v } } ?: defaults.language,
         theme = this[SettingsKeys.THEME]?.let { v -> AppTheme.entries.firstOrNull { it.name == v } } ?: defaults.theme,
+        skin = SkinIds.orDefault(this[SettingsKeys.SKIN]),
         appIcon = this[SettingsKeys.APP_ICON]?.let { v -> AppIcon.entries.firstOrNull { it.name == v } } ?: defaults.appIcon,
         lockScreenText = this[SettingsKeys.LOCK_SCREEN_TEXT] ?: defaults.lockScreenText,
         widgetsShowText = this[SettingsKeys.WIDGETS_SHOW_TEXT] ?: defaults.widgetsShowText,
@@ -84,15 +87,16 @@ private val Context.settingsStore: DataStore<Preferences> by preferencesDataStor
     },
 )
 
-/** [SettingsRepository] on a Preferences DataStore in the app's private files. */
-class DataStoreSettingsRepository(context: Context) : SettingsRepository {
+/** [SettingsRepository] on a Preferences DataStore in the app's private files ([store] is a test's own file). */
+class DataStoreSettingsRepository internal constructor(private val store: DataStore<Preferences>) : SettingsRepository {
 
-    private val store = context.applicationContext.settingsStore
+    constructor(context: Context) : this(context.applicationContext.settingsStore)
 
     override val settings: Flow<AppSettings> = store.data.map { it.toAppSettings() }
 
     override suspend fun setLanguage(value: AppLanguage) = put(SettingsKeys.LANGUAGE, value.name)
     override suspend fun setTheme(value: AppTheme) = put(SettingsKeys.THEME, value.name)
+    override suspend fun setSkin(id: String) = put(SettingsKeys.SKIN, SkinIds.orDefault(id))
     override suspend fun setAppIcon(value: AppIcon) = put(SettingsKeys.APP_ICON, value.name)
     override suspend fun setLockScreenText(value: Boolean) = put(SettingsKeys.LOCK_SCREEN_TEXT, value)
     override suspend fun setWidgetsShowText(value: Boolean) = put(SettingsKeys.WIDGETS_SHOW_TEXT, value)
@@ -120,6 +124,7 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
         store.edit {
             it[SettingsKeys.LANGUAGE] = values.language.name
             it[SettingsKeys.THEME] = values.theme.name
+            it[SettingsKeys.SKIN] = SkinIds.orDefault(values.skin)
             it[SettingsKeys.APP_ICON] = values.appIcon.name
             it[SettingsKeys.LOCK_SCREEN_TEXT] = values.lockScreenText
             it[SettingsKeys.WIDGETS_SHOW_TEXT] = values.widgetsShowText

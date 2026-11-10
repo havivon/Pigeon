@@ -84,7 +84,7 @@ private class Phone(val shift: Long = 0) {
     /** The user's own set-up, as it is after some use. */
     suspend fun setUp() {
         settings.state.value = AppSettings(
-            language = AppLanguage.Hebrew, theme = AppTheme.Dark, appIcon = AppIcon.Origami, lockScreenText = false,
+            language = AppLanguage.Hebrew, theme = AppTheme.Dark, skin = "pomegranate", appIcon = AppIcon.Origami, lockScreenText = false,
             widgetsShowText = false, blockScreenshots = true, appLock = false, autoDeleteCodes = true, autoDeleteCodesSinceMillis = Now - 1000,
             welcomeDone = true, permissionsAsked = true, blockSpamOnPhone = false, autoCopyCodes = false,
         )
@@ -421,6 +421,19 @@ class SettingsBackupManagerTest {
     }
 
     @Test
+    fun `the skin travels with the file, and a file without one keeps the phone's`() = runTest {
+        val a = Phone()
+        a.setUp()
+        val b = Phone()
+        b.manager.restore(parsed(a.exportJson()), canLock = true)
+        assertEquals("pomegranate", b.settings.state.value.skin)
+        val c = Phone()
+        c.settings.state.value = AppSettings(skin = "desert")
+        c.manager.restore(parsed("""{"format":"pigeon-settings","version":2,"settings":{"theme":"light"}}"""), canLock = true)
+        assertEquals("desert", c.settings.state.value.skin)
+    }
+
+    @Test
     fun `settings missing from the file keep their current value`() = runTest {
         val b = Phone()
         b.settings.state.value = AppSettings(theme = AppTheme.Light, blockScreenshots = true)
@@ -471,7 +484,7 @@ class SettingsBackupManagerTest {
         val a = Phone()
         a.setUp()
         val summary = parsed(a.exportJson()).summary()
-        assertEquals(10, summary.settings)
+        assertEquals("ten settings and the skin", 11, summary.settings)
         assertEquals(2, summary.rules)
         assertEquals(2, summary.categories)
         assertEquals(3, summary.moves)

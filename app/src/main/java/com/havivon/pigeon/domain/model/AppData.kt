@@ -59,10 +59,24 @@ enum class AppTheme {
     Dark,
 }
 
+/**
+ * The colour skins' stored ids (`ui/theme/Skins.kt` draws them), in the order the picker shows them. The id is kept as
+ * text, so a skin a newer version adds, or one removed, reads back as the default instead of failing.
+ */
+object SkinIds {
+    const val DEFAULT = "sunset"
+    val ALL = listOf(DEFAULT, "ocean", "forest", "midnight", "pomegranate", "desert", "pastel", "graphite")
+
+    /** [id] when it names a skin, otherwise the default (Sunset). */
+    fun orDefault(id: String?): String = id?.takeIf { it in ALL } ?: DEFAULT
+}
+
 /** The user's settings. The defaults match Google Messages (see CLAUDE.md, section 4). */
 data class AppSettings(
     val language: AppLanguage = AppLanguage.System,
     val theme: AppTheme = AppTheme.System,
+    /** The colour skin's id (see [SkinIds]); the launcher icon is a separate choice. */
+    val skin: String = SkinIds.DEFAULT,
     val appIcon: AppIcon = AppIcon.Envelope,
     val lockScreenText: Boolean = true,
     val widgetsShowText: Boolean = true,

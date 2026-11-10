@@ -86,6 +86,21 @@ class BackupJsonTest {
     }
 
     @Test
+    fun `the skin goes in the file and reads back`() {
+        val withSkin = sample.copy(settings = sample.settings.copy(skin = "midnight"))
+        assertTrue(BackupJson.encode(withSkin).replace(" ", "").contains("\"skin\":\"midnight\""))
+        assertEquals(withSkin, ok(BackupJson.encode(withSkin)))
+    }
+
+    @Test
+    fun `a file from before skins leaves the skin alone, and an unknown one imports as Sunset`() {
+        assertNull(ok(file(""""settings":{"theme":"dark"}""", version = 2)).settings.skin)
+        assertEquals("sunset", ok(file(""""settings":{"skin":"neon"}""", version = 2)).settings.skin)
+        assertEquals("ocean", ok(file(""""settings":{"skin":" Ocean "}""", version = 2)).settings.skin)
+        assertNull("a skin that is not text is dropped", ok(file(""""settings":{"skin":3}""", version = 2)).settings.skin)
+    }
+
+    @Test
     fun `welcome and permission flags are never written`() {
         val json = BackupJson.encode(sample)
         assertFalse(json.contains("welcome"))

@@ -105,6 +105,7 @@ class SettingsBackupManager(
             settings = BackupSettings(
                 language = s.language,
                 theme = s.theme,
+                skin = s.skin,
                 appIcon = s.appIcon,
                 lockScreenText = s.lockScreenText,
                 widgetsShowText = s.widgetsShowText,
@@ -217,6 +218,7 @@ class SettingsBackupManager(
         return current.copy(
             language = file.language ?: current.language,
             theme = file.theme ?: current.theme,
+            skin = file.skin ?: current.skin,
             appIcon = file.appIcon ?: current.appIcon,
             lockScreenText = file.lockScreenText ?: current.lockScreenText,
             widgetsShowText = file.widgetsShowText ?: current.widgetsShowText,
