@@ -439,6 +439,32 @@ class SearchResultsTest {
     }
 
     @Test
+    fun `a message found by the sender filter has a sheet even when its thread is not in the inbox list`() = runTest {
+        seed()
+        // Thread 9 is no longer listed (the provider lost it); its messages still browse
+        messages.allMessages.value = listOf(
+            sms(90, 9, "Order 55 is ready\n" + "x".repeat(5000), millis(2026, 11, 1, 7, 0), "0501110000"),
+            sms(91, 9, "x".repeat(5000), millis(2026, 11, 1, 6, 0), "0501110000", SmsType.Sent),
+        )
+        val vm = search()
+        collect(vm.state)
+        vm.setSender(9)
+        advanceTimeBy(300)
+        val hits = vm.state.value.messages
+        assertEquals(listOf(90L, 91L), hits.map { it.messageId })
+        hits.forEach { hit ->
+            assertNull(hit.conversation)
+            assertTrue(hit.name.isNotBlank())
+            assertTrue(firstLine(hit.text).length <= 240)
+            vm.textOf(listOf(hit))
+        }
+        vm.toggleStar(hits[0])
+        vm.select(91L)
+        assertTrue(vm.selectedConversationList().isEmpty())
+        assertNotNull(vm.deleteSelected())
+    }
+
+    @Test
     fun `the sheet's spam and not spam move the conversation of a message result`() = runTest {
         seed()
         val vm = search()

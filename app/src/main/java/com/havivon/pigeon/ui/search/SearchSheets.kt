@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -146,7 +147,11 @@ internal fun MessageActions(
 }
 
 /** The first non-blank line of a message, for the sheet's header. */
-internal fun firstLine(text: String): String = text.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+internal fun firstLine(text: String): String =
+    text.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty().take(HEADER_LINE_MAX)
+
+/** The header shows two lines at most: a message that is one enormous line (an encoded blob) is cut before it reaches the text layout. */
+private const val HEADER_LINE_MAX = 240
 
 /**
  * The long-press sheet of a message result with what follows from it (the reminder chooser, "Move to category"), using the
@@ -175,7 +180,8 @@ internal fun MessageSheet(
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val notSpamDone = stringResource(R.string.search_not_spam_done)
 
-    target?.let { hit ->
+    // One sheet per result: another long press never reuses the open sheet's state
+    target?.let { hit -> key(hit.messageId) {
         val conv = hit.conversation
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(onDismissRequest = onDone, sheetState = sheetState, containerColor = HebTheme.colors.surface) {
@@ -219,7 +225,7 @@ internal fun MessageSheet(
                 }) else null,
             )
         }
-    }
+    } }
 
     moveFor?.let { hit ->
         hit.conversation?.let { conv ->
