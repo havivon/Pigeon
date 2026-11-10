@@ -455,7 +455,7 @@ private fun FilterButton(label: String, count: Int, selected: Boolean, onClick: 
     ) {
         Text(
             label,
-            color = if (!selected) Color.White else if (c.isDark) Color(0xFF3A2596) else c.accent,
+            color = if (!selected) Color.White else c.onWhite,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,

@@ -62,7 +62,7 @@ fun LockCover(onUnlock: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.lock_cover_body), color = Color.White.copy(alpha = 0.88f), fontSize = 15.sp, lineHeight = 21.sp, textAlign = TextAlign.Center)
             Spacer(Modifier.height(28.dp))
-            val onWhite = if (c.isDark) Color(0xFF3A2596) else c.accent
+            val onWhite = c.onWhite
             Box(
                 Modifier
                     .fillMaxWidth()

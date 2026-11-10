@@ -366,7 +366,7 @@ fun SheetTitle(title: String, subtitle: String? = null, leading: (@Composable ()
 @Composable
 fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: ImageVector? = null) {
     val c = HebTheme.colors
-    val onWhite = if (c.isDark) Color(0xFF3A2596) else c.accent
+    val onWhite = c.onWhite
     Row(
         Modifier
             .clip(RoundedCornerShape(50))

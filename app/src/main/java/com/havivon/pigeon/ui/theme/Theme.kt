@@ -22,6 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 
+/**
+ * One theme's colours (a skin has a light and a dark set, see [Skin]). The header and the outgoing bubbles are
+ * gradients, kept as their stops so the contrast test can check white text on every stop.
+ */
 @Immutable
 data class HebColors(
     val isDark: Boolean,
@@ -31,17 +35,23 @@ data class HebColors(
     val onSurface: Color,
     val onSurfaceMuted: Color,
     val accent: Color,
-    val header: Brush,
-    val outgoing: Brush,
+    val headerStops: List<Color>,
+    val outgoingStops: List<Color>,
     val incoming: Color,
     val spam: Color,
     val divider: Color,
-)
+    /** Text and icons on a white pill over the header (the selected chip, the category button, white buttons). */
+    val onWhite: Color,
+) {
+    val header: Brush = Brush.linearGradient(headerStops)
+    val outgoing: Brush = Brush.linearGradient(outgoingStops)
+}
 
 private val Violet = Color(0xFF5B3FD9)
 private val Magenta = Color(0xFFC2408F)
 private val Coral = Color(0xFFFF7A59)
 
+/** The Sunset skin's light colours: the app's original look, and the default. */
 val LightHebColors = HebColors(
     isDark = false,
     background = Color(0xFFF5F0FA),
@@ -50,11 +60,12 @@ val LightHebColors = HebColors(
     onSurface = Color(0xFF1D1530),
     onSurfaceMuted = Color(0xFF6E6585),
     accent = Violet,
-    header = Brush.linearGradient(listOf(Violet, Magenta, Coral)),
-    outgoing = Brush.linearGradient(listOf(Color(0xFF6A4BE6), Color(0xFFB4479A))),
+    headerStops = listOf(Violet, Magenta, Coral),
+    outgoingStops = listOf(Color(0xFF6A4BE6), Color(0xFFB4479A)),
     incoming = Color.White,
     spam = Color(0xFFE53935),
     divider = Color(0xFFE6DFF0),
+    onWhite = Violet,
 )
 
 val DarkHebColors = HebColors(
@@ -65,11 +76,13 @@ val DarkHebColors = HebColors(
     onSurface = Color(0xFFF1ECFA),
     onSurfaceMuted = Color(0xFFA79FC0),
     accent = Color(0xFFB9A6FF),
-    header = Brush.linearGradient(listOf(Color(0xFF3A2596), Color(0xFF8A2C6B), Color(0xFFB8513A))),
-    outgoing = Brush.linearGradient(listOf(Color(0xFF5B3FD9), Color(0xFF9C3A86))),
+    headerStops = listOf(Color(0xFF3A2596), Color(0xFF8A2C6B), Color(0xFFB8513A)),
+    outgoingStops = listOf(Color(0xFF5B3FD9), Color(0xFF9C3A86)),
     incoming = Color(0xFF241D3B),
     spam = Color(0xFFFF5A52),
     divider = Color(0xFF2D2548),
+    // The accent is too pale on white in the dark theme, so it takes the dark gradient's first stop
+    onWhite = Color(0xFF3A2596),
 )
 
 val LocalHebColors = staticCompositionLocalOf { LightHebColors }
@@ -87,14 +100,17 @@ private val HebTypography = Typography(
     labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium),
 )
 
-/** The app is bilingual: it is laid out right to left when the current locale is a right-to-left one (Hebrew), and left to right otherwise. */
+/**
+ * The app is bilingual: it is laid out right to left when the current locale is a right-to-left one (Hebrew), and
+ * left to right otherwise. [skin] picks the palette; Sunset is the app's original look.
+ */
 @Composable
-fun HebSmsTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun HebSmsTheme(darkTheme: Boolean = isSystemInDarkTheme(), skin: Skin = Skin.Sunset, content: @Composable () -> Unit) {
     val layoutDirection = when (TextUtils.getLayoutDirectionFromLocale(LocalConfiguration.current.locales[0])) {
         View.LAYOUT_DIRECTION_RTL -> LayoutDirection.Rtl
         else -> LayoutDirection.Ltr
     }
-    val colors = if (darkTheme) DarkHebColors else LightHebColors
+    val colors = skin.colors(darkTheme)
     val scheme = if (darkTheme) {
         darkColorScheme(primary = colors.accent, background = colors.background, surface = colors.surface, onSurface = colors.onSurface)
     } else {

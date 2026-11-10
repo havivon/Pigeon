@@ -148,7 +148,7 @@ internal fun CategoryDropdown(entries: List<CategoryEntry>, onAction: (CategoryA
     val c = HebTheme.colors
     var open by rememberSaveable { mutableStateOf(false) }
     val current = entries.current()
-    val onWhite = if (c.isDark) Color(0xFF3A2596) else c.accent
+    val onWhite = c.onWhite
     val description = stringResource(R.string.inbox_category_button_description, current.label(), current.count)
     Box {
         Row(

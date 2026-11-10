@@ -98,8 +98,7 @@ fun DefaultAppWelcome(onMakeDefault: () -> Unit, onViewOnly: () -> Unit, onNotNo
             }
         }
         Spacer(Modifier.height(16.dp))
-        // The accent is too pale on white in the dark theme, so the text takes the dark gradient's first stop
-        val onWhite = if (c.isDark) Color(0xFF3A2596) else c.accent
+        val onWhite = c.onWhite
         Box(
             Modifier
                 .fillMaxWidth()
