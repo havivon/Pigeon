@@ -49,6 +49,7 @@ import com.havivon.pigeon.ui.compose.NewMessageRoute
 import com.havivon.pigeon.ui.conversation.ConversationRoute
 import com.havivon.pigeon.ui.inbox.InboxRoute
 import com.havivon.pigeon.ui.bin.BinRoute
+import com.havivon.pigeon.ui.reminders.RemindersRoute
 import com.havivon.pigeon.ui.folders.FoldersRoute
 import com.havivon.pigeon.ui.keywords.BlockedKeywordsRoute
 import com.havivon.pigeon.ui.lock.BiometricAuthenticator
@@ -206,6 +207,7 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
             Screen.BlockedKeywords -> BlockedKeywordsRoute(onBack = { navigator.pop() })
             Screen.Folders -> FoldersRoute(onBack = { navigator.pop() })
             Screen.BlockedNumbers -> BlockedNumbersRoute(onBack = { navigator.pop() })
+            Screen.Reminders -> RemindersRoute(onBack = { navigator.pop() }, openThread = { threadId, messageId -> openThread(threadId, messageId = messageId) })
             Screen.RecycleBin -> BinRoute(onBack = { navigator.pop() })
         }
     }

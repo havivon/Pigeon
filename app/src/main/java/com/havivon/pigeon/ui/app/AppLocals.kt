@@ -36,11 +36,14 @@ class Notices(private val host: SnackbarHostState, private val scope: CoroutineS
     }
 
     /** "Deleted · Undo". The snackbar is shorter than the undo window, so Undo always works while it shows. */
-    fun undo(message: String, deletion: PendingDeletion) {
+    fun undo(message: String, deletion: PendingDeletion) = undo(message) { deletion.undo() }
+
+    /** A message with "Undo", which runs [onUndo] when tapped. */
+    fun undo(message: String, onUndo: () -> Unit) {
         scope.launch {
             host.currentSnackbarData?.dismiss()
             val result = host.showSnackbar(message, actionLabel = undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) deletion.undo()
+            if (result == SnackbarResult.ActionPerformed) onUndo()
         }
     }
 }

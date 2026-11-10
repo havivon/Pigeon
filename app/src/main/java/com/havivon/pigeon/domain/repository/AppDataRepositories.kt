@@ -47,10 +47,16 @@ interface RemindersRepository {
     /** Reminders not done yet, soonest first. */
     val pending: Flow<List<Reminder>>
 
+    /** Every reminder, pending and done, soonest first: the Reminders screen's upcoming and past lists are made of it. */
+    val all: Flow<List<Reminder>>
+
     suspend fun add(threadId: Long, messageId: Long?, text: String, triggerAtMillis: Long): Long
     suspend fun get(id: Long): Reminder?
     suspend fun setDone(id: Long, done: Boolean = true)
     suspend fun delete(id: Long)
+
+    /** Moves a reminder to [triggerAtMillis]; it is pending again, even if it was done. The caller schedules its alarm. */
+    suspend fun reschedule(id: Long, triggerAtMillis: Long)
 
     /** Every pending reminder, for scheduling the alarms again after a reboot. */
     suspend fun allPending(): List<Reminder>

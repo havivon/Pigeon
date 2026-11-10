@@ -107,6 +107,7 @@ data class SettingsActions(
     val onOpenBlockedNumbers: () -> Unit = {},
     val onBlockSpamOnPhone: (Boolean) -> Unit = {},
     val onAutoCopyCodes: (Boolean) -> Unit = {},
+    val onOpenReminders: () -> Unit = {},
     val onOpenRecycleBin: () -> Unit = {},
     val onExportSettings: () -> Unit = {},
     val onImportSettings: () -> Unit = {},
@@ -217,6 +218,14 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         if (state.folderCount == 0) stringResource(R.string.settings_folders_none)
                         else pluralStringResource(R.plurals.settings_folders_count, state.folderCount, state.folderCount),
                         actions.onOpenFolders,
+                    )
+                    RowDivider()
+                    NavRow(
+                        Icons.Rounded.Alarm,
+                        stringResource(R.string.settings_reminders),
+                        if (state.reminderCount == 0) stringResource(R.string.reminders_none_upcoming)
+                        else pluralStringResource(R.plurals.reminders_upcoming_count, state.reminderCount, state.reminderCount),
+                        actions.onOpenReminders,
                     )
                     RowDivider()
                     NavRow(

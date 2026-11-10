@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragIndicator
@@ -59,6 +58,8 @@ import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
+import com.havivon.pigeon.ui.inbox.CustomCategoryIcon
+import com.havivon.pigeon.ui.inbox.categoryIcon
 import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.ReorderDragState
 import com.havivon.pigeon.ui.components.SectionLabel
@@ -207,7 +208,7 @@ private fun FolderCard(
             Icon(Icons.Rounded.DragIndicator, contentDescription = stringResource(R.string.rules_drag), tint = c.onSurfaceMuted)
         }
         Box(Modifier.size(40.dp).clip(CircleShape).background(c.accent.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null, tint = c.accent, modifier = Modifier.size(22.dp))
+            Icon(CustomCategoryIcon, contentDescription = null, tint = folder.argb?.let { Color(it) } ?: c.accent, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Text(
@@ -246,7 +247,7 @@ private fun BuiltInCard(folder: Folder, argb: Long?, onColor: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(40.dp).clip(CircleShape).background(c.accent.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
-            Icon(folderIcon(folder), contentDescription = null, tint = c.accent, modifier = Modifier.size(22.dp))
+            Icon(categoryIcon(folder), contentDescription = null, tint = argb?.let { Color(it) } ?: c.accent, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Text(name, color = c.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

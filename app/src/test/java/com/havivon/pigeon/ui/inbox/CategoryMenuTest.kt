@@ -2,7 +2,18 @@ package com.havivon.pigeon.ui.inbox
 
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.HealthAndSafety
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.LocalShipping
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Warning
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -94,5 +105,36 @@ class CategoryMenuTest {
         assertEquals(CategoryAction.ManageCategories, action)
         action.dispatch({ error("not a folder") }, { error("not a category") }, { managed = true })
         assertTrue(managed)
+    }
+
+    @Test
+    fun `every line has its own icon - the categories icon for All, then one per category`() {
+        val icons = menu().associate { entry ->
+            val key = when (entry) {
+                is CategoryEntry.BuiltIn -> entry.folder.name
+                is CategoryEntry.Custom -> "custom"
+                is CategoryEntry.Spam -> "spam"
+                CategoryEntry.Manage -> "manage"
+            }
+            key to entry.icon
+        }
+        assertSame(Icons.Rounded.Category, icons.getValue("All"))
+        assertSame(Icons.Rounded.Person, icons.getValue("Personal"))
+        assertSame(Icons.Rounded.AccountBalance, icons.getValue("Banks"))
+        assertSame(Icons.Rounded.HealthAndSafety, icons.getValue("Insurance"))
+        assertSame(Icons.Rounded.Key, icons.getValue("Codes"))
+        assertSame(Icons.Rounded.LocalShipping, icons.getValue("Deliveries"))
+        assertSame(Icons.AutoMirrored.Rounded.Label, icons.getValue("custom"))
+        assertSame(Icons.Rounded.Warning, icons.getValue("spam"))
+        assertSame(Icons.Rounded.Tune, icons.getValue("manage"))
+    }
+
+    @Test
+    fun `Settings and the menu use the same icons for the same categories`() {
+        assertSame(Icons.Rounded.Category, categoryIcon(Folder.All))
+        Folder.entries.filter { it != Folder.All && it != Folder.Spam }.forEach { f ->
+            assertSame(f.name, menu().filterIsInstance<CategoryEntry.BuiltIn>().first { it.folder == f }.icon, categoryIcon(f))
+        }
+        assertSame(CustomCategoryIcon, menu().filterIsInstance<CategoryEntry.Custom>().first().icon)
     }
 }

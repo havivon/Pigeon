@@ -79,6 +79,10 @@ class RoomRemindersRepository(db: PigeonDatabase, private val now: () -> Long = 
 
     override val pending: Flow<List<Reminder>> = dao.observePending().map { list -> list.map { it.toReminder() } }
 
+    override val all: Flow<List<Reminder>> = dao.observeAll().map { list -> list.map { it.toReminder() } }
+
+    override suspend fun reschedule(id: Long, triggerAtMillis: Long) = dao.reschedule(id, triggerAtMillis)
+
     override suspend fun add(threadId: Long, messageId: Long?, text: String, triggerAtMillis: Long): Long =
         dao.insert(ReminderEntity(threadId = threadId, messageId = messageId, text = text, triggerAtMillis = triggerAtMillis, createdAtMillis = now()))
 

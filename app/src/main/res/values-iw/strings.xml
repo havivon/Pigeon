@@ -305,6 +305,28 @@
     <string name="permissions_optional">שניהם לא חובה. בלעדיהם Pigeon עובדת, עם מספרים במקום שמות.</string>
     <string name="permissions_continue">המשך</string>
 
+    <!-- reminders_ (the Reminders screen) -->
+    <string name="reminders_title">תזכורות</string>
+    <plurals name="reminders_upcoming_count">
+        <item quantity="one">תזכורת קרובה אחת</item>
+        <item quantity="two">%1$d תזכורות קרובות</item>
+        <item quantity="other">%1$d תזכורות קרובות</item>
+    </plurals>
+    <string name="reminders_none_upcoming">אין תזכורות קרובות</string>
+    <string name="reminders_section_upcoming">קרובות</string>
+    <string name="reminders_section_past">עברו</string>
+    <string name="reminders_empty_title">אין תזכורות</string>
+    <string name="reminders_empty_body">לוחצים לחיצה ארוכה על שיחה או על הודעה ובוחרים „הזכר לי”.</string>
+    <string name="reminders_locked">שיחה נעולה</string>
+    <string name="reminders_change_time">שינוי שעה</string>
+    <string name="reminders_cancel">ביטול תזכורת</string>
+    <string name="reminders_cancelled">התזכורת בוטלה</string>
+    <string name="reminders_moved">התזכורת הועברה ל%1$s</string>
+    <string name="reminders_open_description">%1$s, %2$s. פותח את השיחה</string>
+    <string name="inbox_reminders_description">תזכורות</string>
+    <string name="inbox_reminders_description_upcoming">תזכורות. יש תזכורות קרובות</string>
+    <string name="settings_reminders">תזכורות</string>
+
     <!-- reminder_ (remind me about a message) -->
     <string name="reminder_title">הזכר לי</string>
     <string name="reminder_subtitle">תקבל התראה בזמן שתבחר</string>

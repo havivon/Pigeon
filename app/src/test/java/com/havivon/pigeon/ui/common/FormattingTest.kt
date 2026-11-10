@@ -40,6 +40,42 @@ class FormattingTest {
         assertEquals("3/4/25", en.listTime(millis(2025, 3, 4, 9, 5), Now))
     }
 
+    private val en12 = com.havivon.pigeon.ui.common.DateLabels(java.util.Locale.ENGLISH, com.havivon.pigeon.fakes.Utc, false, "Today", "Yesterday", "Tomorrow")
+    private val he12 = com.havivon.pigeon.ui.common.DateLabels(java.util.Locale("iw"), com.havivon.pigeon.fakes.Utc, false, "היום", "אתמול", "מחר")
+
+    @Test
+    fun `a bubble footer says today with the time`() {
+        assertEquals("Today 13:14", en.bubble(millis(2026, 11, 1, 13, 14), Now))
+        assertEquals("היום 13:14", he.bubble(millis(2026, 11, 1, 13, 14), Now))
+        assertEquals("Today 1:14 PM", en12.bubble(millis(2026, 11, 1, 13, 14), Now))
+        assertEquals("Today 9:05 AM", en12.bubble(millis(2026, 11, 1, 9, 5), Now))
+    }
+
+    @Test
+    fun `a bubble footer within the last week names the weekday`() {
+        assertEquals("Sat 13:14", en.bubble(millis(2026, 10, 31, 13, 14), Now))
+        assertEquals("Tue 13:14", en.bubble(millis(2026, 10, 27, 13, 14), Now))
+        assertEquals("Mon 13:14", en.bubble(millis(2026, 10, 26, 13, 14), Now))
+        assertEquals("Tue 1:14 PM", en12.bubble(millis(2026, 10, 27, 13, 14), Now))
+        assertEquals("יום ג׳ 13:14", he.bubble(millis(2026, 10, 27, 13, 14), Now))
+    }
+
+    @Test
+    fun `a bubble footer a week or more back has the date, with the year only when it is not this year`() {
+        assertEquals("Oct 25 13:14", en.bubble(millis(2026, 10, 25, 13, 14), Now))
+        assertEquals("Oct 3 13:14", en.bubble(millis(2026, 10, 3, 13, 14), Now))
+        assertEquals("3.10 13:14", he.bubble(millis(2026, 10, 3, 13, 14), Now))
+        assertEquals("Oct 3, 2025 13:14", en.bubble(millis(2025, 10, 3, 13, 14), Now))
+        assertEquals("3.10.2025 13:14", he.bubble(millis(2025, 10, 3, 13, 14), Now))
+        assertEquals("Oct 3, 2025 1:14 PM", en12.bubble(millis(2025, 10, 3, 13, 14), Now))
+        assertEquals("3.10.2025 1:14 אחה״צ", he12.bubble(millis(2025, 10, 3, 13, 14), Now))
+    }
+
+    @Test
+    fun `a bubble footer from the future is today's`() {
+        assertEquals("Today 13:14", en.bubble(millis(2026, 11, 2, 13, 14), Now))
+    }
+
     @Test
     fun `a twelve-hour phone gets am and pm`() {
         val labels = com.havivon.pigeon.ui.common.DateLabels(java.util.Locale.ENGLISH, com.havivon.pigeon.fakes.Utc, false, "Today", "Yesterday", "Tomorrow")

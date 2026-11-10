@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Warning
@@ -31,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -43,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.ui.folders.folderIcon
 import com.havivon.pigeon.ui.theme.HebTheme
 
 /** One line of the category menu under the inbox header. */
@@ -113,6 +117,24 @@ private fun CategoryEntry.label(): String = when (this) {
     CategoryEntry.Manage -> stringResource(R.string.inbox_manage_categories)
 }
 
+/**
+ * The icon of a built-in category: "All categories" has the one the Settings screen gives its "Categories" row, the others
+ * their own (Personal, Banks, Insurance, Codes, Deliveries). Used by the menu and by Settings → Categories.
+ */
+fun categoryIcon(folder: Folder): ImageVector = if (folder == Folder.All) Icons.Rounded.Category else folderIcon(folder)
+
+/** The icon of the category a custom entry stands for. */
+val CustomCategoryIcon: ImageVector get() = Icons.AutoMirrored.Rounded.Label
+
+/** The icon of a line of the category menu: its category's, a label for the user's own, a warning for Spam, sliders for "Manage categories…". */
+val CategoryEntry.icon: ImageVector
+    get() = when (this) {
+        is CategoryEntry.BuiltIn -> categoryIcon(folder)
+        is CategoryEntry.Custom -> CustomCategoryIcon
+        is CategoryEntry.Spam -> Icons.Rounded.Warning
+        CategoryEntry.Manage -> Icons.Rounded.Tune
+    }
+
 private val CategoryEntry.count: Int
     get() = when (this) {
         is CategoryEntry.BuiltIn -> count
@@ -140,7 +162,7 @@ fun CategoryAction.dispatch(onFolder: (Folder) -> Unit, onCustomFolder: (CustomF
 }
 
 /**
- * The chosen category as a white pill on the header (its colour dot, its name, its number and ▾); a tap opens the
+ * The chosen category as a white pill on the header (the categories icon, its colour dot, its name, its number and ▾); a tap opens the
  * menu of [entries] right under it.
  */
 @Composable
@@ -160,9 +182,12 @@ internal fun CategoryDropdown(entries: List<CategoryEntry>, onAction: (CategoryA
                     contentDescription = description
                     role = Role.Button
                 }
-                .padding(start = 14.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
+                .padding(start = 10.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // The same icon as the "Categories" row in the settings
+            Icon(Icons.Rounded.Category, contentDescription = null, tint = onWhite, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(6.dp))
             val dot = current.argb
             if (dot != null) {
                 ColourDot(dot)
@@ -206,13 +231,10 @@ internal fun CategoryMenuItems(entries: List<CategoryEntry>, onAction: (Category
 private fun CategoryMenuItem(entry: CategoryEntry, onClick: () -> Unit) {
     val c = HebTheme.colors
     val chosen = (entry as? CategoryEntry.BuiltIn)?.selected == true || (entry as? CategoryEntry.Custom)?.selected == true
+    val tint = entry.argb?.let { Color(it) } ?: if (entry is CategoryEntry.Spam) c.spam else c.onSurface
     DropdownMenuItem(
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                entry.argb?.let {
-                    ColourDot(it)
-                    Spacer(Modifier.width(8.dp))
-                }
                 Text(
                     entry.label(),
                     color = if (entry is CategoryEntry.Spam) c.spam else c.onSurface,
@@ -220,17 +242,16 @@ private fun CategoryMenuItem(entry: CategoryEntry, onClick: () -> Unit) {
                     fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                if (chosen) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.inbox_category_chosen), tint = c.accent, modifier = Modifier.size(18.dp))
+                }
             }
         },
-        leadingIcon = {
-            when {
-                chosen -> Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.inbox_category_chosen), tint = c.accent)
-                entry is CategoryEntry.Spam -> Icon(Icons.Rounded.Warning, contentDescription = null, tint = c.spam)
-                entry is CategoryEntry.Manage -> Icon(Icons.Rounded.Tune, contentDescription = null, tint = c.accent)
-                else -> Spacer(Modifier.size(24.dp))
-            }
-        },
+        // The category's own icon, in its colour when it has one
+        leadingIcon = { Icon(entry.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp)) },
         trailingIcon = if (entry.count > 0) ({ MenuCount(entry.count) }) else null,
         onClick = onClick,
     )

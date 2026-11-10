@@ -30,6 +30,8 @@ data class SettingsUiState(
     val folderCount: Int = 0,
     /** For the "Blocked numbers" row: how many the phone's list has, or null while Pigeon may not read it. */
     val blockedNumberCount: Int? = null,
+    /** For the "Reminders" row: how many are still ahead. */
+    val reminderCount: Int = 0,
 )
 
 /**
@@ -45,6 +47,8 @@ class SettingsViewModel(
     currentIcon: AppIcon,
     /** The phone's blocked numbers (null while Pigeon may not read them). */
     blockedNumbers: Flow<List<String>?> = flowOf(null),
+    /** How many reminders are still ahead. */
+    upcomingReminders: Flow<Int> = flowOf(0),
     /** Switches the launcher entry (`AppIconSwitcher`). */
     private val applyIcon: (AppIcon) -> Unit,
 ) : ViewModel() {
@@ -53,8 +57,8 @@ class SettingsViewModel(
 
     val state: StateFlow<SettingsUiState> = combine(
         combine(settings.settings, icon, rules.rules, keywords.keywords, folders.folders) { s, i, r, k, f -> SettingsUiState(s, i, r.size, k.size, f.size) },
-        blockedNumbers,
-    ) { state, blocked -> state.copy(blockedNumberCount = blocked?.size) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(appIcon = currentIcon))
+        combine(blockedNumbers, upcomingReminders) { blocked, reminders -> blocked to reminders },
+    ) { state, (blocked, reminders) -> state.copy(blockedNumberCount = blocked?.size, reminderCount = reminders) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(appIcon = currentIcon))
 
     fun setLanguage(value: AppLanguage) = launch { settings.setLanguage(value) }
     fun setTheme(value: AppTheme) = launch { settings.setTheme(value) }

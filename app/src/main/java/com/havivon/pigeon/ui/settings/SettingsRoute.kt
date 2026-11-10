@@ -38,6 +38,7 @@ import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.navigation.Screen
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
 import java.time.LocalDate
+import kotlinx.coroutines.flow.map
 
 /** A permission request that returns this fast showed no dialog: the system suppresses it after a refusal, so the app's settings are the only way. */
 private const val SUPPRESSED_DIALOG_MS = 400L
@@ -53,6 +54,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             app.settings, app.rules, app.blockedKeywords, app.folders, AppIconSwitcher.current(appContext),
             applyIcon = { AppIconSwitcher.set(appContext, it) },
             blockedNumbers = app.systemBlockList.numbers,
+            upcomingReminders = app.reminders.pending.map { it.size },
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -132,6 +134,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onOpenBlockedNumbers = { navigate(Screen.BlockedNumbers) },
             onBlockSpamOnPhone = vm::setBlockSpamOnPhone,
             onAutoCopyCodes = vm::setAutoCopyCodes,
+            onOpenReminders = { navigate(Screen.Reminders) },
             onOpenRecycleBin = { navigate(Screen.RecycleBin) },
             onExportSettings = { exportRequest.launch("pigeon-settings-${LocalDate.now()}.json") },
             onImportSettings = { importRequest.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },

@@ -249,7 +249,7 @@ class ConversationViewModel(
         return Message(
             id = m.id,
             text = m.body,
-            time = labels.time(m.dateMillis),
+            time = labels.bubble(m.dateMillis, t),
             outgoing = m.type.outgoing,
             reminder = reminder?.let { labels.reminder(it.atMillis, t, it.hasTime) },
             reminderAtMillis = reminder?.atMillis,

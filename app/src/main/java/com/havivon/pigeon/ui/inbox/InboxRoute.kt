@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.data.AppContainer
+import kotlinx.coroutines.flow.map
 import com.havivon.pigeon.domain.folders.FolderMoves
 import com.havivon.pigeon.domain.folders.FolderNames
 import com.havivon.pigeon.domain.model.Conversation
@@ -77,6 +79,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
+    val hasReminders by remember { AppContainer.from(context).reminders.pending.map { it.isNotEmpty() } }.collectAsStateWithLifecycle(initialValue = false)
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
     var confirmMarkAll by remember { mutableStateOf(false) }
     val access = LocalDefaultApp.current
@@ -106,6 +109,8 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         // The same sheet as for the message's conversation (gone by now: nothing to act on)
         onLongPressMessage = { m -> state.all.firstOrNull { it.id == m.threadId }?.let { sheetFor = it } },
         onSettings = { navigate(Screen.Settings) },
+        onReminders = { navigate(Screen.Reminders) },
+        hasReminders = hasReminders,
         onLongPress = { sheetFor = it },
         onSearch = { navigate(Screen.Search) },
         onManageCategories = { navigate(Screen.Folders) },

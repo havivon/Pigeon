@@ -44,10 +44,12 @@ import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
@@ -122,6 +124,9 @@ fun InboxScreen(
     onFolder: (Folder) -> Unit = {},
     onOpen: (Conversation) -> Unit = {},
     onSettings: () -> Unit = {},
+    /** The bell next to the settings gear opens the reminders; it wears a small dot while [hasReminders]. */
+    onReminders: () -> Unit = {},
+    hasReminders: Boolean = false,
     onLongPress: (Conversation) -> Unit = {},
     onSearch: () -> Unit = {},
     onNewMessage: () -> Unit = {},
@@ -176,7 +181,7 @@ fun InboxScreen(
                 val entries = categoryMenu(folderCounts, customFolders, customCounts, selectedFolder, selectedCustom, builtInColors)
                 val onCategory: (CategoryAction) -> Unit = { it.dispatch(onFolder, onCustomFolder, onManageCategories) }
                 val categories = CategoryMenuState(entries, onCategory)
-                InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead, onSettings, onSearch)
+                InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
             },
         ) { InboxList(listState, padding, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
         NewMessageButton(
@@ -262,6 +267,8 @@ private fun InboxHeader(
     onUnreadOnly: (Boolean) -> Unit,
     onMarkAllRead: () -> Unit,
     onSettings: () -> Unit,
+    onReminders: () -> Unit,
+    hasReminders: Boolean,
     onSearch: () -> Unit,
 ) {
     GradientHeader {
@@ -279,6 +286,7 @@ private fun InboxHeader(
                     )
                     Text(dateLine, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                RemindersBell(hasReminders, onReminders)
                 HeaderIcon(Icons.Rounded.Settings, stringResource(R.string.inbox_settings_description), onSettings)
             }
             Spacer(Modifier.height(12.dp))
@@ -288,6 +296,28 @@ private fun InboxHeader(
         // Stays: the chosen category (a menu of them) and the All / Unread row
         UnreadButtons(categories, unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead)
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+/** The bell that opens the reminders, with a small dot at its corner while some are ahead. */
+@Composable
+private fun RemindersBell(hasReminders: Boolean, onClick: () -> Unit) {
+    val description = stringResource(if (hasReminders) R.string.inbox_reminders_description_upcoming else R.string.inbox_reminders_description)
+    IconButton(onClick = onClick) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Notifications, contentDescription = description, tint = Color.White)
+            if (hasReminders) {
+                // The dot sits at the bell's top corner, ringed so it shows on the gradient
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF5A6E))
+                        .border(1.5.dp, Color.White, CircleShape),
+                )
+            }
+        }
     }
 }
 

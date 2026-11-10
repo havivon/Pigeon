@@ -221,6 +221,9 @@ class FakeFavorites : FavoritesRepository {
 class FakeReminders : RemindersRepository {
     val state = MutableStateFlow<List<Reminder>>(emptyList())
     override val pending: Flow<List<Reminder>> = state.map { list -> list.filter { !it.done } }
+    override val all: Flow<List<Reminder>> = state.map { list -> list.sortedBy { it.triggerAtMillis } }
+    override suspend fun reschedule(id: Long, triggerAtMillis: Long) =
+        state.update { list -> list.map { if (it.id == id) it.copy(triggerAtMillis = triggerAtMillis, done = false) else it } }
     override suspend fun add(threadId: Long, messageId: Long?, text: String, triggerAtMillis: Long): Long {
         val id = (state.value.maxOfOrNull { it.id } ?: 0) + 1
         state.update { it + Reminder(id, threadId, messageId, text, triggerAtMillis, done = false) }

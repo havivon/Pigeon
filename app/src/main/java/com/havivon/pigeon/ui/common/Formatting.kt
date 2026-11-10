@@ -26,11 +26,29 @@ class DateLabels(
     private val weekdayShort = DateTimeFormatter.ofPattern("EEE", locale)
     private val shortDayMonth = DateTimeFormatter.ofPattern(if (english) "MMM d" else "d MMM", locale)
     private val numericDate = DateTimeFormatter.ofPattern(if (english) "M/d/yy" else "d.M.yy", locale)
+    private val bubbleDate = DateTimeFormatter.ofPattern(if (english) "MMM d" else "d.M", locale)
+    private val bubbleDateYear = DateTimeFormatter.ofPattern(if (english) "MMM d, yyyy" else "d.M.yyyy", locale)
 
     fun date(millis: Long): LocalDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
 
     /** The time of day: "14:05", or "2:05 PM" on a 12-hour phone. */
     fun time(millis: Long): String = timeFormat.format(Instant.ofEpochMilli(millis).atZone(zone))
+
+    /**
+     * The small footer of a message bubble: the time with its day. "Today 13:14", a short weekday within the last
+     * week ("Tue 13:14"), otherwise the date ("3.10 13:14", with the year when it is not this year: "3.10.2026 13:14").
+     */
+    fun bubble(millis: Long, nowMillis: Long): String {
+        val d = date(millis)
+        val n = date(nowMillis)
+        val day = when {
+            !d.isBefore(n) -> today
+            d.isAfter(n.minusDays(7)) -> weekdayShort.format(d)
+            d.year == n.year -> bubbleDate.format(d)
+            else -> bubbleDateYear.format(d)
+        }
+        return "$day ${time(millis)}"
+    }
 
     /** The separator above a day's messages: Today, Yesterday, the weekday within the week, otherwise the date. */
     fun day(millis: Long, nowMillis: Long): String {

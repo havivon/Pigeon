@@ -73,6 +73,12 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE done = 0 ORDER BY triggerAtMillis")
     fun observePending(): Flow<List<ReminderEntity>>
 
+    @Query("SELECT * FROM reminders ORDER BY triggerAtMillis")
+    fun observeAll(): Flow<List<ReminderEntity>>
+
+    @Query("UPDATE reminders SET triggerAtMillis = :triggerAtMillis, done = 0 WHERE id = :id")
+    suspend fun reschedule(id: Long, triggerAtMillis: Long)
+
     @Query("SELECT * FROM reminders WHERE done = 0 ORDER BY triggerAtMillis")
     suspend fun pending(): List<ReminderEntity>
 

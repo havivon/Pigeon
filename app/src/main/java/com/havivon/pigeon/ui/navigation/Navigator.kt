@@ -43,6 +43,9 @@ sealed interface Screen {
     /** The phone's blocked numbers, opened from the settings. */
     data object BlockedNumbers : Screen
 
+    /** The reminders, opened from the settings and from the inbox's bell. */
+    data object Reminders : Screen
+
     /** The recycle bin, opened from the settings only. */
     data object RecycleBin : Screen
 }

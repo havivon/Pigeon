@@ -292,6 +292,27 @@
     <string name="permissions_optional">Both are optional. Without them Pigeon still works, with numbers instead of names.</string>
     <string name="permissions_continue">Continue</string>
 
+    <!-- reminders_ (the Reminders screen) -->
+    <string name="reminders_title">Reminders</string>
+    <plurals name="reminders_upcoming_count">
+        <item quantity="one">%1$d upcoming reminder</item>
+        <item quantity="other">%1$d upcoming reminders</item>
+    </plurals>
+    <string name="reminders_none_upcoming">No upcoming reminders</string>
+    <string name="reminders_section_upcoming">Upcoming</string>
+    <string name="reminders_section_past">Past</string>
+    <string name="reminders_empty_title">No reminders</string>
+    <string name="reminders_empty_body">Long-press a conversation or a message and choose Remind me.</string>
+    <string name="reminders_locked">Locked chat</string>
+    <string name="reminders_change_time">Change time</string>
+    <string name="reminders_cancel">Cancel reminder</string>
+    <string name="reminders_cancelled">Reminder cancelled</string>
+    <string name="reminders_moved">Reminder moved to %1$s</string>
+    <string name="reminders_open_description">%1$s, %2$s. Opens the conversation</string>
+    <string name="inbox_reminders_description">Reminders</string>
+    <string name="inbox_reminders_description_upcoming">Reminders. You have upcoming reminders</string>
+    <string name="settings_reminders">Reminders</string>
+
     <!-- reminder_ (remind me about a message) -->
     <string name="reminder_title">Remind me</string>
     <string name="reminder_subtitle">You\'ll get a notification at that time</string>
