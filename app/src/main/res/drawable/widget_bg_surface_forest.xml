@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The page of the list widgets, in the Forest skin (its day and night colours are in widget_colors.xml). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_forest_surface" />
+    <corners android:radius="24dp" />
+</shape>

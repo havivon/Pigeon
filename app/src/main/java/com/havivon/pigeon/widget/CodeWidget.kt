@@ -34,6 +34,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.theme.Skin
 import com.havivon.pigeon.data.SensitiveClipboard
 
 private val CodeKey = ActionParameters.Key<String>("code")
@@ -46,7 +47,8 @@ class CodeWidget : GlanceAppWidget() {
         val source = WidgetSource(context)
         val data = source.code()
         val showContent = source.showText()
-        provideContent { CodeWidgetContent(data, showContent) }
+        val skin = source.skin()
+        provideContent { CodeWidgetContent(data, showContent, skin) }
     }
 }
 
@@ -69,10 +71,16 @@ private fun spaced(code: String): String {
 }
 
 /** [showContent] false (counts only) draws the code as bullets; Copy still copies the real one. */
+/** The widget in [skin] (the app's setting; Sunset in the design shots unless they say otherwise). */
 @Composable
-fun CodeWidgetContent(data: CodeWidgetData?, showContent: Boolean = true) {
+fun CodeWidgetContent(data: CodeWidgetData?, showContent: Boolean = true, skin: Skin = Skin.Sunset) {
+    WidgetSkinned(skin) { CodeWidgetBody(data, showContent) }
+}
+
+@Composable
+private fun CodeWidgetBody(data: CodeWidgetData?, showContent: Boolean) {
     val compact = LocalSize.current.height < 110.dp
-    val modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(R.drawable.widget_bg_gradient))
+    val modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(widgetDrawables.gradient))
     if (data == null) {
         Box(modifier = modifier.clickable(openApp()), contentAlignment = Alignment.Center) {
             Text(

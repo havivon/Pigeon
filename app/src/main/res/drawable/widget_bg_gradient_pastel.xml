@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The background of the gradient widgets, in the Pastel skin (its day and night colours are in widget_colors.xml). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:centerColor="@color/widget_pastel_gradient_center"
+        android:endColor="@color/widget_pastel_gradient_end"
+        android:startColor="@color/widget_pastel_gradient_start"
+        android:type="linear" />
+    <corners android:radius="24dp" />
+</shape>

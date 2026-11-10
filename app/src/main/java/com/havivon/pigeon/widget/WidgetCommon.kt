@@ -8,6 +8,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -38,18 +39,30 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.LaunchRequests
-import com.havivon.pigeon.ui.theme.DarkHebColors
-import com.havivon.pigeon.ui.theme.LightHebColors
+import com.havivon.pigeon.ui.theme.Skin
 
-/** The widgets' colours: the app's palette, as a day/night pair. */
+/** The widgets' colours: the skin's palette ([LocalWidgetSkin]), as a day/night pair. */
 internal object WidgetColors {
-    val text = ColorProvider(day = LightHebColors.onSurface, night = DarkHebColors.onSurface)
-    val muted = ColorProvider(day = LightHebColors.onSurfaceMuted, night = DarkHebColors.onSurfaceMuted)
+    val text: ColorProvider
+        @Composable get() = LocalWidgetSkin.current.let { ColorProvider(day = it.light.onSurface, night = it.dark.onSurface) }
+    val muted: ColorProvider
+        @Composable get() = LocalWidgetSkin.current.let { ColorProvider(day = it.light.onSurfaceMuted, night = it.dark.onSurfaceMuted) }
     val onGradient = ColorProvider(Color.White)
     val onGradientSoft = ColorProvider(Color.White.copy(alpha = 0.82f))
 
-    /** Text on the white "Copy" pill: the app's violet in both themes, since the pill is white in both. */
-    val onWhitePill = ColorProvider(Color(0xFF5B3FD9))
+    /** Text on the white "Copy" pill: the skin's light text-on-white in both themes, since the pill is white in both. */
+    val onWhitePill: ColorProvider
+        @Composable get() = ColorProvider(LocalWidgetSkin.current.light.onWhite)
+}
+
+/** The current skin's widget backgrounds (see [WidgetDrawables]). */
+internal val widgetDrawables: WidgetDrawables
+    @Composable get() = LocalWidgetSkin.current.widgetDrawables
+
+/** Draws [content] in [skin]: every widget's content starts here. */
+@Composable
+internal fun WidgetSkinned(skin: Skin, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalWidgetSkin provides skin, content = content)
 }
 
 internal val HeaderHeight = 44.dp
@@ -142,7 +155,7 @@ internal fun WidgetHeaderBar(action: Action, content: @Composable RowScope.() ->
         modifier = GlanceModifier
             .fillMaxWidth()
             .height(HeaderHeight)
-            .background(ImageProvider(R.drawable.widget_bg_header))
+            .background(ImageProvider(widgetDrawables.header))
             .padding(horizontal = 16.dp)
             .clickable(action),
         verticalAlignment = Alignment.CenterVertically,

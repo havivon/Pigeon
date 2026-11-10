@@ -16,6 +16,7 @@ import com.android.resources.NightMode
 import com.havivon.pigeon.data.sample.SampleData
 import com.havivon.pigeon.data.sample.SampleSet
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.ui.theme.Skin
 import com.havivon.pigeon.widget.CodeWidgetData
 import com.havivon.pigeon.widget.ContactsWidgetData
 import com.havivon.pigeon.widget.CounterWidgetData
@@ -165,3 +166,36 @@ class WidgetSnapshotsEnglish {
         shot("22_en_widget_code", W2, H2) { CodeWidgetContent(sample.codeData()) }
     }
 }
+
+/**
+ * The widgets in two skins besides Sunset, light and dark (the launcher's night mode picks the drawables' night
+ * colours, as on the phone). Three widgets draw all four skinned backgrounds (page, header, gradient, round button) and
+ * both text colours.
+ */
+abstract class WidgetSkinShots(private val dark: Boolean) {
+
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = config("iw", dark),
+        theme = if (dark) "android:Theme.Material.NoActionBar" else "android:Theme.Material.Light.NoActionBar",
+        renderingMode = SessionParams.RenderingMode.SHRINK,
+    )
+
+    private val sample = SampleData.hebrew
+
+    private fun shot(name: String, w: Int, h: Int, content: @Composable () -> Unit) =
+        paparazzi.widgetShot(name + if (dark) "_dark" else "", "iw", dark, w, h, content)
+
+    @Test
+    fun widgets() {
+        listOf(Skin.Forest, Skin.Midnight).forEach { skin ->
+            shot("150_widget_unread_${skin.id}", W4, H2) { UnreadWidgetContent(sample.unreadData(), skin = skin) }
+            shot("151_widget_code_${skin.id}", W2, H2) { CodeWidgetContent(sample.codeData(), skin = skin) }
+            shot("152_widget_contacts_${skin.id}", W4, H1) { ContactsWidgetContent(sample.contactsData(), skin = skin) }
+        }
+    }
+}
+
+class WidgetSkinSnapshots : WidgetSkinShots(dark = false)
+
+class WidgetSkinSnapshotsDark : WidgetSkinShots(dark = true)

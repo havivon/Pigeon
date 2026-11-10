@@ -1,9 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Colours of the widget drawables, as in ui/theme/Theme.kt. The dark values are in values-night. -->
+<!--
+  The widgets' colours per skin, as in ui/theme (Theme.kt, Skins.kt): the surface and the header gradient's three stops.
+  The dark values are in values-night. WidgetSkinResourcesTest checks that they match the palettes.
+-->
 <resources>
-    <color name="widget_surface">#FFFFFF</color>
-    <color name="widget_gradient_start">#5B3FD9</color>
-    <color name="widget_gradient_center">#C2408F</color>
-    <color name="widget_gradient_end">#FF7A59</color>
+    <color name="widget_sunset_surface">#FFFFFF</color>
+    <color name="widget_sunset_gradient_start">#5B3FD9</color>
+    <color name="widget_sunset_gradient_center">#C2408F</color>
+    <color name="widget_sunset_gradient_end">#FF7A59</color>
+    <color name="widget_ocean_surface">#FFFFFF</color>
+    <color name="widget_ocean_gradient_start">#0A8A8C</color>
+    <color name="widget_ocean_gradient_center">#0B6AA0</color>
+    <color name="widget_ocean_gradient_end">#1D3F94</color>
+    <color name="widget_forest_surface">#FFFFFF</color>
+    <color name="widget_forest_gradient_start">#0E7A4E</color>
+    <color name="widget_forest_gradient_center">#3A7A22</color>
+    <color name="widget_forest_gradient_end">#677619</color>
+    <color name="widget_midnight_surface">#F7F8FD</color>
+    <color name="widget_midnight_gradient_start">#0F1B4C</color>
+    <color name="widget_midnight_gradient_center">#222A7A</color>
+    <color name="widget_midnight_gradient_end">#3B2F9E</color>
+    <color name="widget_pomegranate_surface">#FFFFFF</color>
+    <color name="widget_pomegranate_gradient_start">#7A1030</color>
+    <color name="widget_pomegranate_gradient_center">#A8174A</color>
+    <color name="widget_pomegranate_gradient_end">#D2407A</color>
+    <color name="widget_desert_surface">#FFFBF3</color>
+    <color name="widget_desert_gradient_start">#9A4A0B</color>
+    <color name="widget_desert_gradient_center">#BE620E</color>
+    <color name="widget_desert_gradient_end">#D27F12</color>
+    <color name="widget_pastel_surface">#FFFFFF</color>
+    <color name="widget_pastel_gradient_start">#8C78C6</color>
+    <color name="widget_pastel_gradient_center">#A97BB6</color>
+    <color name="widget_pastel_gradient_end">#C47E6A</color>
+    <color name="widget_graphite_surface">#FFFFFF</color>
+    <color name="widget_graphite_gradient_start">#4A5058</color>
+    <color name="widget_graphite_gradient_center">#2E3238</color>
+    <color name="widget_graphite_gradient_end">#16181B</color>
     <color name="widget_spam">#E53935</color>
 </resources>

@@ -1,8 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The dark sets (see values/widget_colors.xml). -->
 <resources>
-    <color name="widget_surface">#1C1631</color>
-    <color name="widget_gradient_start">#3A2596</color>
-    <color name="widget_gradient_center">#8A2C6B</color>
-    <color name="widget_gradient_end">#B8513A</color>
+    <color name="widget_sunset_surface">#1C1631</color>
+    <color name="widget_sunset_gradient_start">#3A2596</color>
+    <color name="widget_sunset_gradient_center">#8A2C6B</color>
+    <color name="widget_sunset_gradient_end">#B8513A</color>
+    <color name="widget_ocean_surface">#112129</color>
+    <color name="widget_ocean_gradient_start">#0A5E68</color>
+    <color name="widget_ocean_gradient_center">#0C4778</color>
+    <color name="widget_ocean_gradient_end">#172C68</color>
+    <color name="widget_forest_surface">#131F17</color>
+    <color name="widget_forest_gradient_start">#0A5A3A</color>
+    <color name="widget_forest_gradient_center">#2E5E1A</color>
+    <color name="widget_forest_gradient_end">#56601A</color>
+    <color name="widget_midnight_surface">#0F1530</color>
+    <color name="widget_midnight_gradient_start">#0A1236</color>
+    <color name="widget_midnight_gradient_center">#1A1F5C</color>
+    <color name="widget_midnight_gradient_end">#2E2A80</color>
+    <color name="widget_pomegranate_surface">#221118</color>
+    <color name="widget_pomegranate_gradient_start">#5A0B22</color>
+    <color name="widget_pomegranate_gradient_center">#86153F</color>
+    <color name="widget_pomegranate_gradient_end">#A8305E</color>
+    <color name="widget_desert_surface">#221A10</color>
+    <color name="widget_desert_gradient_start">#6B340A</color>
+    <color name="widget_desert_gradient_center">#8E4A0D</color>
+    <color name="widget_desert_gradient_end">#A8650F</color>
+    <color name="widget_pastel_surface">#211B28</color>
+    <color name="widget_pastel_gradient_start">#5D4C8F</color>
+    <color name="widget_pastel_gradient_center">#7D5884</color>
+    <color name="widget_pastel_gradient_end">#9A6460</color>
+    <color name="widget_graphite_surface">#17191C</color>
+    <color name="widget_graphite_gradient_start">#3A3F46</color>
+    <color name="widget_graphite_gradient_center">#23262B</color>
+    <color name="widget_graphite_gradient_end">#0B0C0E</color>
     <color name="widget_spam">#FF5A52</color>
 </resources>

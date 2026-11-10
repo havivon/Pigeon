@@ -31,6 +31,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.theme.Skin
 
 private val RowHeight = 40.dp
 
@@ -43,7 +44,8 @@ class UnreadWidget : GlanceAppWidget() {
         val source = WidgetSource(context)
         val data = source.unread()
         val showContent = source.showText()
-        provideContent { UnreadWidgetContent(data, showContent) }
+        val skin = source.skin()
+        provideContent { UnreadWidgetContent(data, showContent, skin) }
     }
 }
 
@@ -51,11 +53,17 @@ class UnreadWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = UnreadWidget()
 }
 
+/** The widget in [skin] (the app's setting; Sunset in the design shots unless they say otherwise). */
 @Composable
-fun UnreadWidgetContent(data: UnreadWidgetData, showContent: Boolean = true) {
+fun UnreadWidgetContent(data: UnreadWidgetData, showContent: Boolean = true, skin: Skin = Skin.Sunset) {
+    WidgetSkinned(skin) { UnreadWidgetBody(data, showContent) }
+}
+
+@Composable
+private fun UnreadWidgetBody(data: UnreadWidgetData, showContent: Boolean) {
     val fitting = ((LocalSize.current.height - HeaderHeight) / RowHeight).toInt()
     Column(
-        modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(R.drawable.widget_bg_surface)),
+        modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(widgetDrawables.surface)),
     ) {
         WidgetHeaderBar(openApp()) {
             Text(

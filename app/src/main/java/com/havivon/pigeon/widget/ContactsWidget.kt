@@ -30,6 +30,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.theme.Skin
 
 private val CellWidth = 52.dp
 private const val MaxContacts = 5
@@ -40,8 +41,10 @@ class ContactsWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = WidgetSource(context).contacts()
-        provideContent { ContactsWidgetContent(data) }
+        val source = WidgetSource(context)
+        val data = source.contacts()
+        val skin = source.skin()
+        provideContent { ContactsWidgetContent(data, skin) }
     }
 }
 
@@ -49,8 +52,14 @@ class ContactsWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ContactsWidget()
 }
 
+/** The widget in [skin] (the app's setting; Sunset in the design shots unless they say otherwise). */
 @Composable
-fun ContactsWidgetContent(data: ContactsWidgetData) {
+fun ContactsWidgetContent(data: ContactsWidgetData, skin: Skin = Skin.Sunset) {
+    WidgetSkinned(skin) { ContactsWidgetBody(data) }
+}
+
+@Composable
+private fun ContactsWidgetBody(data: ContactsWidgetData) {
     val contacts = data.contacts
     // The "+" takes one cell, the rest go to the contacts
     val fitting = ((LocalSize.current.width - 24.dp) / CellWidth).toInt() - 1
@@ -58,7 +67,7 @@ fun ContactsWidgetContent(data: ContactsWidgetData) {
         modifier = GlanceModifier
             .fillMaxSize()
             .appWidgetBackground()
-            .background(ImageProvider(R.drawable.widget_bg_surface))
+            .background(ImageProvider(widgetDrawables.surface))
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -68,7 +77,7 @@ fun ContactsWidgetContent(data: ContactsWidgetData) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
-                modifier = GlanceModifier.size(40.dp).background(ImageProvider(R.drawable.widget_circle_gradient)),
+                modifier = GlanceModifier.size(40.dp).background(ImageProvider(widgetDrawables.circle)),
                 contentAlignment = Alignment.Center,
             ) {
                 WidgetIcon(R.drawable.ic_widget_add, 22.dp, widgetString(R.string.inbox_new_message))

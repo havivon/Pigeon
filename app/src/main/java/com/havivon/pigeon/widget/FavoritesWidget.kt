@@ -28,6 +28,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.theme.Skin
 
 private val RowHeight = 56.dp
 
@@ -40,7 +41,8 @@ class FavoritesWidget : GlanceAppWidget() {
         val source = WidgetSource(context)
         val data = source.favorites()
         val showContent = source.showText()
-        provideContent { FavoritesWidgetContent(data, showContent) }
+        val skin = source.skin()
+        provideContent { FavoritesWidgetContent(data, showContent, skin) }
     }
 }
 
@@ -48,11 +50,17 @@ class FavoritesWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = FavoritesWidget()
 }
 
+/** The widget in [skin] (the app's setting; Sunset in the design shots unless they say otherwise). */
 @Composable
-fun FavoritesWidgetContent(data: FavoritesWidgetData, showContent: Boolean = true) {
+fun FavoritesWidgetContent(data: FavoritesWidgetData, showContent: Boolean = true, skin: Skin = Skin.Sunset) {
+    WidgetSkinned(skin) { FavoritesWidgetBody(data, showContent) }
+}
+
+@Composable
+private fun FavoritesWidgetBody(data: FavoritesWidgetData, showContent: Boolean) {
     val fitting = ((LocalSize.current.height - HeaderHeight) / RowHeight).toInt()
     Column(
-        modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(R.drawable.widget_bg_surface)),
+        modifier = GlanceModifier.fillMaxSize().appWidgetBackground().background(ImageProvider(widgetDrawables.surface)),
     ) {
         WidgetHeaderBar(openApp()) {
             WidgetIcon(R.drawable.ic_widget_star, 18.dp)

@@ -27,14 +27,17 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.havivon.pigeon.R
+import com.havivon.pigeon.ui.theme.Skin
 
 /** A small tile with the number of unread messages, and a red pill when spam is waiting. */
 class CounterWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = WidgetSource(context).counter()
-        provideContent { CounterWidgetContent(data) }
+        val source = WidgetSource(context)
+        val data = source.counter()
+        val skin = source.skin()
+        provideContent { CounterWidgetContent(data, skin) }
     }
 }
 
@@ -42,15 +45,21 @@ class CounterWidgetReceiver : PigeonWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CounterWidget()
 }
 
+/** The widget in [skin] (the app's setting; Sunset in the design shots unless they say otherwise). */
 @Composable
-fun CounterWidgetContent(data: CounterWidgetData) {
+fun CounterWidgetContent(data: CounterWidgetData, skin: Skin = Skin.Sunset) {
+    WidgetSkinned(skin) { CounterWidgetBody(data) }
+}
+
+@Composable
+private fun CounterWidgetBody(data: CounterWidgetData) {
     val unread = data.unread
     val spam = data.spam
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .appWidgetBackground()
-            .background(ImageProvider(R.drawable.widget_bg_gradient))
+            .background(ImageProvider(widgetDrawables.gradient))
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(openApp()),
         verticalAlignment = Alignment.CenterVertically,

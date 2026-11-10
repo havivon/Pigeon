@@ -6,6 +6,7 @@ import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.ui.common.conversationMapper
 import com.havivon.pigeon.ui.common.dateLabels
 import com.havivon.pigeon.ui.common.verdictFor
+import com.havivon.pigeon.ui.theme.Skin
 import kotlinx.coroutines.flow.first
 
 /**
@@ -19,6 +20,9 @@ internal class WidgetSource(private val context: Context) {
 
     /** Whether to show message text, or only counts (the "widgets show text" setting). */
     suspend fun showText(): Boolean = WidgetSettings.showContent(context)
+
+    /** The colour skin the app is set to. */
+    suspend fun skin(): Skin = Skin.fromId(app.settings.settings.first().skin)
 
     private suspend fun conversations(): List<Conversation> {
         val mapper = conversationMapper(context, app)
