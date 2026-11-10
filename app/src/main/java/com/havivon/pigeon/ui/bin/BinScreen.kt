@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.bin
 
+import com.havivon.pigeon.ui.components.ButtonsRow
+import com.havivon.pigeon.ui.components.HeaderTitle
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -105,14 +107,12 @@ fun BinScreen(
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.bin_title), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-                            Text(
-                                pluralStringResource(R.plurals.bin_subtitle, groups.size, groups.size),
-                                color = Color.White.copy(alpha = 0.82f),
-                                fontSize = 13.sp,
-                            )
-                        }
+                        HeaderTitle(
+                            stringResource(R.string.bin_title),
+                            pluralStringResource(R.plurals.bin_subtitle, groups.size, groups.size),
+                            Modifier.weight(1f),
+                            titleSize = 26.sp,
+                        )
                         if (onEmpty != null) HeaderIcon(Icons.Rounded.DeleteSweep, stringResource(R.string.bin_empty), onEmpty)
                     }
                 }
@@ -156,7 +156,7 @@ private fun BinInfoCard() {
     ) {
         Icon(Icons.Rounded.RestoreFromTrash, contentDescription = null, tint = c.accent)
         Spacer(Modifier.width(10.dp))
-        Text(stringResource(R.string.bin_info), color = c.onSurface, fontSize = 13.sp, lineHeight = 19.sp)
+        Text(stringResource(R.string.bin_info), color = c.onSurface, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.weight(1f))
     }
 }
 
@@ -243,7 +243,7 @@ private fun BinGroupCard(
         Spacer(Modifier.height(8.dp))
         // While selecting, the bar on top acts on every chosen row
         if (!selecting) {
-            Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ButtonsRow(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
                 PillButton(stringResource(R.string.bin_restore), icon = Icons.Rounded.Restore, onClick = onRestore)
                 PillButton(stringResource(R.string.bin_delete_forever), icon = Icons.Rounded.DeleteForever, color = c.spam, onClick = onDeleteForever)
             }

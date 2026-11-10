@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.keywords
 
+import com.havivon.pigeon.ui.components.HeaderTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,10 +65,7 @@ fun BlockedKeywordsScreen(
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.keywords_title), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                        Text(stringResource(R.string.keywords_subtitle), color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                    }
+                    HeaderTitle(stringResource(R.string.keywords_title), stringResource(R.string.keywords_subtitle), Modifier.weight(1f))
                 }
             }
         },

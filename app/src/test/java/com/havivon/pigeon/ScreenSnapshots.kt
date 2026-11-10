@@ -69,7 +69,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /** Made-up content for the screens added with the real data (search, new message, sheets, empty states). */
-private class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
+internal class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
     val danny = sample.inbox.first { it.id == 2L }
     val noa = sample.inbox.first { it.id == 6L }
 

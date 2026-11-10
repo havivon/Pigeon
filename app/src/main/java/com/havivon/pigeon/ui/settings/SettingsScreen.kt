@@ -1,5 +1,8 @@
 package com.havivon.pigeon.ui.settings
 
+import androidx.compose.ui.text.style.TextOverflow
+import com.havivon.pigeon.ui.components.TrailingOrBelow
+import com.havivon.pigeon.ui.components.HeaderTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -132,10 +135,7 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), actions.onBack)
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_title), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                        Text(stringResource(R.string.settings_subtitle), color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                    }
+                    HeaderTitle(stringResource(R.string.settings_title), stringResource(R.string.settings_subtitle), Modifier.weight(1f))
                 }
             }
         },
@@ -456,15 +456,22 @@ private fun PermissionRow(icon: ImageVector, title: String, note: String, allowe
     ) {
         RowIcon(icon)
         Spacer(Modifier.width(14.dp))
-        RowText(title, note, Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        if (allowed) {
-            Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.settings_permission_allowed), tint = Color(0xFF1E9E6A))
-            Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.settings_permission_allowed), color = c.onSurfaceMuted, fontSize = 13.sp)
-        } else {
-            PillButton(stringResource(R.string.settings_permission_allow), onClick = onClick)
-        }
+        // The state (or the button) beside the text; under it when a large font leaves the text too little room
+        TrailingOrBelow(
+            Modifier.weight(1f),
+            main = { RowText(title, note) },
+            trailing = {
+                if (allowed) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.settings_permission_allowed), tint = Color(0xFF1E9E6A))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.settings_permission_allowed), color = c.onSurfaceMuted, fontSize = 13.sp, maxLines = 1)
+                    }
+                } else {
+                    PillButton(stringResource(R.string.settings_permission_allow), onClick = onClick)
+                }
+            },
+        )
     }
 }
 
@@ -498,6 +505,7 @@ private fun <T> ChoiceRow(icon: ImageVector, title: String, options: List<Pair<S
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(50))
@@ -536,19 +544,23 @@ private fun DefaultAppCard(access: SmsAccess, onClick: () -> Unit, onViewOnly: (
             }
             RowIcon(icon, if (isDefault) Color(0xFF1E9E6A) else HebTheme.colors.accent)
             Spacer(Modifier.width(14.dp))
-            RowText(stringResource(title), stringResource(note), Modifier.weight(1f))
-            Spacer(Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PillButton(
-                    stringResource(if (isDefault) R.string.settings_default_change else R.string.settings_default_make),
-                    filled = !isDefault,
-                    onClick = onClick,
-                )
-                if (access == SmsAccess.None) {
-                    Spacer(Modifier.height(6.dp))
-                    PillButton(stringResource(R.string.settings_default_view_only), onClick = onViewOnly)
-                }
-            }
+            TrailingOrBelow(
+                Modifier.weight(1f),
+                main = { RowText(stringResource(title), stringResource(note)) },
+                trailing = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        PillButton(
+                            stringResource(if (isDefault) R.string.settings_default_change else R.string.settings_default_make),
+                            filled = !isDefault,
+                            onClick = onClick,
+                        )
+                        if (access == SmsAccess.None) {
+                            Spacer(Modifier.height(6.dp))
+                            PillButton(stringResource(R.string.settings_default_view_only), onClick = onViewOnly)
+                        }
+                    }
+                },
+            )
         }
     }
 }

@@ -63,7 +63,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
@@ -120,6 +122,27 @@ private enum class FixedHeaderSlot { Header, Content }
 @Composable
 fun listBottomPadding(extra: Dp): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + extra
 
+/**
+ * A screen's title on its gradient header, and the line under it: one line each (two for the line under it), cut
+ * with "…" rather than wrapped; the title grows with the font only up to [HEADER_TITLE_MAX_SCALE].
+ */
+@Composable
+fun HeaderTitle(title: String, subtitle: String?, modifier: Modifier = Modifier, titleSize: TextUnit = 24.sp) {
+    Column(modifier) {
+        Text(
+            title,
+            color = Color.White,
+            fontSize = titleSize.scaledAtMost(HEADER_TITLE_MAX_SCALE),
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (subtitle != null) {
+            Text(subtitle, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
 @Composable
 fun HeaderIcon(icon: ImageVector, description: String, onClick: () -> Unit = {}) {
     IconButton(onClick = onClick) {
@@ -139,7 +162,8 @@ fun Avatar(name: String, argb: Long, size: Dp = 48.dp) {
     ) {
         val initial = avatarInitial(name)
         if (initial != null) {
-            Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.42f).sp)
+            // Sized by the circle, not the font size: a large font must not push the letter out of it
+            Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size * 0.42f).asFixedSp(), maxLines = 1)
         } else {
             // A number without a contact name
             Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(size * 0.55f))
@@ -172,6 +196,8 @@ fun RuleTag(label: String, color: Color) {
         color = color,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(color.copy(alpha = 0.14f))
@@ -236,6 +262,7 @@ fun PillButton(
             Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
         }
+        // Wraps rather than being cut when a large font makes it wider than its room
         Text(text, color = content, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -329,8 +356,8 @@ fun SheetTitle(title: String, subtitle: String? = null, leading: (@Composable ()
             Spacer(Modifier.width(12.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = c.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-            if (subtitle != null) Text(subtitle, color = c.onSurfaceMuted, fontSize = 13.sp, maxLines = 1)
+            Text(title, color = c.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) Text(subtitle, color = c.onSurfaceMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -348,7 +375,7 @@ fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: 
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = if (selected) onWhite else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = if (selected) onWhite else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (trailing != null) {
             Spacer(Modifier.width(4.dp))
             Icon(trailing, contentDescription = null, tint = if (selected) onWhite else Color.White, modifier = Modifier.size(16.dp))
@@ -386,7 +413,7 @@ fun HeaderSearchField(query: String, hint: String, onQuery: (String) -> Unit, on
                 keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
                 decorationBox = { inner ->
-                    if (query.isEmpty()) Text(hint, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp, maxLines = 1)
+                    if (query.isEmpty()) Text(hint, color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     inner()
                 },
             )

@@ -32,14 +32,14 @@ fun conversationMapper(context: Context, container: AppContainer, labels: DateLa
     )
 
 /**
- * The built-in folders' names in both of the app's languages ("Banks" and "בנקים", "All" and "הכל"): a category
- * of the user's may take none of them, whichever language is on now.
+ * The built-in folders' names in both of the app's languages ("Banks" and "בנקים", "All categories" and "כל הקטגוריות"),
+ * and the inbox's "All" filter ("All", "הכל"): a category of the user's may take none of them, whichever language is on now.
  */
 fun reservedFolderNames(context: Context): Set<String> {
     val config = context.resources.configuration
     return listOf(Locale.ENGLISH, Locale("iw")).flatMapTo(LinkedHashSet()) { locale ->
         val localized = context.createConfigurationContext(android.content.res.Configuration(config).apply { setLocale(locale) })
-        Folder.entries.map { localized.getString(it.labelRes) }
+        Folder.entries.map { localized.getString(it.labelRes) } + localized.getString(R.string.inbox_filter_all)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.onboarding
 
+import com.havivon.pigeon.ui.components.asFixedSp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -231,7 +232,7 @@ private fun RestrictedStep(number: Int, text: String) {
             Modifier.size(26.dp).clip(CircleShape).background(c.header),
             contentAlignment = Alignment.Center,
         ) {
-            Text("$number", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("$number", color = Color.White, fontSize = 13.dp.asFixedSp(), fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.size(12.dp))
         Text(text, color = c.onSurface, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.weight(1f).padding(top = 3.dp))

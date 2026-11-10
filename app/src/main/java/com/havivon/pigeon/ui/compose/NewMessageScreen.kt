@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.compose
 
+import com.havivon.pigeon.ui.components.HeaderTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -81,7 +82,7 @@ fun NewMessageScreen(
         GradientHeader {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
-                Text(stringResource(R.string.inbox_new_message), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                HeaderTitle(stringResource(R.string.inbox_new_message), subtitle = null, Modifier.weight(1f))
             }
         }
         val shape = RoundedCornerShape(20.dp)

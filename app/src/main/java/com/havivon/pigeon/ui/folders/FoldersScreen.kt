@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.folders
 
+import com.havivon.pigeon.ui.components.HeaderTitle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -103,10 +104,7 @@ fun FoldersScreen(
             GradientHeader {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.folders_title), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                        Text(stringResource(R.string.folders_subtitle), color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                    }
+                    HeaderTitle(stringResource(R.string.folders_title), stringResource(R.string.folders_subtitle), Modifier.weight(1f))
                 }
             }
         },

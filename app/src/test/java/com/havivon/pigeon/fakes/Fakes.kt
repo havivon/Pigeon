@@ -350,10 +350,10 @@ class FakeFolders(initial: List<CustomFolder> = emptyList()) : FoldersRepository
     override suspend fun clearOverride(key: String) = overrideState.update { it - key }
 }
 
-/** The built-in folders' names in English and Hebrew, as `reservedFolderNames` reads them from the resources. */
+/** The built-in folders' names in English and Hebrew, and the "All" filter, as `reservedFolderNames` reads them from the resources. */
 val ReservedFolderNames = setOf(
-    "All", "Personal", "Banks", "Insurance", "Codes", "Deliveries", "Spam",
-    "הכל", "אישי", "בנקים", "ביטוח", "קודים", "משלוחים", "ספאם",
+    "All categories", "Personal", "Banks", "Insurance", "Codes", "Deliveries", "Spam", "All",
+    "כל הקטגוריות", "אישי", "בנקים", "ביטוח", "קודים", "משלוחים", "ספאם", "הכל",
 )
 
 fun testMoves(folders: FoldersRepository, spam: com.havivon.pigeon.domain.repository.SpamRepository) = FolderMoves(folders, spam, ReservedFolderNames)

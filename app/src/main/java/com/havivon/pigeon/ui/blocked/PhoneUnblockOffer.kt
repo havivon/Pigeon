@@ -1,8 +1,7 @@
 package com.havivon.pigeon.ui.blocked
 
-import androidx.compose.foundation.layout.Arrangement
+import com.havivon.pigeon.ui.components.DialogButtons
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -67,7 +66,7 @@ fun PhoneUnblockContent(numbers: List<String>, onUnblock: () -> Unit, onKeep: ()
                 lineHeight = 20.sp,
             )
             Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            DialogButtons {
                 TextButton(onClick = onKeep) { Text(stringResource(R.string.phone_unblock_keep), color = c.accent) }
                 TextButton(onClick = onUnblock) { Text(stringResource(R.string.phone_unblock_confirm), color = c.accent, fontWeight = FontWeight.Bold) }
             }

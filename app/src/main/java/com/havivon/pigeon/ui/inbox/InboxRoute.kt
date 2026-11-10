@@ -108,6 +108,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         onSettings = { navigate(Screen.Settings) },
         onLongPress = { sheetFor = it },
         onSearch = { navigate(Screen.Search) },
+        onManageCategories = { navigate(Screen.Folders) },
         onNewMessage = { navigate(Screen.NewMessage()) },
         emptyState = if (state.loaded) ({ InboxEmpty(state.folder, state.unreadOnly, state.customFolderName) }) else null,
         loading = !state.loaded || (state.unreadOnly && state.unread == null),

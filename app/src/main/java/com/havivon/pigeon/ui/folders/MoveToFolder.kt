@@ -1,8 +1,8 @@
 package com.havivon.pigeon.ui.folders
 
+import com.havivon.pigeon.ui.components.DialogButtons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -290,7 +290,7 @@ fun FolderNameDialogContent(
                 ColorChoice(argb, onColor)
             }
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            DialogButtons {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = c.accent) }
                 TextButton(onClick = onConfirm, enabled = problem == null) {
                     Text(confirm, color = if (problem == null) c.accent else c.onSurfaceMuted, fontWeight = FontWeight.Bold)

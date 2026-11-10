@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.conversation
 
+import com.havivon.pigeon.ui.components.FitOrShort
+import com.havivon.pigeon.ui.components.TrailingOrBelow
 import android.annotation.SuppressLint
 import android.graphics.Typeface
 import android.os.Build
@@ -324,9 +326,11 @@ private fun SpamBanner(onNotSpam: () -> Unit) {
     ) {
         Icon(Icons.Rounded.Warning, contentDescription = null, tint = c.spam)
         Spacer(Modifier.width(10.dp))
-        Text(stringResource(R.string.thread_spam_banner), color = c.onSurface, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = onNotSpam)
+        TrailingOrBelow(
+            Modifier.weight(1f),
+            main = { Text(stringResource(R.string.thread_spam_banner), color = c.onSurface, fontSize = 13.sp, lineHeight = 18.sp) },
+            trailing = { PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = onNotSpam) },
+        )
     }
 }
 
@@ -348,14 +352,11 @@ internal fun SelectionBar(
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
             HeaderIcon(Icons.Rounded.Close, stringResource(R.string.thread_clear_selection), onClear)
-            Text(
-                pluralStringResource(R.plurals.thread_selected_count, count, count),
-                color = Color.White,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+            // The words, or just the number when the action icons leave too little room for them
+            FitOrShort(
+                Modifier.weight(1f),
+                full = { Text(pluralStringResource(R.plurals.thread_selected_count, count, count), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1) },
+                short = { Text(count.toString(), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
             HeaderIcon(
                 if (allStarred) Icons.Rounded.Star else Icons.Rounded.StarBorder,
@@ -717,7 +718,7 @@ internal fun Composer(draft: String, onDraft: (String) -> Unit, onSend: () -> Un
                     cursorBrush = SolidColor(c.accent),
                     maxLines = 6,
                     decorationBox = { inner ->
-                        if (draft.isEmpty()) Text(stringResource(R.string.thread_draft_hint), color = c.onSurfaceMuted, fontSize = 16.sp)
+                        if (draft.isEmpty()) Text(stringResource(R.string.thread_draft_hint), color = c.onSurfaceMuted, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         inner()
                     },
                 )

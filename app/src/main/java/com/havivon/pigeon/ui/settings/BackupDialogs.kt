@@ -1,7 +1,7 @@
 package com.havivon.pigeon.ui.settings
 
+import com.havivon.pigeon.ui.components.DialogButtons
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,7 +81,7 @@ internal fun ImportConfirmContent(summary: BackupSummary, onConfirm: () -> Unit,
             Spacer(Modifier.height(14.dp))
             Text(stringResource(R.string.backup_import_replaces), color = c.onSurfaceMuted, fontSize = 13.sp, lineHeight = 18.sp)
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            DialogButtons {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = c.accent) }
                 TextButton(onClick = onConfirm) { Text(stringResource(R.string.backup_import_confirm), color = c.accent, fontWeight = FontWeight.Bold) }
             }

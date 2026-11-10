@@ -1,8 +1,7 @@
 package com.havivon.pigeon.ui.inbox
 
-import androidx.compose.foundation.layout.Arrangement
+import com.havivon.pigeon.ui.components.DialogButtons
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,7 +45,7 @@ fun MarkAllReadDialogContent(count: Int, category: String, onConfirm: () -> Unit
                 lineHeight = 20.sp,
             )
             Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            DialogButtons {
                 TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel), color = c.accent) }
                 TextButton(onClick = onConfirm) { Text(stringResource(R.string.mark_all_read_confirm), color = c.accent, fontWeight = FontWeight.Bold) }
             }

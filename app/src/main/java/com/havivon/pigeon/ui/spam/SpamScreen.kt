@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -57,7 +57,13 @@ import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.analysis.LinkInfo
 import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.ui.components.EmptyState
-import com.havivon.pigeon.ui.components.FixedHeaderLayout
+import com.havivon.pigeon.ui.components.ButtonsRow
+import com.havivon.pigeon.ui.components.CollapsingHeaderLayout
+import com.havivon.pigeon.ui.components.HeaderTitle
+import com.havivon.pigeon.ui.components.NameLine
+import com.havivon.pigeon.ui.components.collapsible
+import com.havivon.pigeon.ui.components.rememberCollapsingHeaderState
+import com.havivon.pigeon.ui.components.rememberHeaderPadding
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderChip
 import com.havivon.pigeon.ui.components.HeaderIcon
@@ -111,35 +117,40 @@ fun SpamScreen(
 ) {
     val c = HebTheme.colors
     val selecting = selected.isNotEmpty()
-    FixedHeaderLayout(
+    // While searching, the title scrolls away with the results and the search field stays
+    val collapsing = searching && !selecting
+    val header = rememberCollapsingHeaderState()
+    val listState = rememberLazyListState()
+    header.canCollapse = { listState.canScrollForward || listState.canScrollBackward }
+    CollapsingHeaderLayout(
+        header,
         Modifier.fillMaxSize().background(c.background),
+        enabled = collapsing,
         header = {
             GradientHeader {
                 if (selecting) {
                     SpamSelectionBar(selected.size, onClearSelection, onNotSpamSelected, onDeleteSelected)
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.spam_title), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-                            Text(
+                    Column(if (collapsing) Modifier.collapsible(header) else Modifier) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            HeaderIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back), onBack)
+                            HeaderTitle(
+                                stringResource(R.string.spam_title),
                                 pluralStringResource(R.plurals.spam_subtitle, groups.size, groups.size),
-                                color = Color.White.copy(alpha = 0.82f),
-                                fontSize = 13.sp,
+                                Modifier.weight(1f),
+                                titleSize = 26.sp,
                             )
+                            if (!searching) HeaderIcon(Icons.Rounded.Search, stringResource(R.string.spam_search), onSearch)
+                            if (onDeleteAll != null) HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all), onDeleteAll)
                         }
-                        if (!searching) HeaderIcon(Icons.Rounded.Search, stringResource(R.string.spam_search), onSearch)
-                        if (onDeleteAll != null) HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete_all), onDeleteAll)
+                        if (searching) Spacer(Modifier.height(10.dp))
                     }
-                    if (searching) {
-                        Spacer(Modifier.height(10.dp))
-                        HeaderSearchField(query, stringResource(R.string.spam_search_hint), onQuery, onCloseSearch, autoFocus)
-                    }
+                    if (searching) HeaderSearchField(query, stringResource(R.string.spam_search_hint), onQuery, onCloseSearch, autoFocus)
                 }
             }
         },
-    ) { top ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
+    ) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
             if (searching) {
                 item(key = "top-space") { Spacer(Modifier.height(8.dp)) }
             } else {
@@ -205,7 +216,7 @@ private fun InfoCard() {
     ) {
         Icon(Icons.Rounded.Shield, contentDescription = null, tint = c.accent)
         Spacer(Modifier.width(10.dp))
-        Text(stringResource(R.string.spam_info), color = c.onSurface, fontSize = 13.sp, lineHeight = 19.sp)
+        Text(stringResource(R.string.spam_info), color = c.onSurface, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.weight(1f))
     }
 }
 
@@ -255,20 +266,10 @@ private fun SpamGroupCard(
             if (selecting) SelectionMark(selected, 42.dp) else SpamAvatar(size = 42.dp)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        group.name,
-                        color = c.onSurface,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Spacer(Modifier.width(8.dp))
-                    Text(group.time, color = c.onSurfaceMuted, fontSize = 12.sp)
-                }
+                NameLine(
+                    name = { Text(group.name, color = c.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    time = { Text(group.time, color = c.onSurfaceMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                )
                 Text(
                     pluralStringResource(R.plurals.spam_group_messages, group.messageCount, group.messageCount),
                     color = c.onSurfaceMuted,
@@ -309,7 +310,7 @@ private fun SpamGroupCard(
         }
         // While selecting, the bar on top acts on every chosen sender
         if (!selecting) {
-            Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ButtonsRow(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
                 PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = { onNotSpam(group) })
                 PillButton(stringResource(R.string.spam_delete), icon = Icons.Rounded.Delete, color = c.spam, onClick = { onDelete(group) })
             }

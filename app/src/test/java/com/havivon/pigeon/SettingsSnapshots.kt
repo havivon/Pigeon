@@ -56,7 +56,7 @@ import java.time.Instant
 private val TallPhone = DeviceConfig.PIXEL_6.copy(screenHeight = 6200)
 
 /** Made-up settings content; nothing here is a real person, number or message. */
-private class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
+internal class SettingsSample(val sample: SampleSet, val hebrew: Boolean) {
 
     val state = SettingsUiState(
         settings = AppSettings(

@@ -9,7 +9,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -72,7 +72,12 @@ import com.havivon.pigeon.domain.model.rowColor
 import com.havivon.pigeon.ui.components.Avatar
 import com.havivon.pigeon.ui.components.CategoryTagChip
 import com.havivon.pigeon.ui.components.EmptyState
-import com.havivon.pigeon.ui.components.FixedHeaderLayout
+import com.havivon.pigeon.ui.components.CollapsingHeaderLayout
+import com.havivon.pigeon.ui.components.CollapsingHeaderState
+import com.havivon.pigeon.ui.components.NameLine
+import com.havivon.pigeon.ui.components.collapsible
+import com.havivon.pigeon.ui.components.rememberCollapsingHeaderState
+import com.havivon.pigeon.ui.components.rememberHeaderPadding
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderChip
 import com.havivon.pigeon.ui.components.HeaderIcon
@@ -118,18 +123,24 @@ fun SearchScreen(
     val c = HebTheme.colors
     val selecting = selectedIds.isNotEmpty()
     val ruleById = state.rules.filter { it.enabled }.associateBy { it.id }
+    // The filter chips scroll away with the results; the search field stays
+    val header = rememberCollapsingHeaderState()
+    val listState = rememberLazyListState()
+    header.canCollapse = { listState.canScrollForward || listState.canScrollBackward }
     Column(Modifier.fillMaxSize().background(c.background).imePadding()) {
-        FixedHeaderLayout(
+        CollapsingHeaderLayout(
+            header,
             Modifier.weight(1f).fillMaxWidth(),
+            enabled = !selecting,
             header = {
                 if (selecting) {
                     SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll = null, onStar = onStarSelected, onRemind = onRemindSelected, onDelete = null)
                 } else {
-                    SearchHeader(state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus)
+                    SearchHeader(header, state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus)
                 }
             },
-        ) { top ->
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
+        ) {
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
                 when {
                     state.query.isBlank() && !state.filters.any -> item {
                         EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
@@ -167,6 +178,7 @@ fun SearchScreen(
 
 @Composable
 private fun SearchHeader(
+    collapse: CollapsingHeaderState,
     state: SearchUiState,
     onQuery: (String) -> Unit,
     onBack: () -> Unit,
@@ -204,7 +216,9 @@ private fun SearchHeader(
                         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
                         decorationBox = { inner ->
-                            if (state.query.isEmpty()) Text(stringResource(R.string.inbox_search_hint), color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp, maxLines = 1)
+                            if (state.query.isEmpty()) {
+                                Text(stringResource(R.string.inbox_search_hint), color = Color.White.copy(alpha = 0.8f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                             inner()
                         },
                     )
@@ -212,6 +226,8 @@ private fun SearchHeader(
                 if (state.query.isNotEmpty()) HeaderIcon(Icons.Rounded.Close, stringResource(R.string.search_clear)) { onQuery("") }
             }
         }
+        // Scrolls away with the results (slides up under the search field)
+        Column(Modifier.collapsible(collapse)) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SenderChip(state, onSender)
@@ -224,6 +240,7 @@ private fun SearchHeader(
             HeaderChip(stringResource(R.string.search_filter_30_days), state.filters.range == DateRange.Last30Days, {
                 onRange(if (state.filters.range == DateRange.Last30Days) DateRange.Any else DateRange.Last30Days)
             })
+        }
         }
         Spacer(Modifier.height(4.dp))
     }
@@ -335,17 +352,17 @@ private fun HitCard(
 @Composable
 private fun HitTitle(name: AnnotatedString, time: String, category: CategoryTag?, rule: ColorRule?) {
     val c = HebTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(name, color = c.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+    NameLine(
+        name = { Text(name, color = c.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         // In the category's colour, else the matching rule's, else neutral (see [tagColor])
-        if (category != null) {
-            Spacer(Modifier.width(6.dp))
-            CategoryTagChip(category, fallbackArgb = rule?.argb)
-        }
-        Spacer(Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        Text(time, color = c.onSurfaceMuted, fontSize = 12.sp)
-    }
+        tags = if (category == null) null else ({
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.width(6.dp))
+                CategoryTagChip(category, fallbackArgb = rule?.argb)
+            }
+        }),
+        time = { Text(time, color = c.onSurfaceMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+    )
 }
 
 /** The part of a long message around the first match, so the match is in view. */

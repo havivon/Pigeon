@@ -36,7 +36,7 @@
     <string name="common_share">Share</string>
     <string name="common_select_all">Select all</string>
     <string name="common_suspected_spam">Suspected spam</string>
-    <string name="common_folder_all">All</string>
+    <string name="common_folder_all">All categories</string>
     <string name="common_folder_personal">Personal</string>
     <string name="common_folder_banks">Banks</string>
     <string name="common_folder_insurance">Insurance</string>
@@ -69,6 +69,9 @@
     <string name="inbox_mark_all_read">Mark all read</string>
     <string name="inbox_mark_all_read_short">All read</string>
     <string name="inbox_mark_all_read_description">Mark all messages here as read</string>
+    <string name="inbox_manage_categories">Manage categories…</string>
+    <string name="inbox_category_button_description">Category: %1$s, %2$d. Opens the list of categories</string>
+    <string name="inbox_category_chosen">Chosen</string>
     <string name="mark_all_read_title">Mark all as read?</string>
     <plurals name="mark_all_read_body">
         <item quantity="one">%1$d message in “%2$s” will be marked as read. This can\'t be undone.</item>
