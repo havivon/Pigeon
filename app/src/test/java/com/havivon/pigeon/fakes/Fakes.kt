@@ -143,10 +143,14 @@ class FakeMessageRepository : MessageRepository {
 
     val browsed = mutableListOf<Long?>()
 
-    override suspend fun browse(threadId: Long?, limit: Int): List<SmsMessage> {
+    /** The (from, until) of every browse, to see that the days reach the repository. */
+    val browsedSpans = mutableListOf<Pair<Long?, Long?>>()
+
+    override suspend fun browse(threadId: Long?, limit: Int, fromMillis: Long?, untilMillis: Long?): List<SmsMessage> {
         browsed += threadId
+        browsedSpans += fromMillis to untilMillis
         return allMessages.value
-            .filter { (threadId == null || it.threadId == threadId) && it.id !in hiddenMessages.value && it.threadId !in hiddenThreads.value }
+            .filter { (threadId == null || it.threadId == threadId) && (fromMillis == null || it.dateMillis >= fromMillis) && (untilMillis == null || it.dateMillis < untilMillis) && it.id !in hiddenMessages.value && it.threadId !in hiddenThreads.value }
             .sortedByDescending { it.dateMillis }
             .take(limit)
     }

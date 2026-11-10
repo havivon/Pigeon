@@ -63,7 +63,7 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
         onHasLink = vm::toggleHasLink,
         onHasCode = vm::toggleHasCode,
         onStarred = vm::toggleStarred,
-        onRange = vm::setRange,
+        onDates = vm::setDates,
         onOpenConversation = openThread,
         // The same sheet as in the inbox
         onLongPressConversation = { sheetFor = it },

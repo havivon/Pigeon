@@ -103,6 +103,15 @@
     <string name="search_filter_starred">מסומנות בכוכב</string>
     <string name="search_filter_7_days">7 ימים אחרונים</string>
     <string name="search_filter_30_days">30 ימים אחרונים</string>
+    <string name="search_filter_date">תאריך</string>
+    <string name="search_date_title">חיפוש לפי תאריך</string>
+    <string name="search_date_subtitle">בחרו יום או טווח ימים</string>
+    <string name="search_date_today">היום</string>
+    <string name="search_date_yesterday">אתמול</string>
+    <string name="search_date_this_month">החודש</string>
+    <string name="search_date_last_month">החודש שעבר</string>
+    <string name="search_date_apply">החל</string>
+    <string name="search_date_clear">נקה את התאריך</string>
     <string name="search_section_conversations">שיחות</string>
     <string name="search_section_messages">הודעות</string>
     <string name="search_start_title">חיפוש בהודעות</string>

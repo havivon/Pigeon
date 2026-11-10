@@ -70,9 +70,10 @@ interface MessageRepository {
     /**
      * The newest messages, newest first, of one conversation ([threadId]) or of all of them, for the
      * search filters used without any text ("has a code" alone). As in [search], locked
-     * conversations and messages waiting to be deleted are left out.
+     * conversations and messages waiting to be deleted are left out. [fromMillis] (included) and [untilMillis] (not
+     * included) keep only the messages in that time, so the newest [limit] of them are found, not of all.
      */
-    suspend fun browse(threadId: Long?, limit: Int): List<SmsMessage>
+    suspend fun browse(threadId: Long?, limit: Int, fromMillis: Long? = null, untilMillis: Long? = null): List<SmsMessage>
 
     companion object {
         const val UNDO_WINDOW_MILLIS = 5_000L

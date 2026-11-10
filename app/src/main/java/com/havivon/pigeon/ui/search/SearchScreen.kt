@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -87,9 +89,10 @@ import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.conversation.SelectionActions
 import com.havivon.pigeon.ui.conversation.SelectionBar
 import com.havivon.pigeon.ui.theme.HebTheme
+import java.time.LocalDate
 
 /**
- * Search with filter chips: sender, has a link, has a code, the last 7 or 30 days. Every result row carries the tag of
+ * Search with filter chips: sender, has a link, has a code, starred, and a date or a range of days (the quick choices and a range picker in a sheet). Every result row carries the tag of
  * its category (in the category's colour, or a matching rule's, else neutral) and is framed by a matching colour rule,
  * else by its category's colour. A long press on a conversation opens its sheet ([onLongPressConversation]); a long
  * press on a message starts a selection ([onMessageLongClick]) that the bars at the top and bottom act on.
@@ -103,7 +106,7 @@ fun SearchScreen(
     onHasLink: () -> Unit = {},
     onHasCode: () -> Unit = {},
     onStarred: () -> Unit = {},
-    onRange: (DateRange) -> Unit = {},
+    onDates: (DaySpan?) -> Unit = {},
     onOpenConversation: (Long) -> Unit = {},
     onLongPressConversation: (Conversation) -> Unit = {},
     onMessageClick: (SearchHit) -> Unit = {},
@@ -119,10 +122,14 @@ fun SearchScreen(
     onShareSelected: () -> Unit = {},
     /** False in the design snapshots, where there is no keyboard to open. */
     autoFocus: Boolean = true,
+    /** The day the date chip and its quick choices count from; fixed in the design snapshots. */
+    today: LocalDate = remember { LocalDate.now() },
 ) {
     val c = HebTheme.colors
     val selecting = selectedIds.isNotEmpty()
     val ruleById = state.rules.filter { it.enabled }.associateBy { it.id }
+    // Kept over a rotation, the picker and all
+    var datesOpen by rememberSaveable { mutableStateOf(false) }
     // The filter chips scroll away with the results; the search field stays
     val header = rememberCollapsingHeaderState()
     val listState = rememberLazyListState()
@@ -136,7 +143,7 @@ fun SearchScreen(
                 if (selecting) {
                     SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll = null, onStar = onStarSelected, onRemind = onRemindSelected, onDelete = null)
                 } else {
-                    SearchHeader(header, state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, onRange, autoFocus)
+                    SearchHeader(header, state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus)
                 }
             },
         ) {
@@ -174,6 +181,17 @@ fun SearchScreen(
         }
         if (selecting) SelectionActions(selectedIds.size, onCopySelected, onShareSelected)
     }
+    if (datesOpen) {
+        DateFilterSheet(
+            current = state.filters.dates,
+            today = today,
+            onChoose = {
+                datesOpen = false
+                onDates(it)
+            },
+            onDismiss = { datesOpen = false },
+        )
+    }
 }
 
 @Composable
@@ -186,7 +204,9 @@ private fun SearchHeader(
     onHasLink: () -> Unit,
     onHasCode: () -> Unit,
     onStarred: () -> Unit,
-    onRange: (DateRange) -> Unit,
+    onOpenDates: () -> Unit,
+    onDates: (DaySpan?) -> Unit,
+    today: LocalDate,
     autoFocus: Boolean,
 ) {
     val focus = remember { FocusRequester() }
@@ -231,19 +251,28 @@ private fun SearchHeader(
         Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SenderChip(state, onSender)
+            DateChip(state.filters.dates, today, onOpenDates, onClear = { onDates(null) })
             HeaderChip(stringResource(R.string.search_filter_link), state.filters.hasLink, onHasLink)
             HeaderChip(stringResource(R.string.search_filter_code), state.filters.hasCode, onHasCode)
             HeaderChip(stringResource(R.string.search_filter_starred), state.filters.starred, onStarred)
-            HeaderChip(stringResource(R.string.search_filter_7_days), state.filters.range == DateRange.Last7Days, {
-                onRange(if (state.filters.range == DateRange.Last7Days) DateRange.Any else DateRange.Last7Days)
-            })
-            HeaderChip(stringResource(R.string.search_filter_30_days), state.filters.range == DateRange.Last30Days, {
-                onRange(if (state.filters.range == DateRange.Last30Days) DateRange.Any else DateRange.Last30Days)
-            })
         }
         }
         Spacer(Modifier.height(4.dp))
     }
+}
+
+/** "Date ▾": opens the date sheet; once days are chosen it shows them (the year only when not this one), with an X that clears them. */
+@Composable
+private fun DateChip(dates: DaySpan?, today: LocalDate, onOpen: () -> Unit, onClear: () -> Unit) {
+    val locale = LocalConfiguration.current.locales[0]
+    HeaderChip(
+        if (dates == null) stringResource(R.string.search_filter_date) else spanLabel(dates, today, locale),
+        selected = dates != null,
+        onClick = onOpen,
+        trailing = if (dates != null) Icons.Rounded.Close else Icons.Rounded.ArrowDropDown,
+        onTrailingClick = if (dates != null) onClear else null,
+        trailingDescription = if (dates != null) stringResource(R.string.search_date_clear) else null,
+    )
 }
 
 /** "Sender ▾": picks one of the senders in the results; when one is picked, a tap clears it. */

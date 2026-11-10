@@ -101,6 +101,15 @@
     <string name="search_filter_starred">Starred</string>
     <string name="search_filter_7_days">Last 7 days</string>
     <string name="search_filter_30_days">Last 30 days</string>
+    <string name="search_filter_date">Date</string>
+    <string name="search_date_title">Search by date</string>
+    <string name="search_date_subtitle">Pick a day or a range of days</string>
+    <string name="search_date_today">Today</string>
+    <string name="search_date_yesterday">Yesterday</string>
+    <string name="search_date_this_month">This month</string>
+    <string name="search_date_last_month">Last month</string>
+    <string name="search_date_apply">Apply</string>
+    <string name="search_date_clear">Clear the date</string>
     <string name="search_section_conversations">Conversations</string>
     <string name="search_section_messages">Messages</string>
     <string name="search_start_title">Search your messages</string>

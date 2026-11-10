@@ -41,7 +41,7 @@ import com.havivon.pigeon.ui.conversation.FIRST_PAGE
 import com.havivon.pigeon.ui.conversation.limitToReach
 import com.havivon.pigeon.ui.inbox.ConversationSheetActions
 import com.havivon.pigeon.ui.inbox.InboxViewModel
-import com.havivon.pigeon.ui.search.DateRange
+import com.havivon.pigeon.ui.search.DaySpan
 import com.havivon.pigeon.ui.search.SearchFilters
 import com.havivon.pigeon.ui.search.SearchViewModel
 import com.havivon.pigeon.ui.search.filterResults
@@ -784,12 +784,15 @@ class ViewModelsTest {
     @Test
     fun `search filters by link, code, date and sender`() {
         val finder = AnalysisSeams.codeFinder
-        assertEquals(listOf(1L), filterResults(found, SearchFilters(hasLink = true), Now, finder).messages.map { it.id })
-        assertTrue(filterResults(found, SearchFilters(hasLink = true), Now, finder).conversations.isEmpty())
-        assertEquals(listOf(2L), filterResults(found, SearchFilters(hasCode = true), Now, finder).messages.map { it.id })
-        assertEquals(listOf(1L), filterResults(found, SearchFilters(range = DateRange.Last7Days), Now, finder).messages.map { it.id })
-        assertEquals(listOf(1L, 2L), filterResults(found, SearchFilters(range = DateRange.Last30Days), Now, finder).messages.map { it.id })
-        assertEquals(listOf(1L, 3L), filterResults(found, SearchFilters(threadId = 1), Now, finder).messages.map { it.id })
+        assertEquals(listOf(1L), filterResults(found, SearchFilters(hasLink = true), finder, Utc).messages.map { it.id })
+        assertTrue(filterResults(found, SearchFilters(hasLink = true), finder, Utc).conversations.isEmpty())
+        assertEquals(listOf(2L), filterResults(found, SearchFilters(hasCode = true), finder, Utc).messages.map { it.id })
+        val today = java.time.LocalDate.of(2026, 11, 1)
+        val last7 = SearchFilters(dates = DaySpan(today.minusDays(6), today))
+        val last30 = SearchFilters(dates = DaySpan(today.minusDays(29), today))
+        assertEquals(listOf(1L), filterResults(found, last7, finder, Utc).messages.map { it.id })
+        assertEquals(listOf(1L, 2L), filterResults(found, last30, finder, Utc).messages.map { it.id })
+        assertEquals(listOf(1L, 3L), filterResults(found, SearchFilters(threadId = 1), finder, Utc).messages.map { it.id })
         assertEquals(listOf(1L, 2L), senderOptions(found) { mapOf(1L to "Danny", 2L to "Verify")[it] }.map { it.threadId })
     }
 

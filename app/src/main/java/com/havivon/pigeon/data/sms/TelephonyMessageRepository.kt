@@ -253,11 +253,24 @@ class TelephonyMessageRepository(
         SearchResults(conversations, messages)
     }
 
-    override suspend fun browse(threadId: Long?, limit: Int): List<SmsMessage> = withContext(Dispatchers.IO) {
+    override suspend fun browse(threadId: Long?, limit: Int, fromMillis: Long?, untilMillis: Long?): List<SmsMessage> = withContext(Dispatchers.IO) {
         val excluded = locks.lockedNow() + hidden.value.threads
         if (threadId != null && threadId in excluded) return@withContext emptyList()
-        val (selection, args) = if (threadId == null) null to emptyArray() else "${Telephony.Sms.THREAD_ID} = ?" to arrayOf(threadId.toString())
-        queryMessages(selection, args, "${Telephony.Sms.DATE} DESC LIMIT ${limit.coerceIn(1, BROWSE_LIMIT)}")
+        val clauses = mutableListOf<String>()
+        val args = mutableListOf<String>()
+        if (threadId != null) {
+            clauses += "${Telephony.Sms.THREAD_ID} = ?"
+            args += threadId.toString()
+        }
+        if (fromMillis != null) {
+            clauses += "${Telephony.Sms.DATE} >= ?"
+            args += fromMillis.toString()
+        }
+        if (untilMillis != null) {
+            clauses += "${Telephony.Sms.DATE} < ?"
+            args += untilMillis.toString()
+        }
+        queryMessages(clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND "), args.toTypedArray(), "${Telephony.Sms.DATE} DESC LIMIT ${limit.coerceIn(1, BROWSE_LIMIT)}")
             .filter { it.threadId !in excluded && it.id !in hidden.value.messages }
     }
 

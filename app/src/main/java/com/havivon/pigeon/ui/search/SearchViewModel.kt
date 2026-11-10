@@ -52,10 +52,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 /** How long typing must pause before the search runs. */
 private const val DEBOUNCE_MS = 250L
-private const val DAY_MS = 24 * 60 * 60 * 1000L
 
 /** The newest messages the filters look through when nothing is typed. */
 private const val BROWSE_LIMIT = 500
@@ -63,18 +63,17 @@ private const val BROWSE_LIMIT = 500
 /** Conversations the sender chip offers before anything is typed. */
 private const val MAX_SENDERS = 30
 
-enum class DateRange(val days: Int?) { Any(null), Last7Days(7), Last30Days(30) }
-
 data class SearchFilters(
     /** Only this conversation's messages (the "sender" chip). */
     val threadId: Long? = null,
     val hasLink: Boolean = false,
     val hasCode: Boolean = false,
-    val range: DateRange = DateRange.Any,
+    /** Only these days, both ends included (the "date" chip); null for any time. */
+    val dates: DaySpan? = null,
     /** Only the starred messages (the favourites), kept even when the message itself was deleted. */
     val starred: Boolean = false,
 ) {
-    val any: Boolean get() = threadId != null || hasLink || hasCode || range != DateRange.Any || starred
+    val any: Boolean get() = threadId != null || hasLink || hasCode || dates != null || starred
 }
 
 /** A message that matched, as a result row. */
@@ -122,11 +121,11 @@ fun tagColor(category: CategoryTag, rule: ColorRule?): Long? = category.argb ?: 
  * Applies the filter chips to what the repository found. Conversations (matched by name or number)
  * only stay while no message-only filter (link, code) is on.
  */
-fun filterResults(results: SearchResults, filters: SearchFilters, nowMillis: Long, codeFinder: CodeFinder): SearchResults {
-    val since = filters.range.days?.let { nowMillis - it * DAY_MS }
+fun filterResults(results: SearchResults, filters: SearchFilters, codeFinder: CodeFinder, zone: ZoneId = ZoneId.systemDefault()): SearchResults {
+    val dates = filters.dates
     val messages = results.messages.filter { m ->
         (filters.threadId == null || m.threadId == filters.threadId) &&
-            (since == null || m.dateMillis >= since) &&
+            (dates == null || dates.contains(m.dateMillis, zone)) &&
             (!filters.hasLink || LinkAnalyzer.findLinks(m.body).isNotEmpty()) &&
             (!filters.hasCode || codeFinder.find(m.body, m.address, knownPerson = false) != null)
     }
@@ -134,7 +133,7 @@ fun filterResults(results: SearchResults, filters: SearchFilters, nowMillis: Lon
         emptyList()
     } else {
         results.conversations.filter { c ->
-            (filters.threadId == null || c.threadId == filters.threadId) && (since == null || c.dateMillis >= since)
+            (filters.threadId == null || c.threadId == filters.threadId) && (dates == null || dates.contains(c.dateMillis, zone))
         }
     }
     return SearchResults(conversations, messages)
@@ -191,7 +190,12 @@ class SearchViewModel(
     lockedThreads: Flow<Set<Long>> = flowOf(emptySet()),
     /** Where the results are filtered and mapped: off the main thread, since every message is read for links and codes. */
     work: CoroutineDispatcher = Dispatchers.Default,
+    /** The time zone the filter's days are read in. */
+    private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
+
+    /** What decides whether the browse list is read again: the sender, whether any filter is on, the stars and the days. */
+    private data class BrowseKey(val threadId: Long?, val any: Boolean, val starred: Boolean, val dates: DaySpan?)
 
     private val query = MutableStateFlow("")
 
@@ -213,14 +217,17 @@ class SearchViewModel(
      */
     private val results = combine(
         query.debounce(DEBOUNCE_MS),
-        filters.map { Triple(it.threadId, it.any, it.starred) }.distinctUntilChanged(),
+        filters.map { BrowseKey(it.threadId, it.any, it.starred, it.dates) }.distinctUntilChanged(),
         favorites.favorites,
     ) { q, f, favs -> Triple(q, f, favs) }.flatMapLatest { (q, f, favs) ->
-        val (threadId, anyFilter, starred) = f
+        val (threadId, anyFilter, starred, dates) = f
         when {
             starred -> flowOf(q to SearchResults(emptyList(), starredMessages(favs, q)))
             q.isNotBlank() -> flow { emit(q to messages.search(q)) }
-            anyFilter -> flow { emit(q to SearchResults(emptyList(), messages.browse(threadId, BROWSE_LIMIT))) }
+            // The days go to the repository, so an old range is not lost behind the newest messages
+            anyFilter -> flow {
+                emit(q to SearchResults(emptyList(), messages.browse(threadId, BROWSE_LIMIT, dates?.startMillis(zone), dates?.endMillisExclusive(zone))))
+            }
             else -> flowOf(q to SearchResults.Empty)
         }
     }
@@ -249,7 +256,7 @@ class SearchViewModel(
         val locked = sort.locked
         val t = now()
         // Locked conversations are never in the results (the repository leaves them out; starred copies are checked here)
-        val filtered = filterResults(found, f, t, codeFinder).let { r -> r.copy(messages = r.messages.filter { it.threadId !in locked }) }
+        val filtered = filterResults(found, f, codeFinder, zone).let { r -> r.copy(messages = r.messages.filter { it.threadId !in locked }) }
         fun mapConversation(c: SmsConversation) =
             mapper.map(c, t, sort.rules, sort.pinned, locked, verdictFor(c, sort.verdicts), overrideFor(c, sort.overrides), sort.categories)
         val mappedByThread = HashMap<Long, Conversation>()
@@ -300,7 +307,7 @@ class SearchViewModel(
     fun toggleHasLink() = change { filters.update { it.copy(hasLink = !it.hasLink) } }
     fun toggleHasCode() = change { filters.update { it.copy(hasCode = !it.hasCode) } }
     fun toggleStarred() = change { filters.update { it.copy(starred = !it.starred) } }
-    fun setRange(value: DateRange) = change { filters.update { it.copy(range = value) } }
+    fun setDates(value: DaySpan?) = change { filters.update { it.copy(dates = value) } }
     fun clearFilters() = change { filters.value = SearchFilters() }
 
     /** The results change with the search, so a selection of the old ones goes. */

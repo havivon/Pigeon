@@ -364,7 +364,7 @@ fun SheetTitle(title: String, subtitle: String? = null, leading: (@Composable ()
 
 /** A chip on the gradient header (folders, search filters): white when on, glassy when off. */
 @Composable
-fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: ImageVector? = null) {
+fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: ImageVector? = null, onTrailingClick: (() -> Unit)? = null, trailingDescription: String? = null) {
     val c = HebTheme.colors
     val onWhite = c.onWhite
     Row(
@@ -378,7 +378,13 @@ fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: 
         Text(label, color = if (selected) onWhite else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (trailing != null) {
             Spacer(Modifier.width(4.dp))
-            Icon(trailing, contentDescription = null, tint = if (selected) onWhite else Color.White, modifier = Modifier.size(16.dp))
+            Icon(
+                trailing,
+                contentDescription = trailingDescription,
+                tint = if (selected) onWhite else Color.White,
+                // Its own tap (the clear X): the chip itself does something else
+                modifier = Modifier.size(16.dp).then(if (onTrailingClick != null) Modifier.clickable(onClick = onTrailingClick) else Modifier),
+            )
         }
     }
 }
