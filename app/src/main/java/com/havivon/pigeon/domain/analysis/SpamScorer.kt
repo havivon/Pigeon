@@ -41,8 +41,10 @@ object SpamScorer {
      * 4: the common Israeli scams (an authority asking to click or pay, investment and crypto, a request for card
      * details or a code), a number from abroad, a sum of money or a call to move to WhatsApp, the "פרסומת" marker,
      * and pressure next to a link. The rules in plain words: docs/spam-rules.md.
+     * 5: drugs for sale (a drug word with a sales cue), a link or number that sends the reader to another number than
+     * the sender's own, and the wording of a sale ("מחיר מוזל", "מתנה בכל קניה", "special price").
      */
-    const val VERSION = 4
+    const val VERSION = 5
 
     /**
      * The score from which a message goes to the spam folder. Every message from an unknown sender starts
@@ -144,6 +146,18 @@ object SpamScorer {
 
     /** A phone number from outside Israel (+ or 00 and a country code other than 972): moderate, the user lives in Israel. */
     private const val FOREIGN_NUMBER = 15
+
+    // --- version 5: drugs for sale, and a number other than the sender's own ---
+
+    /** Drugs offered for sale: a drug word together with a sales cue ([sellsDrugs]). Alone with the unknown sender, over the threshold. */
+    private const val DRUGS = 40
+
+    /**
+     * A link or a number in the text that sends the reader to a number other than the sender's own ("wa.me/9725...",
+     * "t.me/...", "WhatsApp 054-..."). Counted in place of the 10 points of [SpamReason.ContactElsewhere], and
+     * outside the cap of the shape signs. A business writing its own number from its own number is not it.
+     */
+    private const val REDIRECT_NUMBER = 20
 
     /** Each mild sign of the shape: a sum of money, a call to phone or to move to WhatsApp, long English capitals. */
     private const val STRUCTURE = 10
@@ -291,6 +305,36 @@ object SpamScorer {
         "text us", "message us", "text me", "message me", "dial",
     )
 
+    /** The words of drugs sold in a text. Slang that is also an everyday word is in [AMBIGUOUS_DRUG_WORDS]. */
+    private val DRUG_WORDS = words(
+        "קנאביס", "קאנביס", "קנביס", "מריחואנה", "גראס", "וויד", "חשיש", "טלגראס", "קוקאין", "אקסטזי", "קטמין",
+        "cannabis", "marijuana", "weed", "thc", "cocaine", "ecstasy", "mdma", "lsd", "ketamine",
+    )
+
+    /** Slang that is also an everyday word ("ויד" is "ו" + "יד", "hash" is a sign): counted with a weight in grams or "discreet". */
+    private val AMBIGUOUS_DRUG_WORDS = words("ויד", "hash")
+
+    /** The wording of a hidden delivery. A drug word of its own, but it needs a sales cue other than the delivery. */
+    private val DISCREET_WORDS = words(
+        "משלוח דיסקרטי", "משלוחים דיסקרטיים", "דיסקרטיות מלאה", "discreet delivery", "discreet shipping",
+    )
+
+    /** What follows "weed" in the garden's: "weed killer", "weed control". */
+    private val GARDEN_WORDS = setOf("killer", "control", "whacker", "wacker", "eater", "barrier", "spray", "removal", "puller")
+
+    /** A weight: "5 ג'", "10 גרם", "3.5g", "1 oz". In the normalized text. */
+    private val DRUG_WEIGHT = Regex("\\d+(?:[.,]\\d+)?\\s?(?:גרם|גר'|גר|ג'|gr|grams?|g|oz)(?![\\p{L}])")
+
+    /** A sales cue besides the delivery: a price, an offer, an order, a purchase. A sum of money counts too. */
+    private val SALES_WORDS = words(
+        "מחיר", "מחירים", "מבצע", "מבצעים", "הנחה", "למכירה", "מכירה", "מלאי", "הזמנה", "הזמנות", "להזמנות", "להזמין",
+        "הזמינו", "לקנות", "קנה", "קנו", "קניה", "קנייה", "קניות", "מתנה", "בונוס", "price", "prices", "sale", "order",
+        "orders", "buy", "stock", "shop", "gift", "deal",
+    )
+
+    /** The delivery as a cue: with a drug word, "משלוחים" is a sales sign; beside "discreet" it is only its wording. */
+    private val DELIVERY_WORDS = words("משלוח", "משלוחים", "שליח", "שליחויות", "delivery", "shipping", "courier")
+
     /** Latin letters from which the share of capitals is judged, and the share that counts as shouting. */
     private const val CAPS_MIN_LETTERS = 40
     private const val CAPS_SHARE = 0.7
@@ -379,6 +423,11 @@ object SpamScorer {
         ),
         phrase("מבצע", MILD, "מבצע", "הטבה", "הנחה", "חינם", "בונוס"),
         phrase("free", MILD, "free", "discount", "sale", "bonus", "offer"),
+        // The wording of a sale (version 5)
+        phrase(
+            "מחיר מוזל", MILD, "מחיר מוזל", "במחיר מוזל", "מתנה בכל קניה", "מתנה בכל קנייה", "בכל קניה", "בכל קנייה", "במבצע",
+            "מבצע מיוחד", "הנחה מיוחדת", "price drop", "special price", "free with every purchase",
+        ),
     )
 
     /** Keyword phrases, split into words once rather than for every message. */
@@ -501,6 +550,10 @@ object SpamScorer {
             score += ASKS_FOR_DETAILS
             reasons += SpamReason.AsksForDetails
         }
+        if (!isKnownBrand(sms) && !isGovSender(sms.address) && !service && sellsDrugs(sms.body, words, links)) {
+            score += DRUGS
+            reasons += SpamReason.Drugs
+        }
 
         // The shape of the message: mild, capped, and only from a stranger: never for a known brand's or an authority's
         // id, nor for a service notice (a bank's charge names its sum, a clinic its fee)
@@ -510,7 +563,11 @@ object SpamScorer {
                 structure += STRUCTURE
                 reasons += SpamReason.MoneyAmount
             }
-            if (asksToContactElsewhere(sms.body, words, links)) {
+            if (redirectsToOtherNumber(sms.address, sms.body, words, links)) {
+                // In place of the 10 points of "asks to chat elsewhere", and outside the cap of the shape
+                score += REDIRECT_NUMBER
+                reasons += SpamReason.RedirectNumber
+            } else if (asksToContactElsewhere(sms.body, words, links)) {
                 structure += STRUCTURE
                 reasons += SpamReason.ContactElsewhere
             }
@@ -629,6 +686,57 @@ object SpamScorer {
     private fun asksToContactElsewhere(body: String, words: List<String>, links: List<LinkInfo>): Boolean {
         if (links.any { link -> CHAT_HOSTS.any { link.host == it || link.host.endsWith(".$it") } }) return true
         return PHONE_IN_TEXT.containsMatchIn(body) && CONTACT_WORDS.any { Text.containsWords(words, it) }
+    }
+
+    /**
+     * A link or a number in the text that is not the sender's own number: "wa.me/9725..." or "api.whatsapp.com/send?phone="
+     * with another number, any "t.me" link (a username, never the sender's number), or a mobile number (05x, +972 5x,
+     * or from abroad) next to a word that asks to call or write. A chat link with no number in it (a group invitation)
+     * is [asksToContactElsewhere]'s alone. Numbers compare by digits, +972 and 0 alike.
+     */
+    private fun redirectsToOtherNumber(address: String, body: String, words: List<String>, links: List<LinkInfo>): Boolean {
+        val own = Text.phoneKey(address)
+        for (link in links) {
+            val host = link.host
+            if (host == "t.me" || host.endsWith(".t.me") || host == "telegram.me") return true
+            if (host == "wa.me" || host == "api.whatsapp.com" || host.endsWith(".wa.me")) {
+                val digits = WA_NUMBER.find(link.text)?.groupValues?.get(1) ?: continue
+                if (Text.phoneKey(if (digits.startsWith("0")) digits else "+$digits") != own) return true
+            }
+        }
+        if (CONTACT_WORDS.none { Text.containsWords(words, it) }) return false
+        // The links are left out: a number inside "wa.me/9725..." was judged above
+        val text = StringBuilder(body)
+        for (l in links) for (i in l.range) if (i < text.length) text.setCharAt(i, ' ')
+        return MOBILE_IN_TEXT.findAll(text).any { Text.phoneKey(it.value.trim()) != own }
+    }
+
+    /** The number of a "wa.me/972501234567" or "api.whatsapp.com/send?phone=972501234567" link. */
+    private val WA_NUMBER = Regex("(?:wa\\.me/|[?&]phone=)\\+?(\\d{7,15})", RegexOption.IGNORE_CASE)
+
+    /** A mobile number in the text (050-1234567, +972 54 123 4567) or one from abroad. Not a landline: a shop's own line. */
+    private val MOBILE_IN_TEXT = Regex(
+        "(?<![\\d+])(?:\\+972[-\\s]?|0)5\\d[-\\s]?\\d{3}[-\\s]?\\d{4}(?!\\d)|(?<![\\d+])\\+(?!972)\\d[\\d\\s-]{7,16}\\d",
+    )
+
+    /**
+     * Drugs offered for sale: a drug word ([DRUG_WORDS], or slang in [AMBIGUOUS_DRUG_WORDS] with a weight or a hidden
+     * delivery) together with a sales cue: a price or an offer, a sum, an order, a purchase, a delivery, a chat link or a
+     * shortened one, or a call to move elsewhere. A hidden-delivery phrase ([DISCREET_WORDS]) needs a cue besides the
+     * delivery. A mention with no cue ("ראית את הכתבה על קנאביס רפואי?") is a word, and a plain link (an article) is no cue.
+     * A known brand, a service notice and an authority are left out by the caller.
+     */
+    private fun sellsDrugs(body: String, words: List<String>, links: List<LinkInfo>): Boolean {
+        val discreet = DISCREET_WORDS.any { Text.containsWords(words, it) }
+        // "weed killer" is the garden's: the word is left out when a gardening word follows it
+        val words = words.filterIndexed { i, w -> !(w == "weed" && words.getOrNull(i + 1) in GARDEN_WORDS) }
+        val weight = DRUG_WEIGHT.containsMatchIn(Text.normalize(body))
+        val drug = DRUG_WORDS.any { Text.containsWords(words, it) } ||
+            (AMBIGUOUS_DRUG_WORDS.any { Text.containsWords(words, it) } && (weight || discreet))
+        if (!drug && !discreet) return false
+        val chat = asksToContactElsewhere(body, words, links) || links.any { it.isShortener }
+        val sales = SALES_WORDS.any { Text.containsWords(words, it) } || FolderClassifier.hasAmount(body) || chat
+        return if (drug) sales || DELIVERY_WORDS.any { Text.containsWords(words, it) } else sales
     }
 
     /** At least [CAPS_MIN_LETTERS] Latin letters, [CAPS_SHARE] of them capitals: "URGENT YOUR ACCOUNT IS LOCKED ...". */

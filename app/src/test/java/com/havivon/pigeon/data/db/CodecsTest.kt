@@ -16,7 +16,7 @@ class CodecsTest {
             SpamReason.BlockedKeyword("הלוואה"), SpamReason.ManyLinks, SpamReason.BrandSender, SpamReason.MarkedByUser,
             SpamReason.Poll, SpamReason.MoneyBait,
             SpamReason.GovImpersonation, SpamReason.Investment, SpamReason.AsksForDetails, SpamReason.ForeignNumber,
-            SpamReason.ContactElsewhere, SpamReason.MoneyAmount, SpamReason.AllCaps, SpamReason.BlockedOnPhone,
+            SpamReason.ContactElsewhere, SpamReason.Drugs, SpamReason.RedirectNumber, SpamReason.MoneyAmount, SpamReason.AllCaps, SpamReason.BlockedOnPhone,
         )
         assertEquals(reasons, SpamReasonCodec.decode(SpamReasonCodec.encode(reasons)))
     }

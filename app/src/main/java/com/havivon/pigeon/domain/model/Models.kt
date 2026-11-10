@@ -90,6 +90,10 @@ sealed interface SpamReason {
     data object ForeignNumber : SpamReason
     /** Asks to call a number or to move to WhatsApp or Telegram (wa.me, t.me). */
     data object ContactElsewhere : SpamReason
+    /** Drugs offered for sale: "קנאביס", "גראס", "weed" with a price, an order or a link. */
+    data object Drugs : SpamReason
+    /** Sends you to another number than the sender's own: a wa.me or t.me link, or "WhatsApp 054...". */
+    data object RedirectNumber : SpamReason
     /** Names a sum of money: "₪", ש"ח, "NIS", "$". */
     data object MoneyAmount : SpamReason
     /** Long English text in capital letters. */

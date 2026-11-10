@@ -24,6 +24,8 @@ object SpamReasonCodec {
     private const val ASKS_FOR_DETAILS = "asks_for_details"
     private const val FOREIGN_NUMBER = "foreign_number"
     private const val CONTACT_ELSEWHERE = "contact_elsewhere"
+    private const val DRUGS = "drugs"
+    private const val REDIRECT_NUMBER = "redirect_number"
     private const val MONEY_AMOUNT = "money_amount"
     private const val ALL_CAPS = "all_caps"
     private const val BLOCKED_ON_PHONE = "blocked_on_phone"
@@ -45,6 +47,8 @@ object SpamReasonCodec {
             SpamReason.AsksForDetails -> ASKS_FOR_DETAILS
             SpamReason.ForeignNumber -> FOREIGN_NUMBER
             SpamReason.ContactElsewhere -> CONTACT_ELSEWHERE
+            SpamReason.Drugs -> DRUGS
+            SpamReason.RedirectNumber -> REDIRECT_NUMBER
             SpamReason.MoneyAmount -> MONEY_AMOUNT
             SpamReason.AllCaps -> ALL_CAPS
             SpamReason.BlockedOnPhone -> BLOCKED_ON_PHONE
@@ -71,6 +75,8 @@ object SpamReasonCodec {
             line == ASKS_FOR_DETAILS -> SpamReason.AsksForDetails
             line == FOREIGN_NUMBER -> SpamReason.ForeignNumber
             line == CONTACT_ELSEWHERE -> SpamReason.ContactElsewhere
+            line == DRUGS -> SpamReason.Drugs
+            line == REDIRECT_NUMBER -> SpamReason.RedirectNumber
             line == MONEY_AMOUNT -> SpamReason.MoneyAmount
             line == ALL_CAPS -> SpamReason.AllCaps
             line == BLOCKED_ON_PHONE -> SpamReason.BlockedOnPhone

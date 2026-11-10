@@ -228,6 +228,8 @@
     <string name="spam_reason_asks_for_details">Asks for card details or a code</string>
     <string name="spam_reason_foreign_number">Number from abroad</string>
     <string name="spam_reason_contact_elsewhere">Asks you to call or chat on WhatsApp</string>
+    <string name="spam_reason_drugs">Drugs</string>
+    <string name="spam_reason_redirect_number">Sends you to another number</string>
     <string name="spam_reason_money_amount">Mentions a sum of money</string>
     <string name="spam_reason_all_caps">Written in capital letters</string>
     <string name="spam_back_to_inbox">Back in the inbox. The filter will leave this sender alone.</string>

@@ -30,8 +30,8 @@ class SpamRulesV4Test {
     }
 
     @Test
-    fun theRulesAreVersionFour() {
-        assertEquals(4, SpamScorer.VERSION)
+    fun theRulesAreAtLeastVersionFour() {
+        assertTrue(SpamScorer.VERSION >= 4)
     }
 
     // --- 1. common Israeli scams: an authority asking to click or pay ---
