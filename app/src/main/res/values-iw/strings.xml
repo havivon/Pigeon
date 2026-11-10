@@ -66,6 +66,21 @@
     <string name="inbox_empty_unread_body">הודעות חדשות בקטגוריה הזו מופיעות כאן עד שקוראים אותן.</string>
     <string name="inbox_filter_all">הכל</string>
     <string name="inbox_filter_unread">לא נקראו</string>
+    <string name="inbox_mark_all_read">סמן הכל כנקרא</string>
+    <string name="inbox_mark_all_read_short">הכל נקרא</string>
+    <string name="inbox_mark_all_read_description">סמן את כל ההודעות כאן כנקראו</string>
+    <string name="mark_all_read_title">לסמן הכל כנקרא?</string>
+    <plurals name="mark_all_read_body">
+        <item quantity="one">הודעה אחת ב„%2$s” תסומן כנקראה. אי אפשר לבטל את הפעולה.</item>
+        <item quantity="two">%1$d הודעות ב„%2$s” יסומנו כנקראו. אי אפשר לבטל את הפעולה.</item>
+        <item quantity="other">%1$d הודעות ב„%2$s” יסומנו כנקראו. אי אפשר לבטל את הפעולה.</item>
+    </plurals>
+    <string name="mark_all_read_confirm">סמן כנקרא</string>
+    <plurals name="mark_all_read_done">
+        <item quantity="one">הודעה אחת סומנה כנקראה</item>
+        <item quantity="two">סומנו %1$d הודעות כנקראו</item>
+        <item quantity="other">סומנו %1$d הודעות כנקראו</item>
+    </plurals>
     <string name="inbox_empty_not_default">ההודעות שלך יופיעו כאן ברגע ש-Pigeon תהיה אפליקציית ההודעות שלך, או כשתאפשר לה להציג אותן.</string>
 
     <!-- action_ (the long-press sheet and the conversation menu) -->

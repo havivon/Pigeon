@@ -66,6 +66,19 @@
     <string name="inbox_empty_unread_body">New messages in this category show up here until you read them.</string>
     <string name="inbox_filter_all">All</string>
     <string name="inbox_filter_unread">Unread</string>
+    <string name="inbox_mark_all_read">Mark all read</string>
+    <string name="inbox_mark_all_read_short">All read</string>
+    <string name="inbox_mark_all_read_description">Mark all messages here as read</string>
+    <string name="mark_all_read_title">Mark all as read?</string>
+    <plurals name="mark_all_read_body">
+        <item quantity="one">%1$d message in “%2$s” will be marked as read. This can\'t be undone.</item>
+        <item quantity="other">%1$d messages in “%2$s” will be marked as read. This can\'t be undone.</item>
+    </plurals>
+    <string name="mark_all_read_confirm">Mark as read</string>
+    <plurals name="mark_all_read_done">
+        <item quantity="one">Marked %1$d message as read</item>
+        <item quantity="other">Marked %1$d messages as read</item>
+    </plurals>
     <string name="inbox_empty_not_default">Your messages show up here once Pigeon is your messaging app, or once you let it view them.</string>
 
     <!-- action_ (the long-press sheet and the conversation menu) -->

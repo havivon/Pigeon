@@ -115,6 +115,16 @@ class FakeMessageRepository : MessageRepository {
         threads.update { list -> list.map { if (it.threadId == threadId) it.copy(unreadCount = 0) else it } }
     }
 
+    /** Each batched "mark all as read" call, with the conversations it named. */
+    val markedReadBatches = mutableListOf<List<Long>>()
+
+    override suspend fun markThreadsRead(threadIds: Collection<Long>) {
+        markedReadBatches += threadIds.toList()
+        val ids = threadIds.toSet()
+        allMessages.update { list -> list.map { if (it.threadId in ids && !it.type.outgoing) it.copy(read = true) else it } }
+        threads.update { list -> list.map { if (it.threadId in ids) it.copy(unreadCount = 0) else it } }
+    }
+
     override fun deleteMessages(ids: Set<Long>): PendingDeletion {
         hiddenMessages.update { it + ids }
         return Undo { hiddenMessages.update { it - ids } }

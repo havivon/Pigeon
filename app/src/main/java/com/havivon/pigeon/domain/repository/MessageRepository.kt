@@ -47,6 +47,12 @@ interface MessageRepository {
     suspend fun markThreadRead(threadId: Long)
 
     /**
+     * Marks every unread incoming message of these conversations read (and seen) in as few provider updates as
+     * possible, not one call per conversation ("Mark all as read").
+     */
+    suspend fun markThreadsRead(threadIds: Collection<Long>)
+
+    /**
      * Deletes messages, with undo: they disappear from every Flow at once, and are removed from the
      * system database only when [UNDO_WINDOW_MILLIS] ends without [PendingDeletion.undo].
      */

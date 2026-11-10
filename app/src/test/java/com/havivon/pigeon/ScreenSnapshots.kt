@@ -1,6 +1,7 @@
 package com.havivon.pigeon
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,6 +48,7 @@ import com.havivon.pigeon.ui.folders.MoveToFolderContent
 import com.havivon.pigeon.ui.inbox.ConversationActions
 import com.havivon.pigeon.ui.inbox.InboxEmpty
 import com.havivon.pigeon.ui.inbox.InboxScreen
+import com.havivon.pigeon.ui.inbox.MarkAllReadDialogContent
 import com.havivon.pigeon.ui.lock.LockCover
 import com.havivon.pigeon.ui.onboarding.PermissionsCard
 import com.havivon.pigeon.ui.rules.RuleSwatches
@@ -410,6 +412,20 @@ class NewScreensSnapshots {
                 unreadMessages = s.unreadColored, builtInColors = s.builtInColors,
             )
         }
+        // "Mark all read" at the other end of the All / Unread row: enabled, dark, a 360dp phone with a long count, and its question
+        shot("114_inbox_mark_all_read") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = s.unread.size)
+        }
+        shot("115_inbox_mark_all_read_dark", dark = true) {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = s.unread.size)
+        }
+        shot("116_inbox_mark_all_read_360dp") {
+            Box(Modifier.width(360.dp)) { InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = 128) }
+        }
+        shot("117_mark_all_read_dialog") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = s.unread.size)
+            Scrim { MarkAllReadDialogContent(s.unread.size, stringResource(R.string.common_folder_all), {}, {}) }
+        }
     }
 }
 
@@ -467,6 +483,16 @@ class NewScreensSnapshotsEnglish {
                 s.inboxColored, s.sample.rules, s.sample.folderCounts, s.sample.dateLine,
                 customFolders = s.coloredCustomFolders, customCounts = mapOf(1L to 0, 2L to 0), builtInColors = s.builtInColors,
             )
+        }
+        shot("118_en_inbox_mark_all_read") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = s.unread.size)
+        }
+        shot("119_en_inbox_mark_all_read_360dp") {
+            Box(Modifier.width(360.dp)) { InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = 128) }
+        }
+        shot("120_en_mark_all_read_dialog") {
+            InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine, unreadCount = s.unread.size)
+            Scrim { MarkAllReadDialogContent(s.unread.size, stringResource(R.string.common_folder_all), {}, {}) }
         }
     }
 }

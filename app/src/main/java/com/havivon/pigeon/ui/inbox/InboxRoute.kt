@@ -78,7 +78,10 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
     }
     val state by vm.state.collectAsStateWithLifecycle()
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
+    var confirmMarkAll by remember { mutableStateOf(false) }
     val access = LocalDefaultApp.current
+    val notices = LocalNotices.current
+    val needsDefault = rememberNeedsDefaultNotice()
 
     InboxScreen(
         conversations = state.conversations,
@@ -96,6 +99,8 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         unreadOnly = state.unreadOnly,
         unreadCount = state.unreadCount,
         onUnreadOnly = vm::selectUnreadOnly,
+        // A viewer is told why at once; nothing is written, and no question is asked
+        onMarkAllRead = { if (access.mode.canWrite) confirmMarkAll = true else needsDefault() },
         unreadMessages = state.unread.orEmpty(),
         onOpenMessage = { openMessage(it.threadId, it.messageId) },
         // The same sheet as for the message's conversation (gone by now: nothing to act on)
@@ -108,6 +113,22 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         loading = !state.loaded || (state.unreadOnly && state.unread == null),
         banner = if (access.showViewerBanner) ({ ViewerBanner(onMakeDefault = access.makeDefault, onHide = access.dismissViewerBanner) }) else null,
     )
+
+    if (confirmMarkAll) {
+        val category = state.customFolderName ?: stringResource(state.folder.labelRes)
+        val context = LocalContext.current
+        MarkAllReadDialog(
+            count = state.unreadCount,
+            category = category,
+            onConfirm = {
+                confirmMarkAll = false
+                val marked = vm.markAllRead()
+                if (marked == null) needsDefault()
+                else if (marked > 0) notices.show(context.resources.getQuantityString(R.plurals.mark_all_read_done, marked, marked))
+            },
+            onDismiss = { confirmMarkAll = false },
+        )
+    }
 
     ConversationSheets(sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = state.customFolders)
 }

@@ -227,6 +227,12 @@ class InboxViewModel(
     /** False, and nothing changes, while Pigeon is not the default SMS app: the screen says so. */
     fun markRead(c: Conversation): Boolean = sheet.markRead(c)
 
+    /**
+     * "Mark all as read" in the chosen folder (a built-in one or one of the user's categories; spam never): returns
+     * how many messages were marked, or null, and nothing changes, while Pigeon is not the default SMS app.
+     */
+    fun markAllRead(): Int? = sheet.markAllRead(state.value.conversations)
+
     fun lock(c: Conversation) = sheet.lock(c)
 
     /** Only after the user proved who they are (the screen asks). */

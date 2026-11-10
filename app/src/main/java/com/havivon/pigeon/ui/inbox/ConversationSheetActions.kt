@@ -51,6 +51,20 @@ class ConversationSheetActions(
         return true
     }
 
+    /**
+     * "Mark all as read": every unread incoming message of [list] (the conversations of the chosen folder), in one
+     * batched update, with their notifications cancelled. Returns how many messages were marked, or null, and
+     * nothing changes, while Pigeon is not the default SMS app: the screen says so.
+     */
+    fun markAllRead(list: List<Conversation>): Int? {
+        if (!canWrite()) return null
+        val unread = list.filter { it.unread > 0 }
+        if (unread.isEmpty()) return 0
+        unread.forEach { cancelNotification(it.id) }
+        scope.launch { messages.markThreadsRead(unread.map { it.id }) }
+        return unread.sumOf { it.unread }
+    }
+
     fun lock(c: Conversation) {
         scope.launch { locks.lock(c.id) }
     }

@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Lock
@@ -44,6 +45,7 @@ import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -52,6 +54,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,6 +97,8 @@ fun InboxScreen(
     /** The number on the toggle's "Unread": the unread messages of [selectedFolder]. */
     unreadCount: Int = 0,
     onUnreadOnly: (Boolean) -> Unit = {},
+    /** "Mark all read" at the other end of the All / Unread row: asks first; dimmed and inert while [unreadCount] is 0. */
+    onMarkAllRead: () -> Unit = {},
     /** The rows of the unread list: the unread messages of [selectedFolder] themselves, newest first. Used instead of [conversations] while the toggle is on. */
     unreadMessages: List<UnreadMessage> = emptyList(),
     onOpenMessage: (UnreadMessage) -> Unit = {},
@@ -122,7 +128,7 @@ fun InboxScreen(
             Modifier.fillMaxSize(),
             header = {
                 val chips = FolderChips(selectedFolder, folderCounts, customFolders, customCounts, selectedCustom, onFolder, onCustomFolder, builtInColors)
-                InboxHeader(dateLine, chips, unreadOnly, unreadCount, onUnreadOnly, onSettings, onSearch)
+                InboxHeader(dateLine, chips, unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead, onSettings, onSearch)
             },
         ) { top -> InboxList(top, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
         NewMessageButton(onNewMessage, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp))
@@ -206,6 +212,7 @@ private fun InboxHeader(
     unreadOnly: Boolean,
     unreadCount: Int,
     onUnreadOnly: (Boolean) -> Unit,
+    onMarkAllRead: () -> Unit,
     onSettings: () -> Unit,
     onSearch: () -> Unit,
 ) {
@@ -254,22 +261,79 @@ private fun InboxHeader(
             }
         }
         Spacer(Modifier.height(10.dp))
-        UnreadButtons(unreadOnly, unreadCount, onUnreadOnly)
+        UnreadButtons(unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead)
         Spacer(Modifier.height(4.dp))
     }
 }
 
 /**
- * The two buttons under the folder chips, side by side with a clear gap and aligned to the start: every
- * message of the chosen folder ("All"), or only the unread ones ("Unread", with their number in a badge).
- * Styled as the folder chips: the chosen one white with the accent text, the other a glassy pill with a
- * thin outline.
+ * The row under the folder chips. At its start, side by side with a clear gap: every message of the chosen folder
+ * ("All"), or only the unread ones ("Unread", with their number in a badge). At the opposite end, so it is not
+ * tapped by mistake: "Mark all read" (the full label if it fits beside the two, otherwise a short one, otherwise
+ * on a line of its own). Styled as the folder chips: the chosen one white with the accent text, the others a
+ * glassy pill with a thin outline.
  */
 @Composable
-private fun UnreadButtons(unreadOnly: Boolean, unreadCount: Int, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start)) {
-        FilterButton(stringResource(R.string.inbox_filter_all), count = 0, selected = !unreadOnly) { onChange(false) }
-        FilterButton(stringResource(R.string.inbox_filter_unread), count = unreadCount, selected = unreadOnly) { onChange(true) }
+private fun UnreadButtons(unreadOnly: Boolean, unreadCount: Int, onChange: (Boolean) -> Unit, onMarkAllRead: () -> Unit) {
+    FilterRow(
+        filters = {
+            Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FilterButton(stringResource(R.string.inbox_filter_all), count = 0, selected = !unreadOnly) { onChange(false) }
+                FilterButton(stringResource(R.string.inbox_filter_unread), count = unreadCount, selected = unreadOnly) { onChange(true) }
+            }
+        },
+        markAll = { compact -> MarkAllReadButton(compact, enabled = unreadCount > 0, onClick = onMarkAllRead) },
+    )
+}
+
+/**
+ * [filters] at the start and [markAll] at the end of one row. The full button is used when it fits in what the
+ * filters leave; else the compact one; if even that does not fit (a very large font) it goes under them, at the
+ * end, so the buttons never overlap.
+ */
+@Composable
+private fun FilterRow(filters: @Composable () -> Unit, markAll: @Composable (compact: Boolean) -> Unit) {
+    SubcomposeLayout(Modifier.fillMaxWidth()) { constraints ->
+        val width = constraints.maxWidth
+        val loose = Constraints(maxWidth = width)
+        val gap = 10.dp.roundToPx()
+        val left = subcompose("filters", filters).map { it.measure(loose) }
+        val leftW = left.maxOfOrNull { it.width } ?: 0
+        val leftH = left.maxOfOrNull { it.height } ?: 0
+        val room = width - leftW - gap
+        var button = subcompose("full") { markAll(false) }.map { it.measure(loose) }
+        if ((button.maxOfOrNull { it.width } ?: 0) > room) button = subcompose("compact") { markAll(true) }.map { it.measure(loose) }
+        val buttonW = button.maxOfOrNull { it.width } ?: 0
+        val buttonH = button.maxOfOrNull { it.height } ?: 0
+        val sideBySide = buttonW <= room
+        val below = 6.dp.roundToPx()
+        val height = if (sideBySide) maxOf(leftH, buttonH) else leftH + below + buttonH
+        layout(width, height) {
+            // placeRelative mirrors in RTL: the filters sit at the start edge, the button at the end edge
+            left.forEach { it.placeRelative(0, if (sideBySide) (height - leftH) / 2 else 0) }
+            button.forEach { it.placeRelative(width - buttonW, if (sideBySide) (height - buttonH) / 2 else leftH + below) }
+        }
+    }
+}
+
+/** "Mark all read": a glassy outlined pill with a "done all" icon; dimmed and inert when there is nothing unread. */
+@Composable
+private fun MarkAllReadButton(compact: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
+    val label = stringResource(if (compact) R.string.inbox_mark_all_read_short else R.string.inbox_mark_all_read)
+    Row(
+        Modifier
+            .alpha(if (enabled) 1f else 0.4f)
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.14f))
+            .border(1.dp, Color.White.copy(alpha = 0.55f), shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.DoneAll, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 

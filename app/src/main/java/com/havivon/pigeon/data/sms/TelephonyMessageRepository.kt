@@ -51,6 +51,9 @@ private const val BROWSE_LIMIT = 1_000
 /** Deleted in chunks below SQLite's limit of arguments per statement. */
 private const val DELETE_CHUNK = 500
 
+/** How many conversations one "mark all as read" update names (SQLite allows 999 variables in a statement). */
+private const val MARK_READ_CHUNK = 500
+
 /** How long the conversations stay watched after the last screen stopped collecting them (a rotation, a quick switch). */
 private const val KEEP_READING_MILLIS = 5_000L
 
@@ -197,6 +200,29 @@ class TelephonyMessageRepository(
                 resolver.update(Telephony.Sms.CONTENT_URI, values, "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0", arrayOf(threadId.toString()))
             } catch (_: RuntimeException) {
                 // Not the default SMS app (the system database is read-only for us), or a maker's provider that failed
+            }
+        }
+    }
+
+    override suspend fun markThreadsRead(threadIds: Collection<Long>) {
+        if (!canWrite() || threadIds.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            val values = ContentValues().apply {
+                put(Telephony.Sms.READ, 1)
+                put(Telephony.Sms.SEEN, 1)
+            }
+            // One update for many conversations; chunked so the statement stays under SQLite's limit on variables
+            threadIds.distinct().chunked(MARK_READ_CHUNK).forEach { chunk ->
+                try {
+                    resolver.update(
+                        Telephony.Sms.CONTENT_URI,
+                        values,
+                        "${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue} AND ${Telephony.Sms.READ} = 0 AND ${Telephony.Sms.THREAD_ID} IN (${chunk.joinToString(",") { "?" }})",
+                        Array(chunk.size) { chunk[it].toString() },
+                    )
+                } catch (_: RuntimeException) {
+                    // Not the default SMS app (the system database is read-only for us), or a maker's provider that failed
+                }
             }
         }
     }
