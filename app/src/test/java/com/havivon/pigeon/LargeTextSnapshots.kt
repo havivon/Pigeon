@@ -29,8 +29,10 @@ import com.havivon.pigeon.ui.inbox.categoryMenu
 import com.havivon.pigeon.ui.search.SearchScreen
 import com.havivon.pigeon.ui.settings.SettingsActions
 import com.havivon.pigeon.ui.settings.SettingsScreen
+import com.havivon.pigeon.ui.settings.SkinPickerScreen
 import com.havivon.pigeon.ui.spam.SpamScreen
 import com.havivon.pigeon.ui.theme.HebSmsTheme
+import com.havivon.pigeon.ui.theme.Skin
 import com.havivon.pigeon.ui.theme.HebTheme
 import org.junit.Rule
 import org.junit.Test
@@ -90,6 +92,7 @@ abstract class LargeTextShots(config: DeviceConfig, private val hebrew: Boolean)
         shot("search_results") { SearchScreen(s.searchTagged, autoFocus = false) }
         shot("settings_top") { SettingsScreen(st.state, st.environment, SettingsActions()) }
         shot("categories") { FoldersScreen(st.coloredFolders, builtInColors = st.builtInColors) }
+        shot("skin_picker") { SkinPickerScreen(Skin.Sunset, onPick = {}, onBack = {}) }
     }
 }
 

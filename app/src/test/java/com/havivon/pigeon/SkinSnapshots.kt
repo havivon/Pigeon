@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,20 +35,26 @@ import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.theme.HebSmsTheme
 import com.havivon.pigeon.ui.theme.HebTheme
 import com.havivon.pigeon.ui.theme.Skin
+import java.io.File
+import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Rule
 import org.junit.Test
+import org.w3c.dom.Element
 
-/** The skins' names for the sample sheets (Hebrew · English). The settings picker will take them from the resources. */
-private val SkinNames = mapOf(
-    Skin.Sunset to ("שקיעה" to "Sunset"),
-    Skin.Ocean to ("ים" to "Ocean"),
-    Skin.Forest to ("יער" to "Forest"),
-    Skin.Midnight to ("לילה" to "Midnight"),
-    Skin.Pomegranate to ("רימון" to "Pomegranate"),
-    Skin.Desert to ("מדבר" to "Desert"),
-    Skin.Pastel to ("פסטל" to "Pastel"),
-    Skin.Graphite to ("גרפיט" to "Graphite"),
-)
+/**
+ * A skin's name in English, from the app's English strings (the sheets render in Hebrew, so `stringResource` gives the
+ * Hebrew one).
+ */
+private fun englishName(skin: Skin): String {
+    val file = listOf(File("src/main/res/values/strings.xml"), File("app/src/main/res/values/strings.xml")).first { it.exists() }
+    val strings = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("string")
+    val key = "skin_${skin.id}"
+    return (0 until strings.length).map { strings.item(it) as Element }.first { it.getAttribute("name") == key }.textContent
+}
+
+/** The skin's names on the sheets: Hebrew and English, both from the app's strings. */
+@Composable
+private fun names(skin: Skin): Pair<String, String> = stringResource(skin.labelRes) to englishName(skin)
 
 private val SheetBackground = Color(0xFFE4E4EA)
 private val SheetInk = Color(0xFF2A2A33)
@@ -57,8 +64,8 @@ private val PhoneWidth = 360.dp
 private val PhoneHeight = 740.dp
 
 /**
- * The skins to choose from, before the settings picker exists: one sheet per skin with the real inbox and conversation
- * screens in Hebrew, light above and dark below, and one overview of all eight. Run:
+ * The skins side by side, larger than the settings picker shows them: one sheet per skin with the real inbox and
+ * conversation screens in Hebrew, light above and dark below, and one overview of all eight. Run:
  * gradlew :app:recordPaparazziDebug --tests "*SkinSnapshots*"
  */
 class SkinSnapshots {
@@ -97,7 +104,7 @@ class SkinSnapshots {
 
     @Composable
     private fun SkinSheet(skin: Skin) {
-        val (he, en) = SkinNames.getValue(skin)
+        val (he, en) = names(skin)
         Column(
             Modifier.background(SheetBackground).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -166,7 +173,7 @@ class SkinSnapshots {
     /** A skin in small: its header strip with the name, then a bubble pair and the accent on its light and its dark page. */
     @Composable
     private fun SwatchCard(skin: Skin) {
-        val (he, en) = SkinNames.getValue(skin)
+        val (he, en) = names(skin)
         Column(Modifier.width(180.dp).clip(RoundedCornerShape(18.dp)).border(1.dp, Color.Black.copy(alpha = 0.1f), RoundedCornerShape(18.dp))) {
             Column(Modifier.fillMaxWidth().background(skin.light.header).padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Text(he, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)

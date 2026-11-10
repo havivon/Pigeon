@@ -19,6 +19,7 @@ import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.SettingsRepository
 import com.havivon.pigeon.domain.seam.CodeFinder
+import com.havivon.pigeon.ui.theme.Skin
 import kotlinx.coroutines.flow.first
 
 /** Messages shown in one notification; older unread ones are summed up in the count. */
@@ -30,8 +31,6 @@ private const val REPLIED_LINES = 6
 private const val TAG_THREAD = "thread"
 private const val TAG_UNSAVED = "unsaved"
 
-/** The app's violet, for the notification's accent. */
-private const val ACCENT = 0xFF5B3FD9.toInt()
 
 /**
  * One notification per conversation, in MessagingStyle, with reply, mark-as-read and (when the
@@ -81,7 +80,7 @@ class MessageNotifier(
     override suspend fun notifyUnsaved(address: String, body: String, dateMillis: Long) {
         val s = settings.settings.first()
         val title = contacts.displayName(address) ?: address
-        val builder = baseBuilder(NotificationChannels.forMessages(context, s.lockScreenText), unreadCount = 1)
+        val builder = baseBuilder(NotificationChannels.forMessages(context, s.lockScreenText), unreadCount = 1, Skin.fromId(s.skin).notificationArgb)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -97,7 +96,7 @@ class MessageNotifier(
     private suspend fun post(threadId: Long, lines: List<SmsMessage>, unreadCount: Int, silent: Boolean) {
         val s = settings.settings.first()
         val channel = NotificationChannels.forMessages(context, s.lockScreenText)
-        val builder = baseBuilder(channel, unreadCount)
+        val builder = baseBuilder(channel, unreadCount, Skin.fromId(s.skin).notificationArgb)
             .setSilent(silent)
             .setContentIntent(openApp(threadId))
             .addAction(markReadAction(threadId))
@@ -129,11 +128,11 @@ class MessageNotifier(
         notify(TAG_THREAD, notificationId(threadId), builder)
     }
 
-    /** [unreadCount] 0 (after a reply) shows no count. */
-    private fun baseBuilder(channel: String, unreadCount: Int): NotificationCompat.Builder =
+    /** [unreadCount] 0 (after a reply) shows no count; [accent] is the skin's (see [Skin.notificationArgb]). */
+    private fun baseBuilder(channel: String, unreadCount: Int, accent: Int): NotificationCompat.Builder =
         NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ACCENT)
+            .setColor(accent)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -142,13 +141,13 @@ class MessageNotifier(
             .setLargeIcon(AppIconBitmap.bitmap(context))
             // Hidden on the lock screen when the phone hides sensitive content; the hidden-text channel forces it
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setPublicVersion(publicVersion(channel, unreadCount))
+            .setPublicVersion(publicVersion(channel, unreadCount, accent))
 
     /** What a locked screen shows instead: the app and a count, nothing more. */
-    private fun publicVersion(channel: String, unreadCount: Int) =
+    private fun publicVersion(channel: String, unreadCount: Int, accent: Int) =
         NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ACCENT)
+            .setColor(accent)
             .setContentTitle(context.getString(R.string.app_name))
             .apply { if (unreadCount > 0) setContentText(newMessages(unreadCount)) }
             .build()

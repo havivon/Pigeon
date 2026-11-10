@@ -1,6 +1,7 @@
 package com.havivon.pigeon.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.havivon.pigeon.domain.model.SkinIds
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -77,6 +78,17 @@ class SkinContrastTest {
             assertEquals(LightHebColors.spam, it.light.spam)
             assertEquals(DarkHebColors.spam, it.dark.spam)
         }
+    }
+
+    @Test
+    fun theStoredIdsAreTheSkins() {
+        // The settings and the backup file know the skins by these ids only (SkinIds), in the picker's order
+        assertEquals(SkinIds.ALL, Skin.entries.map { it.id })
+        assertEquals(SkinIds.DEFAULT, Skin.Sunset.id)
+        assertEquals(Skin.entries.size, Skin.entries.map { it.labelRes }.toSet().size)
+        assertEquals("ocean", SkinIds.orDefault("ocean"))
+        assertEquals(SkinIds.DEFAULT, SkinIds.orDefault("neon"))
+        assertEquals(SkinIds.DEFAULT, SkinIds.orDefault(null))
     }
 
     /** Prints the measured ratios (run with --info to see them). */

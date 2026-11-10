@@ -128,6 +128,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             onLanguage = vm::setLanguage,
             onTheme = vm::setTheme,
             onAppIcon = vm::setAppIcon,
+            onOpenSkins = { navigate(Screen.Skins) },
             onOpenRules = { navigate(Screen.Rules) },
             onOpenKeywords = { navigate(Screen.BlockedKeywords) },
             onOpenFolders = { navigate(Screen.Folders) },

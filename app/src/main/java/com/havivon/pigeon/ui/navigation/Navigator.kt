@@ -31,6 +31,9 @@ sealed interface Screen {
     data class NewMessage(val recipients: List<String> = emptyList(), val body: String = "") : Screen
     data object Settings : Screen
 
+    /** The colour skins, opened from the settings. */
+    data object Skins : Screen
+
     /** The colour rules, opened from the settings. */
     data object Rules : Screen
 

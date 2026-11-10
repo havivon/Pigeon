@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The same as the Compose theme's background and accent (ui/theme/Theme.kt) -->
+    <!--
+      The Sunset skin's page and accent (ui/theme/Theme.kt). Another skin's page replaces the window background from
+      code (MainActivity) before the first frame.
+    -->
     <color name="window_background">#FFF5F0FA</color>
     <color name="accent">#FF5B3FD9</color>
 </resources>

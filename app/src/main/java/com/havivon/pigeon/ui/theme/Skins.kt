@@ -1,6 +1,10 @@
 package com.havivon.pigeon.ui.theme
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import com.havivon.pigeon.R
+import com.havivon.pigeon.domain.model.SkinIds
 
 // The skins besides Sunset (Theme.kt). Every set keeps body text at 4.5:1 or more on its surfaces and bubbles, white
 // on the outgoing bubbles at 4.5:1 and white on the header at 3:1 (large text); SkinContrastTest checks it.
@@ -245,20 +249,23 @@ private val GraphiteDark = HebColors(
 )
 
 /**
- * The app's colour skins, each with a light and a dark set. [id] is stable (for storing the choice); the order is
- * the order a picker shows them in. [Sunset] is the app's original look and the default.
+ * The app's colour skins, each with a light and a dark set. [id] is stable (for storing the choice, see [SkinIds]); the
+ * order is the order the picker shows them in. [Sunset] is the app's original look and the default.
  */
-enum class Skin(val id: String, val light: HebColors, val dark: HebColors) {
-    Sunset("sunset", LightHebColors, DarkHebColors),
-    Ocean("ocean", OceanLight, OceanDark),
-    Forest("forest", ForestLight, ForestDark),
-    Midnight("midnight", MidnightLight, MidnightDark),
-    Pomegranate("pomegranate", PomegranateLight, PomegranateDark),
-    Desert("desert", DesertLight, DesertDark),
-    Pastel("pastel", PastelLight, PastelDark),
-    Graphite("graphite", GraphiteLight, GraphiteDark);
+enum class Skin(val id: String, @StringRes val labelRes: Int, val light: HebColors, val dark: HebColors) {
+    Sunset("sunset", R.string.skin_sunset, LightHebColors, DarkHebColors),
+    Ocean("ocean", R.string.skin_ocean, OceanLight, OceanDark),
+    Forest("forest", R.string.skin_forest, ForestLight, ForestDark),
+    Midnight("midnight", R.string.skin_midnight, MidnightLight, MidnightDark),
+    Pomegranate("pomegranate", R.string.skin_pomegranate, PomegranateLight, PomegranateDark),
+    Desert("desert", R.string.skin_desert, DesertLight, DesertDark),
+    Pastel("pastel", R.string.skin_pastel, PastelLight, PastelDark),
+    Graphite("graphite", R.string.skin_graphite, GraphiteLight, GraphiteDark);
 
     fun colors(dark: Boolean): HebColors = if (dark) this.dark else light
+
+    /** The notifications' tint: the light accent (Sunset's violet), which the system lightens on a dark shade. */
+    val notificationArgb: Int get() = light.accent.toArgb()
 
     companion object {
         /** The skin stored under [id]; Sunset for an unknown or missing one. */

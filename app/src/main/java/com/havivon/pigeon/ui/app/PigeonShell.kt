@@ -66,6 +66,7 @@ import com.havivon.pigeon.ui.blocked.BlockedNumbersRoute
 import com.havivon.pigeon.ui.blocked.PhoneUnblockOffer
 import com.havivon.pigeon.ui.search.SearchRoute
 import com.havivon.pigeon.ui.settings.SettingsRoute
+import com.havivon.pigeon.ui.settings.SkinsRoute
 import com.havivon.pigeon.ui.spam.SpamRoute
 import com.havivon.pigeon.ui.theme.HebTheme
 import kotlinx.coroutines.delay
@@ -203,6 +204,7 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
                 openThreadInstead = { openThread(it, replaceTop = true) },
             )
             Screen.Settings -> SettingsRoute(onBack = { navigator.pop() }, navigate = navigator::push)
+            Screen.Skins -> SkinsRoute(onBack = { navigator.pop() })
             Screen.Rules -> RulesRoute(onBack = { navigator.pop() })
             Screen.BlockedKeywords -> BlockedKeywordsRoute(onBack = { navigator.pop() })
             Screen.Folders -> FoldersRoute(onBack = { navigator.pop() })

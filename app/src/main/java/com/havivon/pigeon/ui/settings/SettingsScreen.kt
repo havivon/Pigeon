@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.GppBad
 import androidx.compose.material.icons.rounded.PhoneDisabled
@@ -81,6 +82,7 @@ import com.havivon.pigeon.ui.components.PillButton
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
+import com.havivon.pigeon.ui.theme.Skin
 
 /** What the phone says, which the settings screen shows next to the user's own choices. */
 data class SettingsEnvironment(
@@ -100,6 +102,7 @@ data class SettingsActions(
     val onBack: () -> Unit = {},
     val onLanguage: (AppLanguage) -> Unit = {},
     val onTheme: (AppTheme) -> Unit = {},
+    val onOpenSkins: () -> Unit = {},
     val onAppIcon: (AppIcon) -> Unit = {},
     val onOpenRules: () -> Unit = {},
     val onOpenKeywords: () -> Unit = {},
@@ -171,6 +174,8 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         s.theme,
                         actions.onTheme,
                     )
+                    RowDivider()
+                    SkinRow(Skin.fromId(s.skin), actions.onOpenSkins)
                 }
             }
             item { SectionLabel(stringResource(R.string.rules_app_icon)) }
@@ -426,6 +431,22 @@ private fun NavRow(icon: ImageVector, title: String, subtitle: String?, onClick:
         RowIcon(icon)
         Spacer(Modifier.width(14.dp))
         RowText(title, subtitle, Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = HebTheme.colors.onSurfaceMuted)
+    }
+}
+
+/** The skin: its name and a mini gradient of its header; a tap opens the picker. */
+@Composable
+private fun SkinRow(skin: Skin, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RowIcon(Icons.Rounded.ColorLens)
+        Spacer(Modifier.width(14.dp))
+        RowText(stringResource(R.string.settings_skin), stringResource(skin.labelRes), Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        SkinSwatch(skin)
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = HebTheme.colors.onSurfaceMuted)
     }
 }

@@ -21,12 +21,11 @@ import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.RemindersRepository
 import com.havivon.pigeon.domain.repository.SettingsRepository
 import com.havivon.pigeon.domain.seam.ReminderScheduler
+import com.havivon.pigeon.ui.theme.Skin
 import kotlinx.coroutines.flow.first
 
 private const val TAG_REMINDER = "reminder"
 
-/** The app's violet, as in the message notifications. */
-private const val ACCENT = 0xFF5B3FD9.toInt()
 
 /**
  * What happens when a reminder is due: its notification (the message text, the sender, a tap opens
@@ -98,15 +97,16 @@ class ReminderNotifier(
             generic = context.getString(R.string.reminder_notification_title),
         )
         val channel = NotificationChannels.forReminders(context, s.lockScreenText)
+        val accent = Skin.fromId(s.skin).notificationArgb
         val publicVersion = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ACCENT)
+            .setColor(accent)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(context.getString(R.string.reminder_notification_title))
             .build()
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ACCENT)
+            .setColor(accent)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             // The colourful app icon as the big picture; the status-bar icon stays monochrome
             .setLargeIcon(AppIconBitmap.bitmap(context))
