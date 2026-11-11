@@ -235,4 +235,17 @@ class CodeExtractorTest {
         )
         for (text in cases) assertNull(text, CodeExtractor.extract(text, "HAREL"))
     }
+    @Test
+    fun otherScriptsAndAppSignInConfirmations() {
+        val cases = listOf(
+            "[#][ShopApp] 476555 ваш код подтверждения abc123" to "476555",
+            "验证码680591，账号正在设置密码" to "680591",
+            "מספר האישור לאפליקציית החנות הוא: 301597" to "301597",
+            "RDSMTVQK is your Acme verification code" to "RDSMTVQK",
+        )
+        for ((text, code) in cases) assertEquals(text, code, CodeExtractor.extract(text))
+        // An order's confirmation number is not a code
+        assertNull(CodeExtractor.extract("מספר אישור להזמנה שלך הוא 301597"))
+        assertNull(CodeExtractor.extract("Your order is on its way, thanks for choosing Acme"))
+    }
 }

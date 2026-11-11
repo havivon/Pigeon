@@ -415,8 +415,10 @@ class SpamScorerTest {
 
     @Test
     fun anUnknownSenderIdNeedsALinkAndAdWordingForTheOptOutBonus() {
-        // An unknown id with an opt-out line, but no link: its own ad, below the threshold
-        assertFalse(verdict("מבצע! ביטוח נסיעות לחו\"ל ב-20% הנחה. להסרה השב הסר", "TravelCo").isSpam)
+        // An unknown id with an opt-out line and a sale, no link: an advertiser too, since version 6
+        assertTrue(verdict("מבצע! ביטוח נסיעות לחו\"ל ב-20% הנחה השבוע בלבד. להסרה השב הסר", "TravelCo").isSpam)
+        // The opt-out line alone, or in a few words, is no ad
+        assertFalse(verdict("להסרה השב הסר", "TravelCo").isSpam)
         // The same with a link: an unknown advertiser, now spam
         assertTrue(verdict("מבצע! ביטוח נסיעות לחו\"ל ב-20% הנחה: https://travel-co.example.com להסרה השב הסר", "TravelCo").isSpam)
         // A known brand with the same: its ordinary advertising

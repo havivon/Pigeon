@@ -49,7 +49,8 @@ class SpamOnRead(
         try {
             for (c in conversations) {
                 if (judged[c.threadId] == c.dateMillis) continue
-                val address = c.addresses.singleOrNull()
+                // One number written two ways ("+972541234567" and "0541234567" in the same thread) is one sender, not a group
+                val address = c.addresses.fold(emptyList<String>()) { acc, a -> if (acc.any { PhoneNumbers.same(it, a) }) acc else acc + a }.singleOrNull()
                 val needed = address != null && c.contactName == null && !c.userWrote && verdicts.none { PhoneNumbers.same(it.address, address) }
                 if (needed) {
                     val ok = judgeOne(c.threadId, address!!)

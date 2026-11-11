@@ -43,8 +43,11 @@ object SpamScorer {
      * and pressure next to a link. The rules in plain words: docs/spam-rules.md.
      * 5: drugs for sale (a drug word with a sales cue), a link or number that sends the reader to another number than
      * the sender's own, and the wording of a sale ("מחיר מוזל", "מתנה בכל קניה", "special price").
+     * 6: an opt-out line from any sender that is no known brand and no service is an ad, more phishing wording (a locked
+     * account, a wrong parcel address), pension-withdrawal and class-action lures, cannabis and gambling sold in slang,
+     * political campaigns by the names of politicians and parties, and religious chain messages.
      */
-    const val VERSION = 5
+    const val VERSION = 6
 
     /**
      * The score from which a message goes to the spam folder. Every message from an unknown sender starts
@@ -114,7 +117,10 @@ object SpamScorer {
         "החזר מס", "החזרי מס", "החזר כספי", "החזרים כספיים", "בדיקה חינם", "בדיקה בחינם", "בדיקה ללא עלות",
         "בדיקת זכאות", "בדיקת קרן פנסיה", "בדיקת ביטוחים", "הנחה מגיעה", "כסף שמגיע", "הכסף שמגיע", "הכסף שלכם מחכה",
         "you may be owed", "you could be owed", "you are owed", "money you are owed", "claim your refund",
-        "claim your money", "free check", "free review", "free assessment", "check your eligibility",
+        "claim your money", "free check",
+        "למשוך את הפנסיה", "למשוך פנסיה", "למשוך את כספי הפנסיה", "למשוך כספי פנסיה", "משיכת קופות פנסיה", "משיכת קרן הפנסיה",
+        "משיכת קרן פנסיה", "ללא התפטרות", "בלי להתפטר", "בלי פיטורים", "ללא פיטורים", "נפתחה הזכאות", "נפתחה זכאות",
+        "הסכם פשרה", "תובענה ייצוגית", "תביעה ייצוגית", "free review", "free assessment", "check your eligibility",
     )
 
     /** "חיסכון של ₪2,300", "חסכו 2,300 ₪", "save $500": a saving promised as a sum. In the normalized text. */
@@ -231,7 +237,7 @@ object SpamScorer {
         "השקעה בטוחה", "פורקס", "אופציות בינאריות", "איתותי מסחר",
         "bitcoin", "btc", "crypto", "cryptocurrency", "investment", "investments", "ai trading", "trading bot",
         "auto trading", "guaranteed return", "guaranteed returns", "guaranteed profit", "daily profit", "daily profits",
-        "daily returns", "passive income", "forex", "trading signals", "investment group",
+        "daily returns", "skyrocketing stock", "returns of more than", "passive income", "forex", "trading signals", "investment group",
     )
 
     /** "Join our group": with an investment word, the scheme's usual shape; with a promise of profit, the scheme itself. */
@@ -309,10 +315,12 @@ object SpamScorer {
     private val DRUG_WORDS = words(
         "קנאביס", "קאנביס", "קנביס", "מריחואנה", "גראס", "וויד", "חשיש", "טלגראס", "קוקאין", "אקסטזי", "קטמין",
         "cannabis", "marijuana", "weed", "thc", "cocaine", "ecstasy", "mdma", "lsd", "ketamine",
+        // Version 6: "medical" bags and boxes, and pills for potency
+        "שקיות רפואי", "קופסאות רפואי", "מגוון רפואי", "זיקפה", "שפיכה מוקדמת", "ויאגרה", "סיאליס", "viagra", "cialis",
     )
 
     /** Slang that is also an everyday word ("ויד" is "ו" + "יד", "hash" is a sign): counted with a weight in grams or "discreet". */
-    private val AMBIGUOUS_DRUG_WORDS = words("ויד", "hash")
+    private val AMBIGUOUS_DRUG_WORDS = words("ויד", "hash", "חממה", "באצים", "רפואי")
 
     /** The wording of a hidden delivery. A drug word of its own, but it needs a sales cue other than the delivery. */
     private val DISCREET_WORDS = words(
@@ -323,7 +331,7 @@ object SpamScorer {
     private val GARDEN_WORDS = setOf("killer", "control", "whacker", "wacker", "eater", "barrier", "spray", "removal", "puller")
 
     /** A weight: "5 ג'", "10 גרם", "3.5g", "1 oz". In the normalized text. */
-    private val DRUG_WEIGHT = Regex("\\d+(?:[.,]\\d+)?\\s?(?:גרם|גר'|גר|ג'|gr|grams?|g|oz)(?![\\p{L}])")
+    private val DRUG_WEIGHT = Regex("\\d+(?:[.,]\\d+)?\\s?(?:גרם|גר'|גר|ג'|ג|gr|grams?|g|oz)(?![\\p{L}])")
 
     /** A sales cue besides the delivery: a price, an offer, an order, a purchase. A sum of money counts too. */
     private val SALES_WORDS = words(
@@ -393,10 +401,20 @@ object SpamScorer {
         // Loans and money.
         phrase("הלוואה", STRONG, "הלוואה", "הלוואות", "בלי בדיקות", "ללא בדיקות", "אישור מיידי"),
         phrase("loan", STRONG, "loan", "loans", "payday", "pre-approved", "no credit check", "instant approval"),
-        phrase("קזינו", STRONG, "קזינו", "הימורים", "קזינו אונליין"),
-        phrase("casino", STRONG, "casino", "betting", "sportsbook"),
+        phrase("קזינו", STRONG, "קזינו", "הימורים", "קזינו אונליין", "רולטה", "רולטת", "בונוס הפקדה", "הימור חינם", "פוקר", "סלוטס", "סיבובים חינם"),
+        phrase("casino", STRONG, "casino", "betting", "sportsbook", "roulette", "poker", "slots", "free spins", "deposit bonus"),
         // Phishing: account threats.
-        phrase("החשבון ייחסם", STRONG, "ייחסם", "יחסם", "הושעה", "נחסם", "אמת את הפרטים", "אמתו את הפרטים", "עדכן את הפרטים", "פעילות חריגה"),
+        phrase("החשבון ייחסם", STRONG, "ייחסם", "יחסם", "הושעה", "נחסם", "אמת את הפרטים", "אמתו את הפרטים", "עדכן את הפרטים", "פעילות חריגה",
+            // Version 6
+            "ננעל", "ננעלה", "הוגבל", "הוגבלה", "הגבלנו", "פעילויות חשודות", "פעילות חשודה", "עדכן את הנתונים שלך", "תביעה משפטית שהוגשה",
+        ),
+        // Asking the reader to prove who they are, next to a threat: the second sign of a phishing text
+        phrase("אמת זהותך", STRONG, "אמת זהותך", "אמת את זהותך", "אמתו את זהותכם", "מכשיר לא ידוע", "verify your identity"),
+        // The wrong-address and stopped-parcel messages that copy the couriers
+        phrase(
+            "כתובת החבילה", STRONG, "כתובת החבילה", "הכתובת של החבילה", "הכתובת שגויה", "כתובת שגויה", "אשר את הכתובת",
+            "מספר רחוב חסר", "המשלוח שלך נעצר", "החבילה שלך נעצרה", "your parcel has been stopped", "address is incorrect",
+        ),
         phrase("account suspended", STRONG, "account suspended", "account locked", "account has been locked", "verify your account", "unusual activity", "confirm your identity"),
         // Calls to action: "לחץ כאן להסרה" is how many opt-out lines read, so they do not make it an ad.
         Phrase("לחץ כאן", MODERATE, listOf("לחץ כאן", "לחצו כאן", "הקש כאן", "לחץ על הקישור", "לחצו על הקישור"), ad = false),
@@ -447,6 +465,25 @@ object SpamScorer {
         "election", "elections", "candidate", "candidates", "prime minister", "political party", "polling station", "knesset",
     )
 
+    /** Version 6: the politicians and the parties by name, as a campaign message writes them. */
+    private val POLL_NAME_WORDS = words(
+        "נתניהו", "ביבי", "גנץ", "לפיד", "בנט", "איזנקוט", "בן גביר", "גביר", "סמוטריץ", "ליברמן", "גלאון", "זליכה", "הורוביץ", "מיכאלי",
+        "דרעי", "גפני", "כחול לבן", "עוצמה יהודית", "הליכוד", "מרצ", "המחנה הדמוקרטי", "ממשלת ימין", "ממשלת שמאל", "ממשלת אחדות",
+    )
+
+    /** Two of these in one message from a stranger: a religious chain message ("1 נר שבת 2 תפילין"), sent in bulk. */
+    private val CHAIN_WORDS = words("נר שבת", "תפילין", "שמע ישראל", "מודה אני", "סמסי אור", "נרות שבת")
+
+    private const val RELIGIOUS_CHAIN = 35
+
+    private const val PARCEL_PHISH_EXTRA = 10
+
+    /** An opt-out line alone ("הסר", "unsubscribe here") is no ad: the bonus needs a message of at least this many words. */
+    private const val MIN_AD_WORDS = 8
+
+    /** Two political names or parties in one message: a campaign, on top of the points of the first. */
+    private const val POLL_CAMPAIGN = 15
+
     /** The verb in front of the digit of "הקישו 1", "השיבו 2", "reply 1". */
     private val REPLY_VERBS = words(
         "הקישו", "הקש", "הקישי", "השיבו", "השב", "השיבי", "השבי", "שלחו", "שלח", "ענו", "ענה", "עני",
@@ -456,7 +493,7 @@ object SpamScorer {
     /** Words of an appointment or a public service's notice, which may carry an opt-out line and a link. */
     private val SERVICE_WORDS = words(
         "התור", "תורך", "לתור", "קביעת תור", "זימון תור", "appointment", "קופת חולים", "מרפאה", "clinic",
-        "עירייה", "עיריית", "municipality", "מועצה מקומית",
+        "עירייה", "עיריית", "municipality", "מועצה מקומית", "תושבים יקרים", "תושבות ותושבים",
     )
 
     /** The folders of a service notice, whose opt-out line is no ad. */
@@ -537,6 +574,13 @@ object SpamScorer {
 
         val service by lazy { isServiceNotice(sms, words) }
 
+        // "1 נר שבת 2תפילין": a digit glued to the word in front of it is still the word
+        val spaced = Text.words(Text.normalize(sms.body).replace(FolderClassifier.DIGIT_LETTER_JOIN, " "))
+        if (!isKnownBrand(sms) && CHAIN_WORDS.count { Text.containsWords(spaced, it) } >= 2) {
+            score += RELIGIOUS_CHAIN
+            reasons += SpamReason.Keyword("שרשרת")
+        }
+
         if (impersonatesAuthority(sms, words, links)) {
             score += GOV_IMPERSONATION
             reasons += SpamReason.GovImpersonation
@@ -581,11 +625,14 @@ object SpamScorer {
         if (optOut) {
             val stranger = Text.phoneKey(sms.address) != null
             val unknownId = Text.isAlphanumericSender(sms.address) && !isKnownBrand(sms)
-            val advertises = poll > 0 ||
-                (stranger && (links.isNotEmpty() || adWording || bait)) ||
-                (unknownId && links.isNotEmpty() && (adWording || bait))
-            if (advertises && !service) score += OPT_OUT_AD
+            // Version 6: the law asks for the opt-out line only in advertising, so a stranger's number or an unknown sender
+            // id with it is an advertiser, with or without a link; a known brand, a service notice and an authority are not
+            val advertises = poll > 0 || ((stranger || unknownId) && (words.size >= MIN_AD_WORDS || links.isNotEmpty() || adWording || bait))
+            if (advertises && !service && !isGovSender(sms.address)) score += OPT_OUT_AD
         }
+
+        // The stopped-parcel and wrong-address texts copy the couriers: from a sender that is no courier or brand, a little more
+        if (reasons.contains(SpamReason.Keyword("כתובת החבילה")) && !isKnownBrand(sms)) score += PARCEL_PHISH_EXTRA
 
         val blocked = sms.blockedKeywords.filter { it.isNotBlank() && Text.containsPhrase(words, it) }
         if (blocked.isNotEmpty()) {
@@ -753,7 +800,9 @@ object SpamScorer {
         var points = 0
         if (POLL_SURVEY_WORDS.any { Text.containsWords(words, it) }) points += POLL_SURVEY
         if (POLL_VOTE_WORDS.any { Text.containsWords(words, it) }) points += POLL_VOTE
-        if (POLL_POLITICS_WORDS.any { Text.containsWords(words, it) }) points += POLL_POLITICS
+        val names = POLL_NAME_WORDS.count { Text.containsWords(words, it) }
+        if (names > 0 || POLL_POLITICS_WORDS.any { Text.containsWords(words, it) }) points += POLL_POLITICS
+        if (names > 1) points += POLL_CAMPAIGN
         if (points > 0 && hasReplyDigit(words)) points += POLL_REPLY_DIGIT
         return minOf(points, POLL_CAP)
     }
