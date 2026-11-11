@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.SensitiveClipboard
+import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalNotices
@@ -204,25 +205,34 @@ internal fun MessageSheet(
                     val messages = context.resources
                     vm.deleteMessage(hit)?.let { notices.undo(messages.getQuantityString(R.plurals.thread_messages_deleted, 1, 1), it) } ?: needsDefault()
                 },
-                onMove = if (conv != null) ({ onDone(); moveFor = hit }) else null,
-                onMarkRead = if (conv != null && conv.unread > 0) ({
-                    onDone()
-                    if (!vm.sheet.markRead(conv)) needsDefault()
-                }) else null,
-                onSpam = if (conv != null) ({
-                    onDone()
-                    if (conv.isSpam) vm.sheet.notSpam(conv) else vm.sheet.markSpam(conv)
-                    notices.show(if (conv.isSpam) notSpamDone else movedToSpam)
-                }) else null,
-                onLock = if (conv != null) ({
-                    onDone()
-                    // Unlocking asks who is there first; locking needs a screen lock to be set
-                    when {
-                        conv.locked -> auth.authenticate { ok -> if (ok) vm.sheet.unlock(conv) }
-                        auth.available() -> vm.sheet.lock(conv)
-                        else -> notices.show(needsScreenLock)
+                // Each action takes the conversation as an explicit, non-null parameter: a lambda that captured a
+                // smart-cast `conv` inside this sheet crashed on the phone (ClassCastException: Conversation to Void,
+                // a Compose compiler bug with `if (x != null) ({ … }) else null` lambdas)
+                onMove = conv?.let { c: Conversation -> { onDone(); moveFor = hit } },
+                onMarkRead = conv?.takeIf { it.unread > 0 }?.let { c: Conversation ->
+                    {
+                        onDone()
+                        if (!vm.sheet.markRead(c)) needsDefault()
                     }
-                }) else null,
+                },
+                onSpam = conv?.let { c: Conversation ->
+                    {
+                        onDone()
+                        if (c.isSpam) vm.sheet.notSpam(c) else vm.sheet.markSpam(c)
+                        notices.show(if (c.isSpam) notSpamDone else movedToSpam)
+                    }
+                },
+                onLock = conv?.let { c: Conversation ->
+                    {
+                        onDone()
+                        // Unlocking asks who is there first; locking needs a screen lock to be set
+                        when {
+                            c.locked -> auth.authenticate { ok -> if (ok) vm.sheet.unlock(c) }
+                            auth.available() -> vm.sheet.lock(c)
+                            else -> notices.show(needsScreenLock)
+                        }
+                    }
+                },
             )
         }
     } }
