@@ -279,10 +279,10 @@ object FolderClassifier {
         "canceled", "is due", "has been updated", "was paid", "has been paid",
     )
 
-    /** An ad's words: an insurance ad says "השוו", "הצעת מחיר" or "get a quote", and carries the opt-out line. */
+    /** An ad's words: an insurance ad says "השוו", "הצעת מחיר" or "get a quote". The opt-out line is judged apart ([isAd]): a policy notice may carry it. */
     private val INSURANCE_AD = phrases(
-        "הסר", "הסרה", "להסרה", "מבצע", "הנחה", "הצעה", "הצעת מחיר", "השוו", "השוואת", "חסכו", "חיסכון", "זול", "הזול",
-        "משתלם", "הצטרפו", "unsubscribe", "opt out", "reply stop", "compare", "quote", "save", "cheapest", "discount",
+        "מבצע", "הנחה", "הצעה", "הצעת מחיר", "השוו", "השוואת", "חסכו", "חיסכון", "זול", "הזול",
+        "משתלם", "הצטרפו", "compare", "quote", "save", "cheapest", "discount",
         "offer", "deal", "join",
     )
 
@@ -345,7 +345,7 @@ object FolderClassifier {
     )
 
     /** The place between a digit and a Hebrew letter written without a space. */
-    private val DIGIT_LETTER_JOIN = Regex("(?<=\\d)(?=[א-ת])|(?<=[א-ת])(?=\\d)")
+    internal val DIGIT_LETTER_JOIN = Regex("(?<=\\d)(?=[א-ת])|(?<=[א-ת])(?=\\d)")
 
     private fun isShipmentUpdate(body: String, normalized: String, words: List<String>): Boolean {
         if (POSTAL_ID.containsMatchIn(body) || NAMED_TRACKING.containsMatchIn(normalized)) return true

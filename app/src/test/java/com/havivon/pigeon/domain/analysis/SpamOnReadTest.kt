@@ -66,6 +66,13 @@ class SpamOnReadTest {
     }
 
     @Test
+    fun `one number written two ways in a thread is one sender and is judged`() = runTest {
+        seed()
+        judge.judge(listOf(scam.copy(addresses = listOf("+972551234567", "0551234567"))), spam.verdicts.first())
+        assertEquals(1, spam.verdictState.value.size)
+    }
+
+    @Test
     fun `a conversation is judged once, and again only after a new message`() = runTest {
         seed()
         val clean = conversation(7, "0548880000", dateMillis = 3_000)
