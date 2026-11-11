@@ -20,7 +20,7 @@ package com.havivon.pigeon.domain.analysis
  *    time or a phone number, nor a word that names the number as something else (an order, a reference, a
  *    coupon, a flight...).
  *
- * Without a cue word, anything else has no code. Letters-and-digits codes ("K7P2QD") are not recognised.
+ * Without a cue word, anything else has no code. A letters-and-digits code is recognised only in "ABC123XY is your ... verification code".
  */
 object CodeExtractor {
 
@@ -31,6 +31,7 @@ object CodeExtractor {
      */
     fun extract(text: String, address: String? = null, knownPerson: Boolean = false): String? {
         cueCode(text)?.let { return it }
+        letterCode(text)?.let { return it }
         if (knownPerson) return null
         bareCode(text)?.let { return it }
         if (address != null && Text.isAlphanumericSender(address)) return shortServiceCode(text)
@@ -53,6 +54,16 @@ object CodeExtractor {
             }
         }
         return best
+    }
+
+    /** "RDSMTVQK is your Yahoo verification code": a code of letters and digits, named as the code in the same sentence. */
+    private val LETTER_CODE = Regex("(?<![a-z0-9])([a-z0-9]{6,8})\\s+is\\s+your(?:\\s+[a-z]+){0,3}\\s+(?:verification|security|login|confirmation|one-time)\\s+(?:code|pin|password)(?![a-z])")
+
+    /** The letters-and-digits code of [LETTER_CODE], upper-cased, or null. It needs a letter and no digit-only run of a year or an amount. */
+    private fun letterCode(text: String): String? {
+        val m = LETTER_CODE.find(lowerKeepingLength(text)) ?: return null
+        val code = m.groupValues[1]
+        return code.takeIf { c -> c.any { it.isLetter() } }?.uppercase()
     }
 
     // --- rule 2: the whole message is the code ---
@@ -153,7 +164,11 @@ object CodeExtractor {
 
     private val CUE = Regex(
         "(?<![a-z])(?:code|otp|pin|passcode|password|verification|verify|2fa|one-time|authentication)s?(?![a-z])" +
-            "|קוד(?!ם)|סיסמ|אימות|הזדהות|מאמת",
+            "|קוד(?!ם)|סיסמ|אימות|הזדהות|מאמת" +
+            // Other scripts a sender id may write in: Russian, Chinese
+            "|(?<![\\p{L}])код(?![\\p{L}])|验证码|驗證碼|校验码" +
+            // "מספר האישור לאפליקציה הוא: 301597": the confirmation number of an app sign-in (an order's "מספר אישור" is not)
+            "|מספר האישור(?=\\s+(?:לאפליקציי|לאתר|לכניסה|להתחברות))",
     )
 
     /** Words just before "code" that make it something else: a promo code, a zip code, a bar code. */

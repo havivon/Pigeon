@@ -180,7 +180,7 @@ object FolderClassifier {
     private val MONEY_MOVED = phrases(
         "חויב", "חויבה", "חויבת", "חויבו", "זוכית", "הופקד", "הופקדה", "הופקדו", "זוכה חשבונך", "חשבונך זוכה", "משיכת מזומן",
         "בוצע חיוב", "בוצעה עסקה", "בוצעה משיכה", "בוצעה הפקדה", "בוצעה העברה", "בוצע זיכוי",
-        "חיוב בסך", "עסקה בסך", "משיכה בסך", "הפקדה בסך", "זיכוי בסך", "העברה בסך", "עסקה בכרטיס", "חיוב בכרטיס",
+        "בוצע תשלום", "התקבל תשלום", "התקבלה תשלום", "בקשת תשלום", "חיוב בסך", "עסקה בסך", "משיכה בסך", "הפקדה בסך", "זיכוי בסך", "העברה בסך", "עסקה בכרטיס", "חיוב בכרטיס",
         "debited", "credited", "withdrawn", "deposited", "transaction", "was charged", "were charged", "has been charged",
         "have been charged", "charged to your", "withdrawal of", "deposit of", "payment received",
     )
@@ -222,7 +222,7 @@ object FolderClassifier {
      */
     private val INSURER_MARKS = listOf(
         "harelins", "migdalins", "clalins", "clalbit", "phoenixins", "fnxins", "ayalonins", "hachsharains", "shirbit",
-        "wesure", "9000000", "9million", "allianz", "generali", "bituachyashir", "menoramivtachim", "bituachleumi",
+        "wesure", "9000000", "9million", "allianz", "generali", "bituachyashir", "bituahyashir", "menoramivtachim", "bituachleumi", "bituahleumi",
         "ביטוחישיר", "מנורהמבטחים", "ביטוחלאומי", "הראלביטוח", "מגדלביטוח", "כללביטוח", "איילוןביטוח", "הכשרהביטוח",
         "שומרהביטוח", "שירביט", "הפניקס",
     )
@@ -295,13 +295,13 @@ object FolderClassifier {
     // --- deliveries ---
 
     /** Courier names found anywhere in the sender written as one run ("IsraelPost", "DHL-Express"). */
-    private val COURIER_MARKS = listOf("israelpost", "cheetah", "fedex", "aramex", "dhl", "usps", "boxit", "דוארישראל", "צ'יטה", "ארמקס")
+    private val COURIER_MARKS = listOf("israelpost", "cheetah", "fedex", "aramex", "dhl", "usps", "boxit", "דוארישראל", "צ'יטה", "ציטה", "ארמקס")
 
     /**
      * Courier names that count as a word of their own: "UPS" but not "Groups", "וולט" but not "וולטר". Only names:
      * a sender called "Courier" or "שליחויות" is not known to be one (its update is still found by its text).
      */
-    private val COURIER_WORDS = setOf("ups", "wolt", "hfd", "וולט")
+    private val COURIER_WORDS = setOf("ups", "wolt", "hfd", "chita", "וולט")
 
     private fun isCourier(senderWords: List<String>): Boolean {
         if (senderWords.isEmpty()) return false
@@ -317,20 +317,43 @@ object FolderClassifier {
 
     /** The user's own shipment: definite or "yours", as an update is written (an ad says "משלוח חינם"). */
     private val SHIPMENT = phrases(
-        "החבילה", "המשלוח", "ההזמנה", "השליח", "חבילה עבורך", "חבילה ממתינה", "משלוח עבורך",
+        "החבילה", "המשלוח", "ההזמנה", "הזמנתך", "הזמנתכם", "חבילתך", "משלוחך", "השליח", "שליח", "השליחות", "קיבלת משלוח", "קיבלתם משלוח", "קיבלת חבילה", "חבילה עבורך", "חבילה ממתינה", "משלוח עבורך",
         "your package", "your parcel", "your shipment", "your order", "your delivery", "the courier", "your courier",
     )
 
     /** What happened to it, in the past or the present as an update says it (an ad promises the future). */
     private val SHIPMENT_STATUS = phrases(
         "יצא", "יצאה", "יוצא", "יוצאת", "נשלח", "נשלחה", "נמסר", "נמסרה", "הגיע", "הגיעה", "ממתין", "ממתינה", "מוכן", "מוכנה",
-        "בדרך", "לאיסוף", "נאסף", "נאספה", "בלוקר", "בסניף", "בנקודת",
+        "בדרך", "לאיסוף", "נאסף", "נאספה", "להימסר", "נארזה", "ביצוע שליחות", "יגיע אליך", "יגיעו אליך", "תואם", "תואמה", "תואמו", "מסר", "מסירה", "עודכנה", "בלוקר", "בסניף", "בנקודת",
         "shipped", "dispatched", "delivered", "out for delivery", "on its way", "on the way", "arrived",
         "ready for pickup", "ready for collection", "awaiting pickup", "in transit", "picked up",
     )
 
+    /**
+     * A shipment named with its own number ("משלוח 87468519", "משלוח מספר XLT98670", "חבילה שמספרה 41767255",
+     * "shipment AB1234567"): a number of 6 or more characters with at least 5 digits, which an ad does not have.
+     */
+    private val SHIPMENT_NUMBER = Regex(
+        "(?:משלוח|חבילה|shipment|parcel|package)\\s*(?:מספר|מס'|מס|שמספרו|שמספרה|number|no\\.?|#)?\\s*:?\\s*#?[a-z]{0,8}\\d{5,}[a-z0-9]*",
+    )
+
+    /** What happened to a shipment that is named with its number: said as plain fact, in any form. */
+    private val NUMBERED_STATUS = phrases(
+        "נמסר", "נמסרה", "נאסף", "נאספה", "נאספו", "מסירת", "יגיע", "תגיע", "ממתין", "ממתינה", "יצא", "יצאה", "נשלח", "נשלחה", "בדרך",
+        "הגיע", "הגיעה", "מוכן", "מוכנה", "לאיסוף", "בוטל", "בוטלה", "נדרש", "נקלט", "נקלטה", "התקבל",
+        "delivered", "shipped", "arrived", "out for delivery", "ready", "picked up",
+    )
+
+    /** The place between a digit and a Hebrew letter written without a space. */
+    private val DIGIT_LETTER_JOIN = Regex("(?<=\\d)(?=[א-ת])|(?<=[א-ת])(?=\\d)")
+
     private fun isShipmentUpdate(body: String, normalized: String, words: List<String>): Boolean {
         if (POSTAL_ID.containsMatchIn(body) || NAMED_TRACKING.containsMatchIn(normalized)) return true
+        if (SHIPMENT_NUMBER.containsMatchIn(normalized)) {
+            // "XLT98670נאסף": the status written right after the number is still its own word
+            val spaced = Text.words(normalized.replace(DIGIT_LETTER_JOIN, " "))
+            if (NUMBERED_STATUS.any { Text.containsWords(spaced, it) }) return true
+        }
         return SHIPMENT.any { Text.containsWords(words, it) } && SHIPMENT_STATUS.any { Text.containsWords(words, it) }
     }
 }

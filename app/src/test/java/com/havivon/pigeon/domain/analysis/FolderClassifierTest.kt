@@ -398,4 +398,59 @@ class FolderClassifierTest {
         )
         for ((body, address) in cases) assertEquals("$address: $body", Folder.Spam, classify(body, address))
     }
+
+    @Test
+    fun deliveryNoticesWithTheShipmentsOwnNumberOrYourOrder() {
+        check(
+            Folder.Deliveries,
+            listOf(
+                Triple("שלום דני, משלוח מספר XLT98670338 נאסף בהצלחה. תודה", "ShopX", false),
+                Triple("שלום דני משלוח שמספרו 12037899 נמסר. נשמח לשמוע את דעתך", "Express", false),
+                Triple("משלוח AE03305170 ממתין לאיסוף בחנות, רחוב הרצל 1", "0541234567", false),
+                Triple("שלום דני, נמסרה לך חבילה שמספרה 41767255 מהחנות", "0541234567", false),
+                Triple("דני שלום, משלוח 87468519 מהמסעדה יגיע אליך היום", "0541234567", false),
+                Triple("הזמנתך שמספרה SO2245771 מסניף חיפה מוכנה לאיסוף", "ShopY", false),
+                Triple("הזמנתך מס' 172 בבית הקפה עודכנה: משלוח בדרך", "AppZ", false),
+                Triple("שלום דני, הזמנתך מספר SO2529667 תואמה ליום שני בין 12:00 ל-16:00", "ShopY", false),
+                Triple("שלום דני, שליח כרגע מסר משלוח מהחנות. נשמח שתדרגו", "Rate", false),
+                Triple("שלום דני, משלוח מספר PH8003199793 נדרש באישור ממשרד התקשורת", "Customs", false),
+                Triple("שלום דני, משלוח מספר XLT986703380נאסף בהצלחה. תודה", "ShopX", false),
+                Triple("משלוח AGSIPLA0023743410 (מס. חבילה בחנות: 340) ממתין לאיסופך מהחנות", "ShopX", false),
+                Triple("שלום בבקשה ליצור קשר לתיאום מסירת משלוח מס 85837776 מהחנות", "0541234567", false),
+                Triple("שלום דני, לאחרונה קיבלת משלוח בנקודת חלוקה. נשמח אם תענה על סקר קצר", "0541234567", false),
+                Triple("להלן תשובה לקריאה שנפתחה במשלוחים, אנא היכנס ללינק", "Chita", false),
+            ),
+        )
+    }
+
+    @Test
+    fun adsAndLureNoticesAreNotDeliveries() {
+        // An ad with an opt-out line, even with the words of an update, is never a delivery (the scorer may call it spam)
+        for (body in listOf("הזמנתך הבאה מחכה לך, המשלוח יגיע אליך חינם מעל 100 ש\"ח. להסרה השב הסר", "משלוח חינם לכל הארץ, קנו עכשיו")) {
+            assertNotEquals(body, Folder.Deliveries, classify(body, "ShopY"))
+        }
+        // "Your parcel is stopped" with no number and no known courier stays out of Deliveries
+        assertNotEquals(Folder.Deliveries, classify("המשלוח שלך נעצר - צפה בפרטים otucay.link/SIif9yO", "0541234567"))
+        assertNotEquals(Folder.Deliveries, classify("סטטוס משלוח: IL972509165045 נעצר - ראה עוד osigek.com/bnQSjgp", "0541234567"))
+    }
+
+    @Test
+    fun paymentConfirmationsAndRequestsAreBanks() {
+        check(
+            Folder.Banks,
+            listOf(
+                Triple("בוצע תשלום על סך 54 ש\"ח באמצעות ביט עבור מודעות. לפרטים נוספים: 0521234567", "Pay", false),
+                Triple("קיבלת בקשת תשלום מעמותה ע\"ס: 300 ₪ למעבר לאפליקציית ביט לחצו על הקישור", "Donate", false),
+                Triple("התקבל תשלום בסך 120 ש\"ח עבור ההזמנה, תודה", "Shop", false),
+            ),
+        )
+        // An ad with the opt-out line stays out, and an amount without the payment words is not a transaction
+        assertEquals(Folder.All, classify("בוצע תשלום של 50 ש\"ח? קבלו הנחה! להסרה השב הסר", "ShopY"))
+        assertEquals(Folder.All, classify("קפה ב-12 ש\"ח עד סוף השבוע", "CafeX"))
+    }
+
+    @Test
+    fun nationalInsuranceSpelledWithAnH() {
+        assertEquals(Folder.Insurance, classify("שלום רב, ההודעה הזו נשלחה אליך", "BituahLeumi"))
+    }
 }
