@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.AutoDelete
 import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Check
@@ -95,6 +96,8 @@ data class SettingsEnvironment(
     /** Default app, viewing only, or no access: the "Messaging app" row says which, with the action that fits. */
     val smsAccess: SmsAccess = SmsAccess.Default,
     val versionName: String = "",
+    /** A crash report from the last crash is kept on the phone: the About section offers to send it. */
+    val hasCrashReport: Boolean = false,
 )
 
 /** Everything a row in the settings can do. */
@@ -126,6 +129,7 @@ data class SettingsActions(
     val onDefaultApp: () -> Unit = {},
     /** "Just view": asks for the permissions to read the messages while another app stays the default. */
     val onViewOnly: () -> Unit = {},
+    val onSendCrashReport: () -> Unit = {},
 )
 
 /** The settings, in sections: look, messages, notifications, privacy, widgets, the default app, about. */
@@ -367,6 +371,10 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                     InfoRow(Icons.Rounded.PhoneAndroid, stringResource(R.string.app_name), stringResource(R.string.settings_version, env.versionName))
                     RowDivider()
                     InfoRow(Icons.Rounded.Lock, stringResource(R.string.settings_no_internet_title), stringResource(R.string.settings_no_internet))
+                    if (env.hasCrashReport) {
+                        RowDivider()
+                        NavRow(Icons.Rounded.BugReport, stringResource(R.string.settings_crash_report), stringResource(R.string.settings_crash_report_note), actions.onSendCrashReport)
+                    }
                 }
             }
             // The credit every one of the user's apps carries, as in HebReminder

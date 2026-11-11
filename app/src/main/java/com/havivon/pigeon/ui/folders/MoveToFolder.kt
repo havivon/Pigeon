@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.LabelOff
 import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Report
@@ -72,9 +73,13 @@ import com.havivon.pigeon.ui.theme.HebTheme
 /** The built-in folders a conversation can be moved to, in the chips' order ("All" holds everything, Spam comes last). */
 val MoveTargets = listOf(Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries)
 
+/** The built-in categories the settings list, with their colours: "No category" (a filter, not a target) and the move targets. */
+val BuiltInCategories = listOf(Folder.Uncategorized) + MoveTargets
+
 /** The icon of a built-in folder in the "Move to category" sheet. */
 fun folderIcon(folder: Folder): ImageVector = when (folder) {
     Folder.All -> Icons.Rounded.Forum
+    Folder.Uncategorized -> Icons.Rounded.LabelOff
     Folder.Personal -> Icons.Rounded.Person
     Folder.Banks -> Icons.Rounded.AccountBalance
     Folder.Insurance -> Icons.Rounded.HealthAndSafety

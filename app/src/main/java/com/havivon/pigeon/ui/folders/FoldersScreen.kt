@@ -117,7 +117,7 @@ fun FoldersScreen(
         ) {
             item(key = "builtin") { SectionLabel(stringResource(R.string.folders_builtin_section)) }
             // The built-in categories: not renamed, deleted or moved, but they can have a colour
-            items(MoveTargets, key = { "builtin:" + it.name }) { folder ->
+            items(BuiltInCategories, key = { "builtin:" + it.name }) { folder ->
                 BuiltInCard(folder, builtInColors[folder], onColor = { onColor(FolderChoice.BuiltIn(folder)) })
             }
             item(key = "yours") { SectionLabel(stringResource(R.string.folders_section)) }

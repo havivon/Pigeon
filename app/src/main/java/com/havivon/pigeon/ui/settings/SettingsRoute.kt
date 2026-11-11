@@ -30,6 +30,7 @@ import com.havivon.pigeon.data.AppContainer
 import com.havivon.pigeon.data.AppIconSwitcher
 import com.havivon.pigeon.data.DefaultSmsRole
 import com.havivon.pigeon.data.backup.BackupFiles
+import com.havivon.pigeon.data.crash.CrashHandler
 import com.havivon.pigeon.data.reminders.AlarmReminderScheduler
 import com.havivon.pigeon.ui.app.LocalAuthenticator
 import com.havivon.pigeon.ui.app.LocalDefaultApp
@@ -37,6 +38,7 @@ import com.havivon.pigeon.ui.app.LocalNotices
 import com.havivon.pigeon.ui.app.rememberNeedsDefaultNotice
 import com.havivon.pigeon.ui.navigation.Screen
 import com.havivon.pigeon.ui.navigation.pigeonViewModel
+import com.havivon.pigeon.ui.search.shareText
 import java.time.LocalDate
 import kotlinx.coroutines.flow.map
 
@@ -102,6 +104,9 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
     val contactsRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), ::afterRequest)
     val notificationsRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), ::afterRequest)
 
+    // Read again whenever the screen is composed anew: a crash report left by the last run
+    val crashReport = remember { CrashHandler.store(context).latest() }
+
     val env = SettingsEnvironment(
         canLock = auth.available(),
         contactsAllowed = phone.contacts,
@@ -109,6 +114,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
         exactAlarmsAllowed = phone.exactAlarms,
         smsAccess = defaultApp.mode,
         versionName = versionName(context),
+        hasCrashReport = crashReport != null,
     )
 
     pendingImport?.let { file ->
@@ -177,6 +183,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
                 if (defaultApp.isDefault) open(context, DefaultSmsRole.settingsIntent()) else defaultApp.makeDefault()
             },
             onViewOnly = defaultApp.viewOnly,
+            onSendCrashReport = { crashReport?.let { shareText(context, it) } },
         ),
     )
 }

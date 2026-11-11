@@ -47,6 +47,7 @@ import com.havivon.pigeon.domain.model.AppSettings
 import com.havivon.pigeon.domain.model.SmsAccess
 import com.havivon.pigeon.ui.compose.NewMessageRoute
 import com.havivon.pigeon.ui.conversation.ConversationRoute
+import com.havivon.pigeon.ui.crash.CrashReportPrompt
 import com.havivon.pigeon.ui.inbox.InboxRoute
 import com.havivon.pigeon.ui.bin.BinRoute
 import com.havivon.pigeon.ui.reminders.RemindersRoute
@@ -149,6 +150,7 @@ fun PigeonShell(navigator: Navigator, authenticator: BiometricAuthenticator) {
             }
             LockGate(settings, navigator, authenticator, topLocked, locked)
             PhoneUnblockOffer(container.phoneSpam, notices)
+            CrashReportPrompt()
         }
     }
 }
@@ -424,8 +426,7 @@ private fun DefaultAppGate(settings: AppSettings?, content: @Composable () -> Un
             if (showPrompt && restricted == null) DefaultAppReminder(onMakeDefault = ::makeDefault, onViewOnly = ::viewOnly, onNotNow = ::notNow)
         }
         // Still needed: the role while Pigeon is not the default, reading while it sees nothing
-        val blocked = restricted
-        if (blocked != null && (if (blocked == Blocked.Role) mode != SmsAccess.Default else mode == SmsAccess.None)) {
+        restricted?.takeIf { if (it == Blocked.Role) mode != SmsAccess.Default else mode == SmsAccess.None }?.let { blocked: Blocked ->
             RestrictedSettingsHelp(
                 onOpenAppInfo = { openAppInfo(context) },
                 onRetry = {

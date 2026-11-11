@@ -26,6 +26,7 @@ import com.havivon.pigeon.ui.inbox.CategoryMenuItems
 import com.havivon.pigeon.ui.inbox.InboxScreen
 import com.havivon.pigeon.ui.inbox.MarkAllReadDialogContent
 import com.havivon.pigeon.ui.inbox.categoryMenu
+import com.havivon.pigeon.ui.common.inFolder
 import com.havivon.pigeon.ui.search.SearchScreen
 import com.havivon.pigeon.ui.settings.SettingsActions
 import com.havivon.pigeon.ui.settings.SettingsScreen
@@ -115,15 +116,39 @@ class CategoryMenuSnapshots {
     )
 
     @Composable
-    private fun InboxWithMenu(hebrew: Boolean) {
+    private fun InboxWithMenu(hebrew: Boolean, selected: Folder = Folder.All) {
         val sample = if (hebrew) SampleData.hebrew else SampleData.english
         val s = NewScreensSample(sample, hebrew)
         val counts = mapOf(1L to 3, 2L to 0)
         InboxScreen(
-            s.inboxColored, sample.rules, sample.folderCounts, sample.dateLine, unreadCount = s.unread.size,
+            inFolder(s.inboxColored, selected), sample.rules, sample.folderCounts, sample.dateLine, unreadCount = s.unread.size,
+            selectedFolder = selected,
             customFolders = s.coloredCustomFolders, customCounts = counts, builtInColors = s.builtInColors,
         )
-        MenuOver(categoryMenu(sample.folderCounts, s.coloredCustomFolders, counts, Folder.All, null, s.builtInColors), top = 196.dp)
+        MenuOver(categoryMenu(sample.folderCounts, s.coloredCustomFolders, counts, selected, null, s.builtInColors), top = 196.dp)
+    }
+
+    @Composable
+    private fun InboxIn(hebrew: Boolean, selected: Folder) {
+        val sample = if (hebrew) SampleData.hebrew else SampleData.english
+        val s = NewScreensSample(sample, hebrew)
+        InboxScreen(
+            inFolder(s.inboxColored, selected), sample.rules, sample.folderCounts, sample.dateLine, unreadCount = s.unread.size,
+            selectedFolder = selected,
+            customFolders = s.coloredCustomFolders, customCounts = mapOf(1L to 3, 2L to 0), builtInColors = s.builtInColors,
+        )
+    }
+
+    /** "No category" chosen: the menu with it highlighted, and the inbox filtered to it. */
+    @Test
+    fun noCategory() {
+        paparazzi.snapshot("category_menu_none") { HebSmsTheme { InboxWithMenu(hebrew = true, selected = Folder.Uncategorized) } }
+        paparazzi.snapshot("category_menu_none_dark") { HebSmsTheme(darkTheme = true) { InboxWithMenu(hebrew = true, selected = Folder.Uncategorized) } }
+        paparazzi.snapshot("inbox_none") { HebSmsTheme { InboxIn(hebrew = true, selected = Folder.Uncategorized) } }
+        paparazzi.snapshot("inbox_none_dark") { HebSmsTheme(darkTheme = true) { InboxIn(hebrew = true, selected = Folder.Uncategorized) } }
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_6.copy(locale = "en"))
+        paparazzi.snapshot("en_category_menu_none") { HebSmsTheme { InboxWithMenu(hebrew = false, selected = Folder.Uncategorized) } }
+        paparazzi.snapshot("en_inbox_none") { HebSmsTheme { InboxIn(hebrew = false, selected = Folder.Uncategorized) } }
     }
 
     @Test

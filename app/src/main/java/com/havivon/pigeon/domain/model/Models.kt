@@ -5,6 +5,9 @@ import com.havivon.pigeon.R
 
 enum class Folder(@StringRes val labelRes: Int) {
     All(R.string.common_folder_all),
+
+    /** A filter, not a place: every conversation (not spam) in no built-in folder and in none of the user's categories. */
+    Uncategorized(R.string.common_folder_uncategorized),
     Personal(R.string.common_folder_personal),
     Banks(R.string.common_folder_banks),
     Insurance(R.string.common_folder_insurance),
@@ -15,6 +18,9 @@ enum class Folder(@StringRes val labelRes: Int) {
 
     /** Whether the user can give this folder a colour: not "All" (it holds everything), nor Spam (it keeps its own red). */
     val colourable: Boolean get() = this != All && this != Spam
+
+    /** Whether a conversation can be moved into this folder by hand: All and Uncategorized are only views, Spam is the spam verdict. */
+    val isMoveTarget: Boolean get() = this != All && this != Uncategorized && this != Spam
 }
 
 /**
@@ -25,7 +31,7 @@ data class CustomFolder(val id: Long, val name: String, val argb: Long? = null)
 
 /**
  * Where the user put a conversation by hand ("Move to category"), ahead of the automatic sorting: one of
- * the built-in folders (never [Folder.All] or [Folder.Spam]: spam is the spam verdict), or one of theirs.
+ * the built-in folders (never [Folder.All], [Folder.Uncategorized] or [Folder.Spam]: spam is the spam verdict), or one of theirs.
  * The inbox also uses it for the chosen chip, where [Folder.All] is a choice like any other.
  */
 sealed interface FolderChoice {

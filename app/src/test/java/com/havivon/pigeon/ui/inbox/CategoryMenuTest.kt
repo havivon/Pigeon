@@ -12,7 +12,9 @@ import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.LabelOff
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -32,7 +34,7 @@ class CategoryMenuTest {
     fun `the lines come in order - built-in folders, the user categories, Spam, Manage`() {
         val m = menu()
         assertEquals(
-            listOf(Folder.All, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries),
+            listOf(Folder.All, Folder.Uncategorized, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries),
             m.filterIsInstance<CategoryEntry.BuiltIn>().map { it.folder },
         )
         assertEquals(listOf(work, committee), m.filterIsInstance<CategoryEntry.Custom>().map { it.folder })
@@ -40,6 +42,29 @@ class CategoryMenuTest {
         assertEquals(CategoryEntry.Manage, m.last())
         // Spam is only its own line, never among the folders
         assertTrue(m.none { it is CategoryEntry.BuiltIn && it.folder == Folder.Spam })
+    }
+
+    @Test
+    fun `No category comes right after All, with its icon, its count and its colour, and can be chosen`() {
+        val withCount = categoryMenu(counts + (Folder.Uncategorized to 7), listOf(work), emptyMap(), Folder.Uncategorized, null, mapOf(Folder.Uncategorized to 0xFF8A8A8AL))
+        val builtIn = withCount.filterIsInstance<CategoryEntry.BuiltIn>()
+        assertEquals(listOf(Folder.All, Folder.Uncategorized), builtIn.take(2).map { it.folder })
+        val line = builtIn[1]
+        assertEquals(7, line.count)
+        assertEquals(0xFF8A8A8AL, line.argb)
+        assertTrue(line.selected)
+        assertFalse(builtIn[0].selected)
+        assertSame(Icons.Rounded.LabelOff, line.icon)
+        assertSame(line, withCount.current())
+        assertEquals(CategoryAction.Select(Folder.Uncategorized), line.action())
+    }
+
+    @Test
+    fun `No category is a filter - not a place to move a conversation to, but it can have a colour`() {
+        assertFalse(Folder.Uncategorized.isMoveTarget)
+        assertTrue(Folder.Uncategorized.colourable)
+        assertFalse(com.havivon.pigeon.ui.folders.MoveTargets.contains(Folder.Uncategorized))
+        assertEquals(Folder.Uncategorized, com.havivon.pigeon.ui.folders.BuiltInCategories.first())
     }
 
     @Test

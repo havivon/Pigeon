@@ -67,6 +67,7 @@
     </plurals>
     <string name="search_marked_read">סומנה כנקראה</string>
     <string name="common_folder_all">כל הקטגוריות</string>
+    <string name="common_folder_uncategorized">ללא קטגוריה</string>
     <string name="common_folder_personal">אישי</string>
     <string name="common_folder_banks">בנקים</string>
     <string name="common_folder_insurance">ביטוח</string>
@@ -486,6 +487,12 @@
     <string name="settings_default_make">הפוך לברירת מחדל</string>
     <string name="settings_section_about">אודות</string>
     <string name="settings_version">גרסה %1$s</string>
+    <string name="crash_title">Pigeon קרסה בפעם הקודמת</string>
+    <string name="crash_body">הדוח כולל פרטים טכניים בלבד: בלי הודעות, מספרים או שמות. אפשר לשלוח אותו למפתח, למשל בהודעה.</string>
+    <string name="crash_send">שליחת הדוח</string>
+    <string name="crash_not_now">לא עכשיו</string>
+    <string name="settings_crash_report">שליחת דוח הקריסה האחרונה</string>
+    <string name="settings_crash_report_note">פרטים טכניים על הקריסה האחרונה, בלי שום הודעה</string>
     <string name="settings_no_internet_title">בלי גישה לאינטרנט</string>
     <string name="settings_no_internet">ל-Pigeon אין הרשאת אינטרנט, ולכן ההודעות שלך לא יוצאות מהטלפון לעולם.</string>
 

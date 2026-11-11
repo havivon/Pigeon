@@ -152,7 +152,7 @@ object SampleData {
     }
 
     private fun folderCounts(spam: List<Conversation>) = mapOf(
-        Folder.All to 4, Folder.Personal to 2, Folder.Banks to 1, Folder.Insurance to 0, Folder.Codes to 1,
+        Folder.All to 4, Folder.Uncategorized to 1, Folder.Personal to 2, Folder.Banks to 1, Folder.Insurance to 0, Folder.Codes to 1,
         Folder.Deliveries to 0, Folder.Spam to spam.size,
     )
 }

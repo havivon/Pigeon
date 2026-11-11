@@ -149,6 +149,8 @@ class ConversationMapper(
                 if (conversation?.isSpam == true) return@mapNotNull null
                 if (customFolder != null) {
                     if (conversation?.customFolderId != customFolder) return@mapNotNull null
+                } else if (folder == Folder.Uncategorized) {
+                    if (conversation?.isUncategorized != true) return@mapNotNull null
                 } else if (folder != Folder.All && conversation?.folder != folder) {
                     return@mapNotNull null
                 }
@@ -201,10 +203,14 @@ fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? =
 fun overrideFor(c: SmsConversation, overrides: Map<String, FolderChoice>): FolderChoice? =
     if (overrides.isEmpty()) null else overrides[FolderKeys.of(c.threadId, c.addresses)]
 
+/** In no built-in folder and in none of the user's categories (after a move by hand), and not spam: what "No category" shows. */
+val Conversation.isUncategorized: Boolean get() = !isSpam && folder == Folder.All && customFolderId == null
+
 /** The conversations a folder chip shows: spam only under Spam, and only there. */
 fun inFolder(all: List<Conversation>, folder: Folder): List<Conversation> = when (folder) {
     Folder.All -> all.filter { !it.isSpam }
     Folder.Spam -> all.filter { it.isSpam }
+    Folder.Uncategorized -> all.filter { it.isUncategorized }
     else -> all.filter { !it.isSpam && it.folder == folder }
 }
 

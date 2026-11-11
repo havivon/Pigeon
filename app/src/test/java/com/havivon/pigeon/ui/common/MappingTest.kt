@@ -132,8 +132,9 @@ class MappingTest {
     @Test
     fun `the chips count unread messages per folder, with no chip for unread`() {
         val counts = folderCounts(folderConversations)
-        assertEquals(setOf(Folder.All, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries, Folder.Spam), counts.keys)
+        assertEquals(setOf(Folder.All, Folder.Uncategorized, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries, Folder.Spam), counts.keys)
         assertEquals(12, counts[Folder.All])
+        assertEquals(4, counts[Folder.Uncategorized])
         assertEquals(2, counts[Folder.Personal])
         assertEquals(3, counts[Folder.Banks])
         assertEquals(1, counts[Folder.Insurance])
@@ -153,6 +154,34 @@ class MappingTest {
         assertEquals(listOf(8L), folderRows(Folder.Deliveries).map { it.messageId })
         // Every folder at once; the unclassified ones belong to it too
         assertEquals(listOf(16L, 5L, 4L, 3L, 2L, 1L, 6L, 7L, 8L, 12L, 11L, 10L, 9L).sorted(), folderRows(Folder.All).map { it.messageId }.sorted())
+    }
+
+    @Test
+    fun `No category holds the conversations in no folder and in none of the user's categories, never spam`() {
+        val inCustom = Conversation(10, "Club", "", "", 0, unread = 2, folder = Folder.All, customFolderId = 5L)
+        val all = folderConversations + inCustom
+        assertEquals(listOf(7L), inFolder(all, Folder.Uncategorized).map { it.id })
+        assertEquals(setOf(7L, 10L), inFolder(all, Folder.All).map { it.id }.filter { it == 7L || it == 10L }.toSet())
+        assertEquals(4, folderCounts(all).getValue(Folder.Uncategorized))
+        assertEquals(listOf(7L), inFolder(all, com.havivon.pigeon.domain.model.FolderChoice.BuiltIn(Folder.Uncategorized)).map { it.id })
+        // A conversation that was moved to a built-in folder by hand is no longer in it; one sent back to automatic is
+        assertTrue(inFolder(all, Folder.Uncategorized).none { it.isSpam || it.folder != Folder.All || it.customFolderId != null })
+    }
+
+    @Test
+    fun `after the moves by hand, a conversation is in No category only when no folder and no category has it`() {
+        val shop = conversation(5, "Shop", snippet = "Sale today", unread = 1)
+        fun uncategorized(override: com.havivon.pigeon.domain.model.FolderChoice?) = mapper.map(shop, Now, override = override).isUncategorized
+        assertTrue(uncategorized(null))
+        assertTrue(!uncategorized(com.havivon.pigeon.domain.model.FolderChoice.Custom(3)))
+        assertTrue(!uncategorized(com.havivon.pigeon.domain.model.FolderChoice.BuiltIn(Folder.Banks)))
+        val spam = mapper.map(shop, Now, verdict = SpamVerdict("0525550100", 5, listOf(SpamReason.UnknownSender), 0L))
+        assertTrue(!spam.isUncategorized)
+    }
+
+    @Test
+    fun `the unread messages of No category are those of its conversations only`() {
+        assertEquals(listOf(12L, 11L, 10L, 9L), folderRows(Folder.Uncategorized).map { it.messageId })
     }
 
     @Test

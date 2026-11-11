@@ -63,6 +63,7 @@
     </plurals>
     <string name="search_marked_read">Marked as read</string>
     <string name="common_folder_all">All categories</string>
+    <string name="common_folder_uncategorized">No category</string>
     <string name="common_folder_personal">Personal</string>
     <string name="common_folder_banks">Banks</string>
     <string name="common_folder_insurance">Insurance</string>
@@ -465,6 +466,12 @@
     <string name="settings_default_make">Make default</string>
     <string name="settings_section_about">About</string>
     <string name="settings_version">Version %1$s</string>
+    <string name="crash_title">Pigeon crashed last time</string>
+    <string name="crash_body">The report holds technical details only: no messages, numbers or names. You can send it to the developer, for example in a message.</string>
+    <string name="crash_send">Send report</string>
+    <string name="crash_not_now">Not now</string>
+    <string name="settings_crash_report">Send last crash report</string>
+    <string name="settings_crash_report_note">Technical details of the last crash, without any messages</string>
     <string name="settings_no_internet_title">No internet access</string>
     <string name="settings_no_internet">Pigeon has no internet permission, so your messages never leave your phone.</string>
 

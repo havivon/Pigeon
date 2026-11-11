@@ -2,6 +2,7 @@ package com.havivon.pigeon
 
 import android.app.Application
 import com.havivon.pigeon.data.AppContainer
+import com.havivon.pigeon.data.crash.CrashHandler
 import com.havivon.pigeon.data.notify.NotificationChannels
 import com.havivon.pigeon.data.reminders.AlarmReminderScheduler
 import com.havivon.pigeon.data.work.BinPurgeWorker
@@ -34,6 +35,7 @@ class PigeonApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashHandler.install(this)
         NotificationChannels.create(this)
         CodeCleanupWorker.schedule(this)
         BinPurgeWorker.schedule(this)

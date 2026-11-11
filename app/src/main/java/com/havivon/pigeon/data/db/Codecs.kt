@@ -139,5 +139,4 @@ object FolderChoiceCodec {
         is FolderChoice.BuiltIn -> if (choice.folder.isMoveTarget) choice.folder.name to null else null
     }
 
-    private val Folder.isMoveTarget get() = this != Folder.All && this != Folder.Spam
 }

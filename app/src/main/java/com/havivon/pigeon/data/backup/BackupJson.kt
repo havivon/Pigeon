@@ -246,7 +246,7 @@ object BackupJson {
             val key = o.str("chat", BackupLimits.MAX_KEY)?.trim()?.takeIf { it.isNotEmpty() && !it.startsWith("thread:") } ?: return@mapNotNull null
             val folderName = o.opt("folder")
             val move = if (folderName != null) {
-                val folder = (folderName as? String)?.let { n -> Folder.entries.firstOrNull { it.name == n && it != Folder.All && it != Folder.Spam } }
+                val folder = (folderName as? String)?.let { n -> Folder.entries.firstOrNull { it.name == n && it.isMoveTarget } }
                     ?: return@mapNotNull null
                 BackupMove(key, folder, null)
             } else {

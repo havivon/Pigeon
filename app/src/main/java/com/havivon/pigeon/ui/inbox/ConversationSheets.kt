@@ -87,11 +87,15 @@ fun ConversationSheets(
                     actions.delete(conv)?.let { notices.undo(deleted, it) } ?: needsDefault()
                 },
                 onOpen = onOpen?.let { open -> { onDone(); open(conv) } },
-                onSpam = if (withSpam) ({
-                    onDone()
-                    if (conv.isSpam) actions.notSpam(conv) else actions.markSpam(conv)
-                    notices.show(if (conv.isSpam) notSpamDone else movedToSpam)
-                }) else null,
+                // An explicit, non-null parameter instead of `if (x) ({ … }) else null`: that shape crashed in a sheet
+                // (ClassCastException to Void, a Compose compiler bug)
+                onSpam = conv.takeIf { withSpam }?.let { c: Conversation ->
+                    {
+                        onDone()
+                        if (c.isSpam) actions.notSpam(c) else actions.markSpam(c)
+                        notices.show(if (c.isSpam) notSpamDone else movedToSpam)
+                    }
+                },
                 onSelect = onSelect?.let { select -> { onDone(); select(conv) } },
             )
         }

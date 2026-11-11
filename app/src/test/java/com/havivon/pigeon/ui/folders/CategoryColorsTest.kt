@@ -83,7 +83,7 @@ class CategoryColorsTest {
         assertEquals(green, categories.colorOf(FolderChoice.Custom(7)))
         assertNull("no colour is the default", categories.colorOf(FolderChoice.Custom(8)))
         assertNull(categories.colorOf(FolderChoice.Custom(99)))
-        assertEquals(listOf(Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries), Folder.entries.filter { it.colourable })
+        assertEquals(listOf(Folder.Uncategorized, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries), Folder.entries.filter { it.colourable })
     }
 
     @Test
