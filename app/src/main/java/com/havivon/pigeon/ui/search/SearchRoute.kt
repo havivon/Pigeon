@@ -43,6 +43,8 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
     }
     val state by vm.state.collectAsStateWithLifecycle()
     val query by vm.queryText.collectAsStateWithLifecycle()
+    val senderQuery by vm.senderQueryText.collectAsStateWithLifecycle()
+    val senderSuggestions by vm.senderSuggestions.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
     val selectedConversations by vm.selectedConversations.collectAsStateWithLifecycle()
     val selectionMode by vm.selecting.collectAsStateWithLifecycle()
@@ -102,6 +104,9 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
         onQuery = vm::setQuery,
         onBack = onBack,
         onSender = vm::setSender,
+        senderQuery = senderQuery,
+        senderSuggestions = senderSuggestions,
+        onSenderQuery = vm::setSenderQuery,
         onHasLink = vm::toggleHasLink,
         onHasCode = vm::toggleHasCode,
         onStarred = vm::toggleStarred,

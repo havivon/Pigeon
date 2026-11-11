@@ -53,6 +53,8 @@ class SearchDateFilterTest {
     private val folders = FakeFolders()
     private val spam = FakeSpam()
 
+    private val danny = SenderFilter("525550100", "Danny", setOf(1L))
+
     private fun span(m: Int, a: Int, b: Int = a) = DaySpan(LocalDate.of(2026, m, a), LocalDate.of(2026, m, b))
 
     private fun TestScope.collect(flow: Flow<*>) {
@@ -163,7 +165,7 @@ class SearchDateFilterTest {
         val vm = search()
         typed(vm)
         vm.setDates(span(10, 3, 10))
-        vm.setSender(1)
+        vm.setSender(danny)
         advanceTimeBy(300)
         assertEquals(listOf(1L, 2L, 3L), vm.state.value.ids())
         vm.toggleHasLink()
@@ -189,6 +191,44 @@ class SearchDateFilterTest {
         vm.setDates(span(10, 1, 7))
         advanceTimeBy(300)
         assertEquals(listOf(2L), vm.state.value.ids())
+    }
+
+    @Test
+    fun `a sender with no text browses all of their conversations in the days, however the number is written`() = runTest {
+        seed()
+        // The same person under another thread, written with the international prefix
+        messages.threads.value = messages.threads.value + conversation(4, "+972525550100", name = "Danny", dateMillis = millis(2026, 10, 6, 9, 0))
+        val intl = sms(6, 4, "Maple from the other thread", millis(2026, 10, 6, 9, 0), address = "+972525550100")
+        messages.allMessages.value = messages.allMessages.value + intl
+        val vm = search()
+        collect(vm.state)
+        val sender = SenderFilter("525550100", "Danny", setOf(1L, 4L))
+        vm.setSender(sender)
+        advanceTimeBy(300)
+        assertEquals("every message of the sender, in both threads", listOf(1L, 2L, 3L, 6L), vm.state.value.ids())
+        assertEquals(setOf(1L, 4L), messages.browsed.last())
+        vm.setDates(span(10, 4, 8))
+        advanceTimeBy(300)
+        assertEquals("the days narrow the sender's messages", listOf(2L, 6L), vm.state.value.ids())
+        assertEquals(span(10, 4, 8).startMillis(Utc) to span(10, 4, 8).endMillisExclusive(Utc), messages.browsedSpans.last())
+        vm.toggleHasLink()
+        advanceTimeBy(300)
+        assertTrue("no link in those days from this sender", vm.state.value.ids().isEmpty())
+        vm.toggleHasLink()
+        vm.setSender(null)
+        advanceTimeBy(300)
+        assertEquals("without the sender, the days alone show everyone's messages in them", listOf(2L, 6L), vm.state.value.ids())
+    }
+
+    @Test
+    fun `a typed search keeps only the sender's messages, matched by address when the thread is not listed`() = runTest {
+        seed()
+        val vm = search()
+        typed(vm)
+        vm.setSender(SenderFilter("525550100", "Danny", emptySet()))
+        advanceTimeBy(300)
+        assertEquals(listOf(1L, 2L, 3L), vm.state.value.ids())
+        assertEquals(listOf(1L), vm.state.value.conversations.map { it.id })
     }
 
     @Test

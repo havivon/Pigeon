@@ -124,7 +124,6 @@ internal class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
             SearchHit(41, 6, noa.name, if (hebrew) "נפגשים בקפה ברחוב הרצל? ב-19:00 מתאים לי" else "Meet at the cafe on Maple Street? 7 PM works for me", noa.time, noa.avatarArgb, false),
             SearchHit(42, 2, danny.name, if (hebrew) "חנית ברחוב הרצל או בחניון?" else "Did you park on Maple Street or in the lot?", if (hebrew) "יום ג׳" else "Tue", danny.avatarArgb, true),
         ),
-        senders = emptyList(),
     )
 
     // Categories with colours (the optional colour of a category) on the inbox and the search results
@@ -182,7 +181,6 @@ internal class NewScreensSample(val sample: SampleSet, hebrew: Boolean) {
             ),
             SearchHit(43, 7, danny.name, search.messages[0].text, danny.time, danny.avatarArgb, false),
         ),
-        senders = emptyList(),
     )
     val searchSelected = setOf(6L, 41L)
     val unreadColored: List<UnreadMessage> = unread.map { m -> m.copy(category = inboxColored.first { it.id == m.threadId }.category) }

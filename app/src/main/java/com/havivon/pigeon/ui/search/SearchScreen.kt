@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,8 +37,6 @@ import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -104,7 +103,12 @@ fun SearchScreen(
     state: SearchUiState,
     onQuery: (String) -> Unit = {},
     onBack: () -> Unit = {},
-    onSender: (Long?) -> Unit = {},
+    /** Chooses the sender to narrow the results to; null clears it. */
+    onSender: (SenderFilter?) -> Unit = {},
+    /** The sender search the "Sender" chip opens: its text, what it suggests, and what typing does. */
+    senderQuery: String = "",
+    senderSuggestions: List<SenderSuggestion> = emptyList(),
+    onSenderQuery: (String) -> Unit = {},
     onHasLink: () -> Unit = {},
     onHasCode: () -> Unit = {},
     onStarred: () -> Unit = {},
@@ -134,11 +138,13 @@ fun SearchScreen(
     val ruleById = state.rules.filter { it.enabled }.associateBy { it.id }
     // Kept over a rotation, the picker and all
     var datesOpen by rememberSaveable { mutableStateOf(false) }
+    var senderOpen by rememberSaveable { mutableStateOf(false) }
     // The filter chips scroll away with the results; the search field stays
     val header = rememberCollapsingHeaderState()
     val listState = rememberLazyListState()
     header.canCollapse = { listState.canScrollForward || listState.canScrollBackward }
-    Column(Modifier.fillMaxSize().background(c.background).imePadding()) {
+    Box(Modifier.fillMaxSize().background(c.background)) {
+    Column(Modifier.fillMaxSize().imePadding()) {
         CollapsingHeaderLayout(
             header,
             Modifier.weight(1f).fillMaxWidth(),
@@ -147,7 +153,7 @@ fun SearchScreen(
                 if (selecting) {
                     SearchSelectionBar(selectedIds.size + selectedConversationIds.size, onClearSelection, onSelectAll)
                 } else {
-                    SearchHeader(header, state, onQuery, onBack, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus, onStartSelecting)
+                    SearchHeader(header, state, onQuery, onBack, { senderOpen = true }, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus, onStartSelecting)
                 }
             },
         ) {
@@ -189,6 +195,22 @@ fun SearchScreen(
         }
         if (selecting && actions.isNotEmpty()) SearchSelectionActions(actions)
     }
+    if (senderOpen) {
+        // Over everything: Back closes it first
+        BackHandler { senderOpen = false }
+        SenderSearchContent(
+            query = senderQuery,
+            suggestions = senderSuggestions,
+            onQuery = onSenderQuery,
+            onPick = { picked ->
+                senderOpen = false
+                onSender(picked.sender.toFilter())
+            },
+            onClose = { senderOpen = false },
+            autoFocus = autoFocus,
+        )
+    }
+    }
     if (datesOpen) {
         DateFilterSheet(
             current = state.filters.dates,
@@ -208,7 +230,8 @@ private fun SearchHeader(
     state: SearchUiState,
     onQuery: (String) -> Unit,
     onBack: () -> Unit,
-    onSender: (Long?) -> Unit,
+    onOpenSender: () -> Unit,
+    onSender: (SenderFilter?) -> Unit,
     onHasLink: () -> Unit,
     onHasCode: () -> Unit,
     onStarred: () -> Unit,
@@ -261,7 +284,7 @@ private fun SearchHeader(
         Column(Modifier.collapsible(collapse)) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SenderChip(state, onSender)
+            SenderChip(state.filters.sender, onOpenSender, onClear = { onSender(null) })
             DateChip(state.filters.dates, today, onOpenDates, onClear = { onDates(null) })
             HeaderChip(stringResource(R.string.search_filter_link), state.filters.hasLink, onHasLink)
             HeaderChip(stringResource(R.string.search_filter_code), state.filters.hasCode, onHasCode)
@@ -286,31 +309,18 @@ private fun DateChip(dates: DaySpan?, today: LocalDate, onOpen: () -> Unit, onCl
     )
 }
 
-/** "Sender ▾": picks one of the senders in the results; when one is picked, a tap clears it. */
+/** "Sender": opens the sender search; once a sender is chosen it shows their name or number (cut short when long), with an X that clears it. */
 @Composable
-private fun SenderChip(state: SearchUiState, onSender: (Long?) -> Unit) {
-    val c = HebTheme.colors
-    var open by remember { mutableStateOf(false) }
-    val chosen = state.senderName
-    Box {
-        HeaderChip(
-            chosen ?: stringResource(R.string.search_filter_sender),
-            selected = chosen != null,
-            onClick = { if (chosen != null) onSender(null) else open = state.senders.isNotEmpty() },
-            trailing = if (chosen != null) Icons.Rounded.Close else Icons.Rounded.ArrowDropDown,
-        )
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(c.surface)) {
-            state.senders.forEach { s ->
-                DropdownMenuItem(
-                    text = { Text(s.name, color = c.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    onClick = {
-                        open = false
-                        onSender(s.threadId)
-                    },
-                )
-            }
-        }
-    }
+private fun SenderChip(sender: SenderFilter?, onOpen: () -> Unit, onClear: () -> Unit) {
+    HeaderChip(
+        sender?.label ?: stringResource(R.string.search_filter_sender),
+        selected = sender != null,
+        onClick = onOpen,
+        trailing = if (sender != null) Icons.Rounded.Close else Icons.Rounded.ArrowDropDown,
+        onTrailingClick = if (sender != null) onClear else null,
+        trailingDescription = if (sender != null) stringResource(R.string.search_sender_clear) else null,
+        labelMaxWidth = 160.dp,
+    )
 }
 
 @Composable

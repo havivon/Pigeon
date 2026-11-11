@@ -123,6 +123,19 @@
     <!-- search_ -->
     <string name="search_clear">Clear search</string>
     <string name="search_filter_sender">Sender</string>
+    <string name="search_sender_hint">Type a name or number</string>
+    <string name="search_sender_title">Sender</string>
+    <string name="search_sender_recent">Recent senders</string>
+    <string name="search_sender_matches">Matching senders</string>
+    <string name="search_sender_none_title">No sender found</string>
+    <string name="search_sender_none_body">Try a name, or part of a number or a sender ID.</string>
+    <string name="search_sender_clear">Clear the sender</string>
+    <string name="search_sender_close">Close</string>
+    <string name="search_sender_clear_text">Clear the text</string>
+    <plurals name="search_sender_conversations">
+        <item quantity="one">%1$d conversation</item>
+        <item quantity="other">%1$d conversations</item>
+    </plurals>
     <string name="search_filter_link">Has a link</string>
     <string name="search_filter_code">Has a code</string>
     <string name="search_filter_starred">Starred</string>

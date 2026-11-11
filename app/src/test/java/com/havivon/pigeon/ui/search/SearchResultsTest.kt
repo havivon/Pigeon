@@ -448,7 +448,7 @@ class SearchResultsTest {
         )
         val vm = search()
         collect(vm.state)
-        vm.setSender(9)
+        vm.setSender(SenderFilter("501110000", "0501110000", setOf(9L)))
         advanceTimeBy(300)
         val hits = vm.state.value.messages
         assertEquals(listOf(90L, 91L), hits.map { it.messageId })

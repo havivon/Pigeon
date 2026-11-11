@@ -24,6 +24,8 @@ import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.PinsRepository
 import com.havivon.pigeon.domain.repository.RulesRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
+import com.havivon.pigeon.domain.senders.Sender
+import com.havivon.pigeon.domain.senders.SenderMatcher
 import com.havivon.pigeon.domain.seam.CodeFinder
 import com.havivon.pigeon.ui.common.ConversationMapper
 import com.havivon.pigeon.ui.common.DateLabels
@@ -50,6 +52,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -61,12 +64,12 @@ private const val DEBOUNCE_MS = 250L
 /** The newest messages the filters look through when nothing is typed. */
 private const val BROWSE_LIMIT = 500
 
-/** Conversations the sender chip offers before anything is typed. */
-private const val MAX_SENDERS = 30
+/** How long typing in the sender search pauses before the suggestions are found again. */
+private const val SENDER_DEBOUNCE_MS = 150L
 
 data class SearchFilters(
-    /** Only this conversation's messages (the "sender" chip). */
-    val threadId: Long? = null,
+    /** Only this sender's messages, in all their conversations (the "sender" chip). */
+    val sender: SenderFilter? = null,
     val hasLink: Boolean = false,
     val hasCode: Boolean = false,
     /** Only these days, both ends included (the "date" chip); null for any time. */
@@ -74,8 +77,19 @@ data class SearchFilters(
     /** Only the starred messages (the favourites), kept even when the message itself was deleted. */
     val starred: Boolean = false,
 ) {
-    val any: Boolean get() = threadId != null || hasLink || hasCode || dates != null || starred
+    val any: Boolean get() = sender != null || hasLink || hasCode || dates != null || starred
 }
+
+/** The sender the "sender" chip narrows the results to: everything to or from [key] (the normalised address), in the conversations it is in. */
+data class SenderFilter(val key: String, val label: String, val threadIds: Set<Long>) {
+    /** Whether a message in [threadId] to or from [address] is this sender's. */
+    fun matches(threadId: Long, address: String): Boolean = threadId in threadIds || PhoneNumbers.lookupKey(address) == key
+
+    /** Whether a conversation with these [addresses] is this sender's. */
+    fun matches(threadId: Long, addresses: List<String>): Boolean = threadId in threadIds || addresses.any { PhoneNumbers.lookupKey(it) == key }
+}
+
+fun Sender.toFilter() = SenderFilter(key, label, threadIds)
 
 /** A message that matched, as a result row. */
 data class SearchHit(
@@ -104,8 +118,16 @@ data class DeletedSelection(val messages: Int, val conversations: Int, val delet
     val count: Int get() = messages + conversations
 }
 
-/** A sender the "sender" chip can narrow the results to. */
-data class SenderOption(val threadId: Long, val name: String)
+/** A row of the sender search: who, how they are written, how many conversations and when the last message was. */
+data class SenderSuggestion(
+    val sender: Sender,
+    val title: String,
+    /** The number or ID under a contact's name; null when the title is it already. */
+    val address: String?,
+    val conversations: Int,
+    val time: String,
+    val avatarArgb: Long,
+)
 
 data class SearchUiState(
     val query: String = "",
@@ -116,9 +138,9 @@ data class SearchUiState(
     /** The colour rules, for the frame and the tag of the rows ([ruleId]). */
     val rules: List<ColorRule> = emptyList(),
     val messages: List<SearchHit> = emptyList(),
-    val senders: List<SenderOption> = emptyList(),
 ) {
-    val senderName: String? get() = senders.firstOrNull { it.threadId == filters.threadId }?.name
+    /** What the sender chip shows once a sender is chosen. */
+    val senderName: String? get() = filters.sender?.label
     val isEmpty: Boolean get() = conversations.isEmpty() && messages.isEmpty()
 }
 
@@ -135,7 +157,7 @@ fun resultTag(category: CategoryTag?, noCategory: String): CategoryTag = categor
 fun filterResults(results: SearchResults, filters: SearchFilters, codeFinder: CodeFinder, zone: ZoneId = ZoneId.systemDefault()): SearchResults {
     val dates = filters.dates
     val messages = results.messages.filter { m ->
-        (filters.threadId == null || m.threadId == filters.threadId) &&
+        (filters.sender == null || filters.sender.matches(m.threadId, m.address)) &&
             (dates == null || dates.contains(m.dateMillis, zone)) &&
             (!filters.hasLink || LinkAnalyzer.findLinks(m.body).isNotEmpty()) &&
             (!filters.hasCode || codeFinder.find(m.body, m.address, knownPerson = false) != null)
@@ -144,17 +166,11 @@ fun filterResults(results: SearchResults, filters: SearchFilters, codeFinder: Co
         emptyList()
     } else {
         results.conversations.filter { c ->
-            (filters.threadId == null || c.threadId == filters.threadId) && (dates == null || dates.contains(c.dateMillis, zone))
+            (filters.sender == null || filters.sender.matches(c.threadId, c.addresses)) && (dates == null || dates.contains(c.dateMillis, zone))
         }
     }
     return SearchResults(conversations, messages)
 }
-
-/** The senders in the results, for the sender chip: each conversation once, in order of appearance. */
-fun senderOptions(results: SearchResults, titleOf: (Long) -> String?): List<SenderOption> =
-    (results.conversations.map { it.threadId } + results.messages.map { it.threadId })
-        .distinct()
-        .mapNotNull { id -> titleOf(id)?.let { SenderOption(id, it) } }
 
 /**
  * The starred messages as search results, newest star first: those whose text or sender contains
@@ -167,18 +183,6 @@ fun starredMessages(favorites: List<Favorite>, query: String): List<SmsMessage> 
         .filter { f -> q.isEmpty() || f.body.contains(q, ignoreCase = true) || f.senderName?.contains(q, ignoreCase = true) == true || PhoneNumbers.matchesQuery(f.address, q) }
         .map { f -> SmsMessage(f.messageId, f.threadId, f.address, f.body, f.dateMillis, 0, SmsType.Inbox, read = true, subId = null) }
 }
-
-/**
- * Who the sender chip offers before anything is typed: the newest conversations, locked ones left out.
- * Once there are results, it offers the senders in them instead ([senderOptions]).
- */
-fun browseSenders(conversations: List<SmsConversation>, locked: Set<Long>, limit: Int = MAX_SENDERS): List<SenderOption> =
-    conversations.asSequence()
-        .filter { it.threadId !in locked }
-        .take(limit)
-        .map { SenderOption(it.threadId, ConversationMapper.title(it)) }
-        .toList()
-
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class SearchViewModel(
@@ -197,7 +201,7 @@ class SearchViewModel(
     /** The sender's name for the user's own messages in what is copied ("Me"). */
     private val me: String = "Me",
     private val now: () -> Long = System::currentTimeMillis,
-    /** Left out of the sender chip; the repository already leaves them out of the results. */
+    /** The repository already leaves locked chats out of the results; here they are left out of the starred copies. */
     lockedThreads: Flow<Set<Long>> = flowOf(emptySet()),
     /** Where the results are filtered and mapped: off the main thread, since every message is read for links and codes. */
     work: CoroutineDispatcher = Dispatchers.Default,
@@ -205,8 +209,8 @@ class SearchViewModel(
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
 
-    /** What decides whether the browse list is read again: the sender, whether any filter is on, the stars and the days. */
-    private data class BrowseKey(val threadId: Long?, val any: Boolean, val starred: Boolean, val dates: DaySpan?)
+    /** What decides whether the browse list is read again: the sender (and so its conversations), whether any filter is on, the stars and the days. */
+    private data class BrowseKey(val sender: SenderFilter?, val any: Boolean, val starred: Boolean, val dates: DaySpan?)
 
     private val query = MutableStateFlow("")
 
@@ -228,16 +232,16 @@ class SearchViewModel(
      */
     private val results = combine(
         query.debounce(DEBOUNCE_MS),
-        filters.map { BrowseKey(it.threadId, it.any, it.starred, it.dates) }.distinctUntilChanged(),
+        filters.map { BrowseKey(it.sender, it.any, it.starred, it.dates) }.distinctUntilChanged(),
         favorites.favorites,
     ) { q, f, favs -> Triple(q, f, favs) }.flatMapLatest { (q, f, favs) ->
-        val (threadId, anyFilter, starred, dates) = f
+        val (sender, anyFilter, starred, dates) = f
         when {
             starred -> flowOf(q to SearchResults(emptyList(), starredMessages(favs, q)))
             q.isNotBlank() -> flow { emit(q to messages.search(q)) }
             // The days go to the repository, so an old range is not lost behind the newest messages
             anyFilter -> flow {
-                emit(q to SearchResults(emptyList(), messages.browse(threadId, BROWSE_LIMIT, dates?.startMillis(zone), dates?.endMillisExclusive(zone))))
+                emit(q to SearchResults(emptyList(), messages.browse(sender?.threadIds, BROWSE_LIMIT, dates?.startMillis(zone), dates?.endMillisExclusive(zone))))
             }
             else -> flowOf(q to SearchResults.Empty)
         }
@@ -299,23 +303,45 @@ class SearchViewModel(
                     conversation = conversation,
                 )
             },
-            senders = if (q.isBlank() && f.threadId == null) {
-                browseSenders(conversations, locked)
-            } else {
-                senderOptions(found) { id -> byId[id]?.let(ConversationMapper::title) ?: titleOfMessage(found, id) }
-            },
         )
     }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
 
-    private fun titleOfMessage(found: SearchResults, threadId: Long): String? =
-        found.messages.firstOrNull { it.threadId == threadId }?.address?.let(::ltr)
+    // The sender search (the "Sender" chip): typing finds, among everyone who ever wrote or was written to, the senders it means.
+
+    private val senderQuery = MutableStateFlow("")
+
+    /** The sender field's text as typed. */
+    val senderQueryText: StateFlow<String> = senderQuery.asStateFlow()
+
+    fun setSenderQuery(value: String) {
+        senderQuery.value = value
+    }
+
+    /** Up to [SenderMatcher.LIMIT] senders for the typed text, best first; the newest ones while the field is empty. */
+    val senderSuggestions: StateFlow<List<SenderSuggestion>> = combine(
+        messages.senders,
+        senderQuery.debounce { if (it.isBlank()) 0L else SENDER_DEBOUNCE_MS },
+        ::Pair,
+    ).mapLatest { (all, q) ->
+        val t = now()
+        SenderMatcher.suggest(all, q).map { s ->
+            SenderSuggestion(
+                sender = s,
+                title = s.name ?: ltr(s.address),
+                address = s.name?.let { ltr(s.address) },
+                conversations = s.conversationCount,
+                time = labels.listTime(s.lastMillis, t),
+                avatarArgb = avatarColor(s.key),
+            )
+        }
+    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setQuery(value: String) {
         query.value = value
         clearSelection()
     }
 
-    fun setSender(threadId: Long?) = change { filters.update { it.copy(threadId = threadId) } }
+    fun setSender(sender: SenderFilter?) = change { filters.update { it.copy(sender = sender) } }
     fun toggleHasLink() = change { filters.update { it.copy(hasLink = !it.hasLink) } }
     fun toggleHasCode() = change { filters.update { it.copy(hasCode = !it.hasCode) } }
     fun toggleStarred() = change { filters.update { it.copy(starred = !it.starred) } }

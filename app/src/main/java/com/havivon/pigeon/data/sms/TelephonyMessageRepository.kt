@@ -22,6 +22,9 @@ import com.havivon.pigeon.domain.repository.LocksRepository
 import com.havivon.pigeon.domain.repository.MessageRepository
 import com.havivon.pigeon.domain.repository.MessageRepository.Companion.UNDO_WINDOW_MILLIS
 import com.havivon.pigeon.domain.repository.PinsRepository
+import com.havivon.pigeon.domain.senders.AddressRow
+import com.havivon.pigeon.domain.senders.Sender
+import com.havivon.pigeon.domain.senders.distinctSenders
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +120,41 @@ class TelephonyMessageRepository(
             .combine(hidden) { list, h -> list.filter { it.threadId !in h.threads }.map { it.withoutHidden(h.messages) } }
             .flowOn(Dispatchers.IO)
             .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
+
+    /**
+     * Every address in the system SMS database, once: one light read (thread, address and date; no text), grouped by
+     * [distinctSenders] and named from the contacts. Kept like [conversations], and read again when the messages or the
+     * contacts change.
+     */
+    override val senders: Flow<List<Sender>> =
+        refresh.flatMapLatest {
+            resolver.changes(Telephony.Sms.CONTENT_URI, ContactsContract.Contacts.CONTENT_URI)
+                .mapNotNull { readSendersOrKeep() }
+        }
+            .combine(hidden) { list, h -> if (h.threads.isEmpty()) list else list.mapNotNull { s -> s.withoutThreads(h.threads) } }
+            .flowOn(Dispatchers.IO)
+            .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
+
+    /** The sender without the conversations waiting to be deleted; null when none is left. */
+    private fun Sender.withoutThreads(gone: Set<Long>): Sender? {
+        if (threadIds.none { it in gone }) return this
+        val left = threadIds - gone
+        return if (left.isEmpty()) null else copy(threadIds = left)
+    }
+
+    private suspend fun readSendersOrKeep(): List<Sender>? = try {
+        val rows = resolver.queryList(
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE),
+        ) { c -> AddressRow(c.long(Telephony.Sms.THREAD_ID), c.string(Telephony.Sms.ADDRESS), c.long(Telephony.Sms.DATE)) }
+        val names = contacts.displayNames(rows.map { it.address.trim() }.filter { it.isNotEmpty() }.distinct())
+        distinctSenders(rows) { names[it] }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: RuntimeException) {
+        Log.w("Pigeon", "Reading the senders failed: ${e.javaClass.name}")
+        null
+    }
 
     /** Messages waiting to be deleted are not counted as unread either: the count and the Unread list agree. */
     private fun SmsConversation.withoutHidden(messages: Set<Long>): SmsConversation {
@@ -253,14 +291,16 @@ class TelephonyMessageRepository(
         SearchResults(conversations, messages)
     }
 
-    override suspend fun browse(threadId: Long?, limit: Int, fromMillis: Long?, untilMillis: Long?): List<SmsMessage> = withContext(Dispatchers.IO) {
+    override suspend fun browse(threadIds: Set<Long>?, limit: Int, fromMillis: Long?, untilMillis: Long?): List<SmsMessage> = withContext(Dispatchers.IO) {
         val excluded = locks.lockedNow() + hidden.value.threads
-        if (threadId != null && threadId in excluded) return@withContext emptyList()
+        // A sender's conversations (locked ones and those waiting to be deleted never browse)
+        val wanted = threadIds?.filter { it !in excluded }?.take(MARK_READ_CHUNK)
+        if (wanted != null && wanted.isEmpty()) return@withContext emptyList()
         val clauses = mutableListOf<String>()
         val args = mutableListOf<String>()
-        if (threadId != null) {
-            clauses += "${Telephony.Sms.THREAD_ID} = ?"
-            args += threadId.toString()
+        if (wanted != null) {
+            clauses += "${Telephony.Sms.THREAD_ID} IN (${placeholders(wanted.size)})"
+            args += wanted.map { it.toString() }
         }
         if (fromMillis != null) {
             clauses += "${Telephony.Sms.DATE} >= ?"

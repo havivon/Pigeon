@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -364,7 +365,7 @@ fun SheetTitle(title: String, subtitle: String? = null, leading: (@Composable ()
 
 /** A chip on the gradient header (folders, search filters): white when on, glassy when off. */
 @Composable
-fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: ImageVector? = null, onTrailingClick: (() -> Unit)? = null, trailingDescription: String? = null) {
+fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: ImageVector? = null, onTrailingClick: (() -> Unit)? = null, trailingDescription: String? = null, labelMaxWidth: Dp = Dp.Unspecified) {
     val c = HebTheme.colors
     val onWhite = c.onWhite
     Row(
@@ -375,7 +376,7 @@ fun HeaderChip(label: String, selected: Boolean, onClick: () -> Unit, trailing: 
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = if (selected) onWhite else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = if (selected) onWhite else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = labelMaxWidth))
         if (trailing != null) {
             Spacer(Modifier.width(4.dp))
             Icon(

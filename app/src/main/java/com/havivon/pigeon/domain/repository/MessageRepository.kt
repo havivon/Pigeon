@@ -4,6 +4,7 @@ import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.SearchResults
 import com.havivon.pigeon.domain.model.SmsConversation
 import com.havivon.pigeon.domain.model.SmsMessage
+import com.havivon.pigeon.domain.senders.Sender
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -15,6 +16,13 @@ interface MessageRepository {
 
     /** All conversations, newest first. */
     val conversations: Flow<List<SmsConversation>>
+
+    /**
+     * Everyone who ever sent or was sent a message (incoming and outgoing threads, not only the recent ones), one
+     * entry per normalised address, newest first. Read once from a light query (no message text), kept, and read
+     * again when the provider or the contacts change. Locked chats are listed too (by name; their messages never are).
+     */
+    val senders: Flow<List<Sender>>
 
     /**
      * A conversation's newest [limit] messages, oldest first: a screen reads the page it shows, not a
@@ -68,12 +76,12 @@ interface MessageRepository {
     suspend fun search(query: String): SearchResults
 
     /**
-     * The newest messages, newest first, of one conversation ([threadId]) or of all of them, for the
+     * The newest messages, newest first, of some conversations ([threadIds], a sender's) or of all of them, for the
      * search filters used without any text ("has a code" alone). As in [search], locked
      * conversations and messages waiting to be deleted are left out. [fromMillis] (included) and [untilMillis] (not
      * included) keep only the messages in that time, so the newest [limit] of them are found, not of all.
      */
-    suspend fun browse(threadId: Long?, limit: Int, fromMillis: Long? = null, untilMillis: Long? = null): List<SmsMessage>
+    suspend fun browse(threadIds: Set<Long>?, limit: Int, fromMillis: Long? = null, untilMillis: Long? = null): List<SmsMessage>
 
     companion object {
         const val UNDO_WINDOW_MILLIS = 5_000L

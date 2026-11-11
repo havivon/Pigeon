@@ -45,7 +45,8 @@ import com.havivon.pigeon.ui.search.DaySpan
 import com.havivon.pigeon.ui.search.SearchFilters
 import com.havivon.pigeon.ui.search.SearchViewModel
 import com.havivon.pigeon.ui.search.filterResults
-import com.havivon.pigeon.ui.search.senderOptions
+import com.havivon.pigeon.ui.search.SenderFilter
+import com.havivon.pigeon.ui.search.toFilter
 import com.havivon.pigeon.ui.spam.SpamViewModel
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.ui.spam.groupSpam
@@ -792,8 +793,8 @@ class ViewModelsTest {
         val last30 = SearchFilters(dates = DaySpan(today.minusDays(29), today))
         assertEquals(listOf(1L), filterResults(found, last7, finder, Utc).messages.map { it.id })
         assertEquals(listOf(1L, 2L), filterResults(found, last30, finder, Utc).messages.map { it.id })
-        assertEquals(listOf(1L, 3L), filterResults(found, SearchFilters(threadId = 1), finder, Utc).messages.map { it.id })
-        assertEquals(listOf(1L, 2L), senderOptions(found) { mapOf(1L to "Danny", 2L to "Verify")[it] }.map { it.threadId })
+        assertEquals(listOf(1L, 3L), filterResults(found, SearchFilters(sender = SenderFilter("525550100", "Danny", setOf(1L))), finder, Utc).messages.map { it.id })
+        assertEquals("by address when the thread is not known", listOf(1L, 3L), filterResults(found, SearchFilters(sender = SenderFilter("525550100", "Danny", emptySet())), finder, Utc).messages.map { it.id })
     }
 
     @Test
@@ -812,7 +813,7 @@ class ViewModelsTest {
         assertEquals(listOf("Danny", "Verify", "Danny"), s.messages.map { it.name })
         vm.toggleHasCode()
         assertEquals(listOf(2L), vm.state.value.messages.map { it.messageId })
-        vm.setSender(2)
+        vm.setSender(SenderFilter("verify", "Verify", setOf(2L)))
         assertEquals("Verify", vm.state.value.senderName)
     }
 
@@ -929,19 +930,38 @@ class ViewModelsTest {
     }
 
     @Test
-    fun `the sender chip offers the conversations before anything is typed, never a locked one`() = runTest {
-        messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny"), conversation(2, "Verify"), conversation(3, "0535550100", name = "Secret"))
-        messages.allMessages.value = listOf(sms(1, 1, "Hello", millis(2026, 10, 31, 9, 0)), sms(2, 2, "Code 1234", millis(2026, 10, 31, 10, 0), address = "Verify"))
+    fun `the sender search offers everyone, locked chats by name too, and the chosen sender browses all their conversations`() = runTest {
+        messages.threads.value = listOf(
+            conversation(1, "0525550100", name = "Danny"), conversation(2, "Verify"),
+            conversation(3, "0535550100", name = "Secret"), conversation(4, "+972525550100", name = "Danny"),
+        )
+        messages.allMessages.value = listOf(
+            sms(1, 1, "Hello", millis(2026, 10, 31, 9, 0)),
+            sms(2, 2, "Code 1234", millis(2026, 10, 31, 10, 0), address = "Verify"),
+            sms(3, 3, "Hidden", millis(2026, 10, 30, 10, 0), address = "0535550100"),
+            sms(4, 4, "Another number format", millis(2026, 10, 29, 10, 0), address = "+972525550100"),
+        )
         locks.state.value = setOf(3L)
         val vm = search()
+        collect(vm.senderSuggestions)
         collect(vm.state)
         advanceTimeBy(300)
-        assertEquals(listOf("Danny", "Verify"), vm.state.value.senders.map { it.name })
-        vm.setSender(1)
+        assertEquals(listOf("Verify", "Danny", "Secret"), vm.senderSuggestions.value.map { it.title })
+        assertEquals("Danny's two threads are one sender", 2, vm.senderSuggestions.value[1].conversations)
+        vm.setSenderQuery("secret")
         advanceTimeBy(300)
-        assertEquals(listOf(1L), messages.browsed)
+        assertEquals(listOf("Secret"), vm.senderSuggestions.value.map { it.title })
+        vm.setSenderQuery("+97252555")
+        advanceTimeBy(300)
+        val danny = vm.senderSuggestions.value.single()
+        vm.setSender(danny.sender.toFilter())
+        advanceTimeBy(300)
+        assertEquals(listOf(setOf(1L, 4L)), messages.browsed)
         assertEquals("Danny", vm.state.value.senderName)
-        assertEquals(listOf(1L), vm.state.value.messages.map { it.messageId })
+        assertEquals(listOf(1L, 4L), vm.state.value.messages.map { it.messageId }.sorted())
+        vm.setSender(null)
+        advanceTimeBy(300)
+        assertTrue(vm.state.value.messages.isEmpty())
     }
 
     @Test

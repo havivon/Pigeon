@@ -35,6 +35,9 @@ import com.havivon.pigeon.domain.repository.RulesRepository
 import com.havivon.pigeon.domain.repository.SettingsRepository
 import com.havivon.pigeon.domain.repository.SmsSender
 import com.havivon.pigeon.domain.repository.SpamRepository
+import com.havivon.pigeon.domain.senders.AddressRow
+import com.havivon.pigeon.domain.senders.Sender
+import com.havivon.pigeon.domain.senders.distinctSenders
 import com.havivon.pigeon.domain.seam.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,6 +92,12 @@ class FakeMessageRepository : MessageRepository {
             }
         }
 
+    /** As the real repository: every address of every message (locked chats too), named by its conversation's contact name. */
+    override val senders: Flow<List<Sender>> = combine(threads, allMessages, hiddenThreads) { list, all, hidden ->
+        val nameOf = list.filter { it.contactName != null }.flatMap { c -> c.addresses.map { PhoneNumbers.lookupKey(it) to c.contactName } }.toMap()
+        distinctSenders(all.filter { it.threadId !in hidden }.map { AddressRow(it.threadId, it.address, it.dateMillis) }) { nameOf[PhoneNumbers.lookupKey(it)] }
+    }
+
     override fun messages(threadId: Long, limit: Int): Flow<List<SmsMessage>> =
         combine(allMessages, hiddenMessages, hiddenThreads) { list, hidden, ht ->
             if (threadId in ht) emptyList() else list.filter { it.threadId == threadId && it.id !in hidden }.sortedBy { it.dateMillis }.takeLast(limit)
@@ -141,16 +150,16 @@ class FakeMessageRepository : MessageRepository {
         return searchResults
     }
 
-    val browsed = mutableListOf<Long?>()
+    val browsed = mutableListOf<Set<Long>?>()
 
     /** The (from, until) of every browse, to see that the days reach the repository. */
     val browsedSpans = mutableListOf<Pair<Long?, Long?>>()
 
-    override suspend fun browse(threadId: Long?, limit: Int, fromMillis: Long?, untilMillis: Long?): List<SmsMessage> {
-        browsed += threadId
+    override suspend fun browse(threadIds: Set<Long>?, limit: Int, fromMillis: Long?, untilMillis: Long?): List<SmsMessage> {
+        browsed += threadIds
         browsedSpans += fromMillis to untilMillis
         return allMessages.value
-            .filter { (threadId == null || it.threadId == threadId) && (fromMillis == null || it.dateMillis >= fromMillis) && (untilMillis == null || it.dateMillis < untilMillis) && it.id !in hiddenMessages.value && it.threadId !in hiddenThreads.value }
+            .filter { (threadIds == null || it.threadId in threadIds) && (fromMillis == null || it.dateMillis >= fromMillis) && (untilMillis == null || it.dateMillis < untilMillis) && it.id !in hiddenMessages.value && it.threadId !in hiddenThreads.value }
             .sortedByDescending { it.dateMillis }
             .take(limit)
     }
