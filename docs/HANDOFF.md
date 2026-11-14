@@ -36,7 +36,12 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   undo after a delete stays. Inbox multi-select as in search: "Select" in the long-press sheet, a tap toggles, the
   search's selection bar (count says "conversations") and action row (read, move, spam, remind for one, delete).
   It belongs to the chosen category: another category or the Unread list clears it.
-- **Not done:** installing 0.7.5 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.6** (versionCode 39): a "Select" button (Checklist icon) in the inbox header next to the bell, as in search
+  (`InboxViewModel.selecting`: mode on with nothing selected; "Select" in the sheet stays too). The category menu now
+  always has a row of its own, with All / Unread / "Mark all read" under it (full label unless a large font or a narrow
+  screen leaves no room). The search opened from a category keeps to it: `Screen.Search(category)`,
+  `SearchFilters.category` (narrows, not one of `any`), a chip "In: <category>" whose X searches everywhere.
+- **Not done:** installing 0.7.6 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

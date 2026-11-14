@@ -121,7 +121,15 @@ class ViewModelsTest {
         spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
         val vm = inbox()
         collect(vm.state)
+        // The header's "Select": selection mode with nothing selected yet; close leaves it
+        vm.startSelecting()
+        assertTrue(vm.selecting.value)
+        assertTrue(vm.selected.value.isEmpty())
+        vm.clearSelection()
+        assertFalse(vm.selecting.value)
+        // "Select" in the long-press sheet starts it with that conversation
         vm.selectConversation(1)
+        assertTrue(vm.selecting.value)
         vm.toggleSelected(2)
         assertEquals(setOf(1L, 2L), vm.selected.value)
         vm.toggleSelected(2)
@@ -132,6 +140,7 @@ class ViewModelsTest {
         // Another category, or the Unread list, leaves the selection
         vm.selectFolder(Folder.Banks)
         assertTrue(vm.selected.value.isEmpty())
+        assertFalse(vm.selecting.value)
         vm.selectFolder(Folder.All)
         vm.selectConversation(3)
         vm.selectUnreadOnly(true)

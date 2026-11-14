@@ -122,6 +122,34 @@ class SearchResultsTest {
     // The category tag of each result
 
     @Test
+    fun `a search opened from a category finds only that category's conversations and messages, until its chip is cleared`() = runTest {
+        seed()
+        val banks = SearchViewModel(
+            messages, mapper, labels, AnalysisSeams.codeFinder, rules, pins, spam, folders, favorites, sheetActions(true), "Me",
+            now = { Now }, lockedThreads = locks.state, work = main.dispatcher, category = FolderChoice.BuiltIn(Folder.Banks),
+        )
+        val s = found(banks)
+        assertEquals(FolderChoice.BuiltIn(Folder.Banks), s.filters.category)
+        assertEquals(listOf(2L), s.conversations.map { it.id })
+        assertEquals(listOf(20L), s.messages.map { it.messageId })
+        // The chip's X: everywhere again (spam stays out of the conversations, as in the inbox's All)
+        banks.clearCategory()
+        advanceTimeBy(300)
+        assertNull(banks.state.value.filters.category)
+        assertTrue(banks.state.value.messages.map { it.messageId }.containsAll(listOf(10L, 11L, 20L, 30L)))
+        // A category of the user's, by a move by hand
+        val work = folders.add("Work")
+        folders.setOverride(FolderKeys.of(3, listOf("0541112222")), FolderChoice.Custom(work))
+        val mine = SearchViewModel(
+            messages, mapper, labels, AnalysisSeams.codeFinder, rules, pins, spam, folders, favorites, sheetActions(true), "Me",
+            now = { Now }, lockedThreads = locks.state, work = main.dispatcher, category = FolderChoice.Custom(work),
+        )
+        val m = found(mine)
+        assertEquals(listOf(3L), m.conversations.map { it.id })
+        assertEquals(listOf(30L), m.messages.map { it.messageId })
+    }
+
+    @Test
     fun `every result is tagged with its category, a conversation and a message alike`() = runTest {
         seed()
         val s = found()

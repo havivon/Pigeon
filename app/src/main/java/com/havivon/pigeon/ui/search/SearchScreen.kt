@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.FolderChoice
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -102,6 +104,10 @@ import java.time.LocalDate
 fun SearchScreen(
     state: SearchUiState,
     onQuery: (String) -> Unit = {},
+    /** The user's categories: the name on the category chip (the search opened from one of them). */
+    customFolders: List<CustomFolder> = emptyList(),
+    /** The category chip's X: search everywhere. */
+    onClearCategory: () -> Unit = {},
     onBack: () -> Unit = {},
     /** Chooses the sender to narrow the results to; null clears it. */
     onSender: (SenderFilter?) -> Unit = {},
@@ -153,7 +159,7 @@ fun SearchScreen(
                 if (selecting) {
                     SearchSelectionBar(selectedIds.size + selectedConversationIds.size, onClearSelection, onSelectAll)
                 } else {
-                    SearchHeader(header, state, onQuery, onBack, { senderOpen = true }, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus, onStartSelecting)
+                    SearchHeader(header, state, onQuery, onBack, { senderOpen = true }, onSender, onHasLink, onHasCode, onStarred, { datesOpen = true }, onDates, today, autoFocus, onStartSelecting, customFolders, onClearCategory)
                 }
             },
         ) {
@@ -240,6 +246,8 @@ private fun SearchHeader(
     today: LocalDate,
     autoFocus: Boolean,
     onStartSelecting: () -> Unit,
+    customFolders: List<CustomFolder>,
+    onClearCategory: () -> Unit,
 ) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -284,6 +292,9 @@ private fun SearchHeader(
         Column(Modifier.collapsible(collapse)) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The category the search was opened from, first: its X widens the search to everything
+            val scope = state.filters.category
+            if (scope != null) CategoryScopeChip(scope, customFolders, onClearCategory)
             SenderChip(state.filters.sender, onOpenSender, onClear = { onSender(null) })
             DateChip(state.filters.dates, today, onOpenDates, onClear = { onDates(null) })
             HeaderChip(stringResource(R.string.search_filter_link), state.filters.hasLink, onHasLink)
@@ -306,6 +317,24 @@ private fun DateChip(dates: DaySpan?, today: LocalDate, onOpen: () -> Unit, onCl
         trailing = if (dates != null) Icons.Rounded.Close else Icons.Rounded.ArrowDropDown,
         onTrailingClick = if (dates != null) onClear else null,
         trailingDescription = if (dates != null) stringResource(R.string.search_date_clear) else null,
+    )
+}
+
+/** The category the search keeps to (opened from it in the inbox), with an X that searches everywhere instead. */
+@Composable
+private fun CategoryScopeChip(scope: FolderChoice, customFolders: List<CustomFolder>, onClear: () -> Unit) {
+    val name = when (scope) {
+        is FolderChoice.BuiltIn -> stringResource(scope.folder.labelRes)
+        is FolderChoice.Custom -> customFolders.firstOrNull { it.id == scope.id }?.name.orEmpty()
+    }
+    HeaderChip(
+        stringResource(R.string.search_in_category, name),
+        selected = true,
+        onClick = onClear,
+        trailing = Icons.Rounded.Close,
+        onTrailingClick = onClear,
+        trailingDescription = stringResource(R.string.search_category_clear),
+        labelMaxWidth = 200.dp,
     )
 }
 

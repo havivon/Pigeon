@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.inbox
 
+import androidx.compose.material.icons.rounded.Checklist
 import com.havivon.pigeon.ui.search.SelectionAction
 import com.havivon.pigeon.ui.search.SelectMark
 import com.havivon.pigeon.ui.search.SearchSelectionBar
@@ -105,7 +106,6 @@ import com.havivon.pigeon.ui.components.NameLine
 import com.havivon.pigeon.ui.components.TrailingOrBelow
 import com.havivon.pigeon.ui.components.collapsible
 import com.havivon.pigeon.ui.components.endButtonFit
-import com.havivon.pigeon.ui.components.leadOnOwnRow
 import com.havivon.pigeon.ui.components.rememberCollapsingHeaderState
 import com.havivon.pigeon.ui.components.rememberHeaderPadding
 import com.havivon.pigeon.ui.components.scaledAtMost
@@ -171,6 +171,10 @@ fun InboxScreen(
      * the new-message button at the bottom. Not in the Unread list.
      */
     selectedIds: Set<Long> = emptySet(),
+    /** Selection mode is on (check circles on the rows), even with nothing selected yet. */
+    selectionMode: Boolean = false,
+    /** The header's "Select" button, shown while there are conversations to select (not in the Unread list). */
+    onStartSelecting: () -> Unit = {},
     onToggleSelected: (Conversation) -> Unit = {},
     onClearSelection: () -> Unit = {},
     onSelectAll: () -> Unit = {},
@@ -183,7 +187,8 @@ fun InboxScreen(
     // Under "All categories" every row says which category it is in, as the search's results do
     val showCategory = selectedFolder == Folder.All && selectedCustom == null
     val selectedHere = if (unreadOnly) 0 else conversations.count { it.id in selectedIds }
-    val selecting = selectedHere > 0
+    val selecting = (selectionMode || selectedHere > 0) && !unreadOnly
+    val canSelect = !unreadOnly && conversations.isNotEmpty()
     // While selecting, a tap and a long press both add or remove the conversation
     val tap: (Conversation) -> Unit = if (selecting) onToggleSelected else onOpen
     val press: (Conversation) -> Unit = if (selecting) onToggleSelected else onLongPress
@@ -209,7 +214,10 @@ fun InboxScreen(
                 if (selecting) {
                     SearchSelectionBar(selectedHere, onClearSelection, onSelectAll, countLabel = R.plurals.inbox_selected_count)
                 } else {
-                    InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
+                    InboxHeader(
+                        header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders,
+                        hasReminders, onSearch, onStartSelecting.takeIf { canSelect },
+                    )
                 }
             },
         ) {
@@ -219,7 +227,8 @@ fun InboxScreen(
             )
         }
         if (selecting) {
-            Box(Modifier.align(Alignment.BottomCenter)) { SearchSelectionActions(selectionActions) }
+            // The actions once something is selected; nothing (and no new-message button) until then
+            if (selectedHere > 0) Box(Modifier.align(Alignment.BottomCenter)) { SearchSelectionActions(selectionActions) }
         } else {
             NewMessageButton(
                 expanded = atTop,
@@ -313,6 +322,8 @@ private fun InboxHeader(
     onReminders: () -> Unit,
     hasReminders: Boolean,
     onSearch: () -> Unit,
+    /** The "Select" button (multi-select), as in the search's header; null hides it (nothing to select). */
+    onStartSelecting: (() -> Unit)?,
 ) {
     GradientHeader {
         // Scrolls away with the list
@@ -329,6 +340,7 @@ private fun InboxHeader(
                     )
                     Text(dateLine, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                if (onStartSelecting != null) HeaderIcon(Icons.Rounded.Checklist, stringResource(R.string.search_select_button), onStartSelecting)
                 RemindersBell(hasReminders, onReminders)
                 HeaderIcon(Icons.Rounded.Settings, stringResource(R.string.inbox_settings_description), onSettings)
             }
@@ -411,9 +423,9 @@ private fun UnreadButtons(categories: CategoryMenuState, unreadOnly: Boolean, un
 }
 
 /**
- * [lead] and [filters] at the start and [markAll] at the end, never overlapping: the button in the widest form that
- * fits (see [endButtonFit]); [lead] on a line of its own above the rest when even the icon would not fit beside all
- * of them (see [leadOnOwnRow]).
+ * [lead] (the category menu) on a line of its own, and under it [filters] at the start and [markAll] at the end, never
+ * overlapping: the button in the widest form that fits (see [endButtonFit]), its whole label but with a large font or on a
+ * narrow screen.
  */
 @Composable
 private fun FilterRow(lead: @Composable () -> Unit, filters: @Composable () -> Unit, markAll: @Composable (EndButtonFit) -> Unit) {
@@ -422,12 +434,10 @@ private fun FilterRow(lead: @Composable () -> Unit, filters: @Composable () -> U
         val loose = Constraints(maxWidth = width)
         val gap = 10.dp.roundToPx()
         val leadM = subcompose("lead", lead)
-        val leadW = leadM.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) } ?: 0
         val left = subcompose("filters", filters)
         val filtersW = left.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) } ?: 0
-        val ownRow = leadOnOwnRow(width, leadW, filtersW, MARK_ALL_ICON.roundToPx(), gap)
-        val beforeButton = if (ownRow) filtersW else leadW + gap + filtersW
-        val room = width - beforeButton - gap
+        // The category always has a line of its own, so "Mark all read" has the room for its whole label (the user's choice)
+        val room = width - filtersW - gap
         val fullW = subcompose(EndButtonFit.Full) { markAll(EndButtonFit.Full) }.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) } ?: 0
         val compactW = subcompose(EndButtonFit.Compact) { markAll(EndButtonFit.Compact) }.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) } ?: 0
         val fit = endButtonFit(room, fullW, compactW)
@@ -435,18 +445,17 @@ private fun FilterRow(lead: @Composable () -> Unit, filters: @Composable () -> U
         val buttonW = button.maxOfOrNull { it.width } ?: 0
         val buttonH = button.maxOfOrNull { it.height } ?: 0
         val leadP = leadM.map { it.measure(loose) }
-        val leadPW = if (ownRow) 0 else (leadP.maxOfOrNull { it.width } ?: 0) + gap
-        // The filters keep what the category and the button leave (all they need, but in the extreme case)
-        val filtersP = left.map { it.measure(Constraints(maxWidth = (width - leadPW - buttonW - gap).coerceAtLeast(0))) }
+        // The filters keep what the button leaves (all they need, but in the extreme case)
+        val filtersP = left.map { it.measure(Constraints(maxWidth = (width - buttonW - gap).coerceAtLeast(0))) }
         val leadH = leadP.maxOfOrNull { it.height } ?: 0
         val filtersH = filtersP.maxOfOrNull { it.height } ?: 0
         val rowGap = 8.dp.roundToPx()
-        val line = maxOf(filtersH, buttonH, if (ownRow) 0 else leadH)
-        val top = if (ownRow) leadH + rowGap else 0
+        val line = maxOf(filtersH, buttonH)
+        val top = leadH + rowGap
         layout(width, top + line) {
             // placeRelative mirrors in RTL: the category and the filters sit at the start edge, the button at the end edge
-            leadP.forEach { it.placeRelative(0, if (ownRow) 0 else (line - it.height) / 2) }
-            filtersP.forEach { it.placeRelative(leadPW, top + (line - it.height) / 2) }
+            leadP.forEach { it.placeRelative(0, 0) }
+            filtersP.forEach { it.placeRelative(0, top + (line - it.height) / 2) }
             button.forEach { it.placeRelative(width - buttonW, top + (line - buttonH) / 2) }
         }
     }

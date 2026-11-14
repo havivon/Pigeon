@@ -218,9 +218,20 @@ class InboxViewModel(
         clearSelection()
     }
 
-    // Multi-select, as in the search's results: "Select" in a conversation's long-press sheet starts it, a tap adds or removes a
-    // conversation, and the bar at the bottom acts on all of them. It belongs to the chosen category: another category, or the
-    // Unread list, leaves it. Selection mode lasts while anything is selected.
+    // Multi-select, as in the search's results: the "Select" button in the header starts it (nothing selected yet), and so does
+    // "Select" in a conversation's long-press sheet (with that conversation); a tap adds or removes a conversation, and the bar at
+    // the bottom acts on all of them. It belongs to the chosen category: another category, or the Unread list, leaves it, and so
+    // do the close button and Back.
+
+    private val _selecting = MutableStateFlow(false)
+
+    /** Whether selection mode is on, even before anything is selected. */
+    val selecting: StateFlow<Boolean> = _selecting.asStateFlow()
+
+    /** The header's "Select" button: selection mode with nothing selected yet. */
+    fun startSelecting() {
+        _selecting.value = true
+    }
 
     private val _selected = MutableStateFlow<Set<Long>>(emptySet())
 
@@ -229,6 +240,7 @@ class InboxViewModel(
 
     /** Starts selecting with this conversation (from its sheet). */
     fun selectConversation(id: Long) {
+        _selecting.value = true
         _selected.value = _selected.value + id
     }
 
@@ -236,12 +248,15 @@ class InboxViewModel(
         _selected.value = _selected.value.let { if (id in it) it - id else it + id }
     }
 
+    /** Leaves selection mode and forgets the selection. */
     fun clearSelection() {
         if (_selected.value.isNotEmpty()) _selected.value = emptySet()
+        _selecting.value = false
     }
 
     /** "Select all": every conversation of the chosen category, the pinned ones too. */
     fun selectAll() {
+        _selecting.value = true
         _selected.value = state.value.conversations.mapTo(LinkedHashSet()) { it.id }
     }
 

@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.navigation
 
+import com.havivon.pigeon.domain.model.FolderChoice
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -26,7 +27,8 @@ sealed interface Screen {
     /** A conversation; with [messageId] it opens scrolled to that message (the Unread list). */
     data class Thread(val threadId: Long, val messageId: Long? = null) : Screen
     data object Spam : Screen
-    data object Search : Screen
+    /** The search; from a category of the inbox, [category] keeps the results to it (a chip in the search widens them to all). */
+    data class Search(val category: FolderChoice? = null) : Screen
     /** A new message; [recipients] and [body] come prefilled from an `sms:` link. */
     data class NewMessage(val recipients: List<String> = emptyList(), val body: String = "") : Screen
     data object Settings : Screen

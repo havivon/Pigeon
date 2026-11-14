@@ -99,6 +99,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
 
     // Multi-select, as in the search's results: "Select" in the long-press sheet starts it
     val selected by vm.selected.collectAsStateWithLifecycle()
+    val selectionMode by vm.selecting.collectAsStateWithLifecycle()
     val selectedCount = if (state.unreadOnly) 0 else state.conversations.count { it.id in selected }
     var askDelete by remember { mutableStateOf(false) }
     var moveSelection by remember { mutableStateOf(false) }
@@ -108,7 +109,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     // Back leaves the selection first
-    BackHandler(enabled = selectedCount > 0) { vm.clearSelection() }
+    BackHandler(enabled = selectionMode && !state.unreadOnly) { vm.clearSelection() }
     val actions = selectionActions(
         hasMessages = false,
         count = selectedCount,
@@ -155,9 +156,12 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         onReminders = { navigate(Screen.Reminders) },
         hasReminders = hasReminders,
         onLongPress = { sheetFor = it },
-        onSearch = { navigate(Screen.Search) },
+        // From a category, the search looks only in it; from "All categories", everywhere
+        onSearch = { navigate(Screen.Search(state.choice.takeIf { it != FolderChoice.BuiltIn(Folder.All) })) },
         onManageCategories = { navigate(Screen.Folders) },
         selectedIds = selected,
+        selectionMode = selectionMode,
+        onStartSelecting = vm::startSelecting,
         onToggleSelected = { vm.toggleSelected(it.id) },
         onClearSelection = vm::clearSelection,
         onSelectAll = vm::selectAll,

@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import androidx.compose.ui.res.pluralStringResource
 import androidx.activity.compose.BackHandler
@@ -28,7 +29,13 @@ import com.havivon.pigeon.ui.reminders.ReminderSheet
 import kotlinx.coroutines.launch
 
 @Composable
-fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (threadId: Long, messageId: Long) -> Unit) {
+fun SearchRoute(
+    onBack: () -> Unit,
+    openThread: (Long) -> Unit,
+    openMessage: (threadId: Long, messageId: Long) -> Unit,
+    /** The category the search was opened from; its results keep to it until the chip's X. */
+    category: FolderChoice? = null,
+) {
     val context = LocalContext.current
     val me = stringResource(R.string.thread_sender_me)
     val vm = pigeonViewModel { app ->
@@ -41,6 +48,7 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
             app.messages, conversationMapper(context, app, labels), labels, app.codeFinder,
             app.rules, app.pins, app.spam, app.folders, app.favorites, sheet, me,
             lockedThreads = app.locks.lockedThreadIds,
+            category = category,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -108,6 +116,8 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
     SearchScreen(
         state = state.copy(query = query, searching = state.searching || state.query != query),
         onQuery = vm::setQuery,
+        customFolders = customFolders,
+        onClearCategory = vm::clearCategory,
         onBack = onBack,
         onSender = vm::setSender,
         senderQuery = senderQuery,

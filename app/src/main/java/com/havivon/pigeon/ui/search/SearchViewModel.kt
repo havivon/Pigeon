@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.common.inFolder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.havivon.pigeon.domain.PhoneNumbers
@@ -76,6 +77,11 @@ data class SearchFilters(
     val dates: DaySpan? = null,
     /** Only the starred messages (the favourites), kept even when the message itself was deleted. */
     val starred: Boolean = false,
+    /**
+     * Only the conversations of this category, and the messages in them: the search opened from a category of the inbox. It
+     * narrows what the text or the other filters find and finds nothing by itself, so it is not one of [any].
+     */
+    val category: FolderChoice? = null,
 ) {
     val any: Boolean get() = sender != null || hasLink || hasCode || dates != null || starred
 }
@@ -207,6 +213,8 @@ class SearchViewModel(
     work: CoroutineDispatcher = Dispatchers.Default,
     /** The time zone the filter's days are read in. */
     private val zone: ZoneId = ZoneId.systemDefault(),
+    /** The category the search was opened from (see [SearchFilters.category]); null for everywhere. */
+    category: FolderChoice? = null,
 ) : ViewModel() {
 
     /** What decides whether the browse list is read again: the sender (and so its conversations), whether any filter is on, the stars and the days. */
@@ -216,7 +224,7 @@ class SearchViewModel(
 
     /** The field's text as typed, straight from here: never behind the keyboard. */
     val queryText: StateFlow<String> = query.asStateFlow()
-    private val filters = MutableStateFlow(SearchFilters())
+    private val filters = MutableStateFlow(SearchFilters(category = category))
 
     /** The user's categories, for the sheet's "Move to category". */
     val customFolders: StateFlow<List<CustomFolder>> = folders.folders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -275,13 +283,16 @@ class SearchViewModel(
         fun mapConversation(c: SmsConversation) =
             mapper.map(c, t, sort.rules, sort.pinned, locked, verdictFor(c, sort.verdicts), overrideFor(c, sort.overrides), sort.categories)
         val mappedByThread = HashMap<Long, Conversation>()
+        // The category the search was opened from: its conversations, and the messages in them (as its list in the inbox has them)
+        val scope = f.category
+        fun inScope(c: Conversation?): Boolean = scope == null || (c != null && inFolder(listOf(c), scope).isNotEmpty())
         SearchUiState(
             query = q,
             filters = f,
             searching = q.isNotBlank() && q != searched,
-            conversations = filtered.conversations.map { mapConversation(it) },
+            conversations = filtered.conversations.map { mapConversation(it) }.filter { inScope(it) },
             rules = sort.rules,
-            messages = filtered.messages.map { m ->
+            messages = filtered.messages.mapNotNull { m ->
                 val source = byId[m.threadId]
                 // The conversation the message is in, sorted as the inbox sorts it (a move by hand first): its category and spam verdict
                 val conversation = source?.let { s -> mappedByThread.getOrPut(m.threadId) { mapConversation(s) } }
@@ -301,7 +312,7 @@ class SearchViewModel(
                     senderName = source?.contactName,
                     starred = m.id in sort.starredIds,
                     conversation = conversation,
-                )
+                ).takeIf { inScope(conversation) }
             },
         )
     }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
@@ -346,6 +357,9 @@ class SearchViewModel(
     fun toggleHasCode() = change { filters.update { it.copy(hasCode = !it.hasCode) } }
     fun toggleStarred() = change { filters.update { it.copy(starred = !it.starred) } }
     fun setDates(value: DaySpan?) = change { filters.update { it.copy(dates = value) } }
+
+    /** The category chip's X: the search looks everywhere. */
+    fun clearCategory() = change { filters.update { it.copy(category = null) } }
     fun clearFilters() = change { filters.value = SearchFilters() }
 
     /** The results change with the search, so a selection of the old ones goes. */

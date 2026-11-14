@@ -37,6 +37,8 @@
     <string name="common_select_all">Select all</string>
     <string name="common_suspected_spam">Suspected spam</string>
     <string name="search_select_button">Select</string>
+    <string name="search_in_category">In: %1$s</string>
+    <string name="search_category_clear">Search all categories</string>
     <plurals name="search_results_deleted">
         <item quantity="one">%1$d result deleted</item>
         <item quantity="other">%1$d results deleted</item>

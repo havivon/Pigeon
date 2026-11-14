@@ -37,6 +37,8 @@
     <string name="common_select_all">בחר הכל</string>
     <string name="common_suspected_spam">חשוד כספאם</string>
     <string name="search_select_button">סמן</string>
+    <string name="search_in_category">בקטגוריה: %1$s</string>
+    <string name="search_category_clear">חיפוש בכל הקטגוריות</string>
     <plurals name="search_results_deleted">
         <item quantity="one">תוצאה אחת נמחקה</item>
         <item quantity="two">%1$d תוצאות נמחקו</item>
