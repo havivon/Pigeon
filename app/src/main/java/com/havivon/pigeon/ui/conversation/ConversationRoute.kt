@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.conversation
 
+import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
+import androidx.compose.ui.res.pluralStringResource
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -86,6 +88,8 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
     var link by remember { mutableStateOf<LinkInfo?>(null) }
     var remindSheet by rememberSaveable { mutableStateOf(false) }
     var moveSheet by rememberSaveable { mutableStateOf(false) }
+    // The delete question that is open: of the selected messages, or of the whole conversation
+    var askDelete by remember { mutableStateOf<AskDelete?>(null) }
 
     // While it is on the screen its messages count as read and are not notified
     val container = remember { AppContainer.from(context) }
@@ -181,10 +185,8 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
             ThreadMenuItem(stringResource(R.string.action_mark_spam), Icons.Rounded.Report) { vm.markSpam() }
         },
         ThreadMenuItem(stringResource(R.string.action_delete_conversation), Icons.Rounded.Delete, danger = true) {
-            vm.deleteConversation()?.let {
-                notices.undo(conversationDeleted, it)
-                onClosed()
-            }
+            // Asked first; while Pigeon may not delete, deleteConversation says why at once and deletes nothing
+            if (vm.canDelete) askDelete = AskDelete.Conversation else vm.deleteConversation()
         },
     )
 
@@ -242,15 +244,36 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
         selectedStarred = vm.allSelectedStarred(),
         onStarSelected = vm::starSelected,
         onRemindSelected = if (selected.size == 1) ({ remindSheet = true }) else null,
-        onDeleteSelected = {
-            vm.deleteSelected()?.let { (count, deletion) ->
-                notices.undo(context.resources.getQuantityString(R.plurals.thread_messages_deleted, count, count), deletion)
-            }
-        },
+        onDeleteSelected = { if (vm.canDelete) askDelete = AskDelete.Messages else vm.deleteSelected() },
         onReminder = vm::toggleReminder,
         onLink = { link = it },
         onNotSpam = vm::markNotSpam,
     )
+
+    askDelete?.let { ask ->
+        val count = if (ask == AskDelete.Messages) selected.size else 1
+        ConfirmDeleteDialog(
+            if (ask == AskDelete.Messages) {
+                pluralStringResource(R.plurals.delete_messages_title, count, count)
+            } else {
+                pluralStringResource(R.plurals.delete_conversations_title, 1, 1)
+            },
+            onConfirm = {
+                askDelete = null
+                if (ask == AskDelete.Messages) {
+                    vm.deleteSelected()?.let { (n, deletion) ->
+                        notices.undo(context.resources.getQuantityString(R.plurals.thread_messages_deleted, n, n), deletion)
+                    }
+                } else {
+                    vm.deleteConversation()?.let {
+                        notices.undo(conversationDeleted, it)
+                        onClosed()
+                    }
+                }
+            },
+            onDismiss = { askDelete = null },
+        )
+    }
 
     if (moveSheet && known != null) {
         MoveToFolderFlow(
@@ -293,3 +316,6 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
 
 /** The header of a conversation not read yet: no name, no number, no actions. */
 internal fun placeholderConversation(threadId: Long) = Conversation(threadId, name = "", snippet = "", time = "", avatarArgb = avatarColor(""))
+
+/** Which delete question is open on the conversation screen. */
+private enum class AskDelete { Messages, Conversation }

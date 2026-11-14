@@ -55,6 +55,11 @@
         <item quantity="two">%1$d תוצאות נבחרו</item>
         <item quantity="other">%1$d תוצאות נבחרו</item>
     </plurals>
+    <plurals name="inbox_selected_count">
+        <item quantity="one">שיחה אחת נבחרה</item>
+        <item quantity="two">%1$d שיחות נבחרו</item>
+        <item quantity="other">%1$d שיחות נבחרו</item>
+    </plurals>
     <plurals name="search_move_applies_to">
         <item quantity="one">השולח הזה, גם בעתיד</item>
         <item quantity="two">%1$d שולחים, גם בעתיד</item>
@@ -85,6 +90,28 @@
     <string name="common_tomorrow">מחר</string>
     <string name="common_undo">ביטול</string>
     <string name="common_cancel">ביטול</string>
+    <string name="common_delete">מחק</string>
+    <string name="delete_confirm_body">הן יעברו לסל המחזור, ואפשר לשחזר אותן משם במשך 30 יום.</string>
+    <plurals name="delete_conversations_title">
+        <item quantity="one">למחוק את השיחה?</item>
+        <item quantity="two">למחוק %1$d שיחות?</item>
+        <item quantity="other">למחוק %1$d שיחות?</item>
+    </plurals>
+    <plurals name="delete_messages_title">
+        <item quantity="one">למחוק את ההודעה?</item>
+        <item quantity="two">למחוק %1$d הודעות?</item>
+        <item quantity="other">למחוק %1$d הודעות?</item>
+    </plurals>
+    <plurals name="delete_results_title">
+        <item quantity="one">למחוק את התוצאה?</item>
+        <item quantity="two">למחוק %1$d תוצאות?</item>
+        <item quantity="other">למחוק %1$d תוצאות?</item>
+    </plurals>
+    <plurals name="delete_senders_title">
+        <item quantity="one">למחוק את כל ההודעות של השולח הזה?</item>
+        <item quantity="two">למחוק את ההודעות של %1$d שולחים?</item>
+        <item quantity="other">למחוק את ההודעות של %1$d שולחים?</item>
+    </plurals>
 
     <!-- inbox_ -->
     <string name="inbox_settings_description">הגדרות</string>

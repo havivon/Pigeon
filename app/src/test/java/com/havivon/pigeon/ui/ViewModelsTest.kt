@@ -64,6 +64,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -113,6 +114,53 @@ class ViewModelsTest {
     }
 
     // Inbox
+
+    @Test
+    fun `the inbox selects conversations and acts on them all at once, in the chosen category only`() = runTest {
+        seedInbox()
+        spam.markSpam("+972551234567", 4, listOf(SpamReason.ShortLink))
+        val vm = inbox()
+        collect(vm.state)
+        vm.selectConversation(1)
+        vm.toggleSelected(2)
+        assertEquals(setOf(1L, 2L), vm.selected.value)
+        vm.toggleSelected(2)
+        assertEquals(setOf(1L), vm.selected.value)
+        // Select all: every conversation of the chosen category, spam is not in it
+        vm.selectAll()
+        assertEquals(setOf(1L, 2L, 3L), vm.selected.value)
+        // Another category, or the Unread list, leaves the selection
+        vm.selectFolder(Folder.Banks)
+        assertTrue(vm.selected.value.isEmpty())
+        vm.selectFolder(Folder.All)
+        vm.selectConversation(3)
+        vm.selectUnreadOnly(true)
+        assertTrue(vm.selected.value.isEmpty())
+        vm.selectUnreadOnly(false)
+
+        // Mark as read, then the selection is over
+        vm.selectConversation(1)
+        vm.selectConversation(2)
+        assertNotNull(vm.markSelectedRead())
+        assertTrue(messages.markedReadBatches.flatten().containsAll(listOf(1L, 2L)))
+        assertTrue(vm.selected.value.isEmpty())
+
+        // Delete: both at once, with one undo
+        vm.selectConversation(1)
+        vm.selectConversation(3)
+        val (n, deletion) = vm.deleteSelected()!!
+        assertEquals(2, n)
+        assertEquals(listOf(2L), vm.state.value.conversations.map { it.id })
+        assertTrue(vm.selected.value.isEmpty())
+        assertTrue(deletion.undo())
+        assertEquals(setOf(1L, 2L, 3L), vm.state.value.conversations.map { it.id }.toSet())
+
+        // Move to a category: the conversation goes there, and the selection is over
+        vm.selectConversation(2)
+        vm.moveSelected(FolderChoice.BuiltIn(Folder.Insurance))
+        assertTrue(vm.selected.value.isEmpty())
+        assertEquals(Folder.Insurance, vm.state.value.all.first { it.id == 2L }.folder)
+    }
 
     @Test
     fun `the inbox maps conversations, leaves spam out and counts folders`() = runTest {

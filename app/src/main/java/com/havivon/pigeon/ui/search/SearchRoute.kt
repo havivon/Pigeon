@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
+import androidx.compose.ui.res.pluralStringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,6 +58,7 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
     var messageSheetFor by remember { mutableStateOf<SearchHit?>(null) }
     var remindSheet by remember { mutableStateOf(false) }
     var moveSheet by remember { mutableStateOf(false) }
+    var askDelete by remember { mutableStateOf(false) }
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val needsDefault = rememberNeedsDefaultNotice()
     val markedRead = stringResource(R.string.search_marked_read)
@@ -85,19 +88,22 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
             vm.markSelectedSpam()
             notices.show(movedToSpam)
         },
-        onDelete = {
-            vm.deleteSelected()?.let { d ->
-                val plural = when {
-                    d.conversations == 0 -> R.plurals.thread_messages_deleted
-                    d.messages == 0 -> R.plurals.search_conversations_deleted
-                    else -> R.plurals.search_results_deleted
-                }
-                val message = context.resources.getQuantityString(plural, d.count, d.count)
-                notices.undo(message, d.deletion)
-            } ?: needsDefault()
-        },
+        // Asked first; while Pigeon may not delete, the reason at once instead
+        onDelete = { if (vm.sheet.canDelete) askDelete = true else needsDefault() },
         onRemind = if (count == 1) ({ remindSheet = true }) else null,
     )
+    // After "Delete" in the question: the selection goes, with one undo for all
+    val deleteSelected: () -> Unit = {
+        vm.deleteSelected()?.let { d ->
+            val plural = when {
+                d.conversations == 0 -> R.plurals.thread_messages_deleted
+                d.messages == 0 -> R.plurals.search_conversations_deleted
+                else -> R.plurals.search_results_deleted
+            }
+            val message = context.resources.getQuantityString(plural, d.count, d.count)
+            notices.undo(message, d.deletion)
+        } ?: needsDefault()
+    }
 
     SearchScreen(
         state = state.copy(query = query, searching = state.searching || state.query != query),
@@ -136,6 +142,22 @@ fun SearchRoute(onBack: () -> Unit, openThread: (Long) -> Unit, openMessage: (th
     )
 
     if (moveSheet) MoveSelectionFlow(vm, customFolders, onDismiss = { moveSheet = false })
+
+    if (askDelete) {
+        val title = when {
+            selectedConversations.isEmpty() -> pluralStringResource(R.plurals.delete_messages_title, count, count)
+            selected.isEmpty() -> pluralStringResource(R.plurals.delete_conversations_title, count, count)
+            else -> pluralStringResource(R.plurals.delete_results_title, count, count)
+        }
+        ConfirmDeleteDialog(
+            title,
+            onConfirm = {
+                askDelete = false
+                deleteSelected()
+            },
+            onDismiss = { askDelete = false },
+        )
+    }
 
     if (remindSheet) {
         ReminderSheet(

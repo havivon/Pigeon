@@ -30,7 +30,13 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   dd/MM/yyyy everywhere (the user's request): list rows (today = the time), bubbles ("Today 13:14" or
   "26/10/2026 13:14"), day dividers ("Today" or the date), copied/shared stamps and the favourites widget.
   Reminders keep their own labels. `DateLabels` in `ui/common/Formatting.kt`.
-- **Not done:** installing 0.7.4 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.5** (versionCode 38): every delete of messages or conversations asks first (`ui/components/ConfirmDeleteDialog`):
+  the inbox sheet, the conversation (selected messages, whole conversation), search (selection, one message) and Spam
+  (one sender, the selected ones); when Pigeon may not delete, the "needs default" notice shows at once instead. The
+  undo after a delete stays. Inbox multi-select as in search: "Select" in the long-press sheet, a tap toggles, the
+  search's selection bar (count says "conversations") and action row (read, move, spam, remind for one, delete).
+  It belongs to the chosen category: another category or the Unread list clears it.
+- **Not done:** installing 0.7.5 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

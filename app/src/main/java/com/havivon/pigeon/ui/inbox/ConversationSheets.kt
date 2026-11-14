@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.inbox
 
+import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -48,6 +50,7 @@ fun ConversationSheets(
     val auth = LocalAuthenticator.current
     var remindFor by remember { mutableStateOf<Conversation?>(null) }
     var moveFor by remember { mutableStateOf<Conversation?>(null) }
+    var deleteFor by remember { mutableStateOf<Conversation?>(null) }
     val scope = rememberCoroutineScope()
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val deleted = stringResource(R.string.inbox_conversation_deleted)
@@ -84,7 +87,8 @@ fun ConversationSheets(
                 },
                 onDelete = {
                     onDone()
-                    actions.delete(conv)?.let { notices.undo(deleted, it) } ?: needsDefault()
+                    // Asked first; while Pigeon may not delete, the reason at once instead
+                    if (actions.canDelete) deleteFor = conv else needsDefault()
                 },
                 onOpen = onOpen?.let { open -> { onDone(); open(conv) } },
                 // An explicit, non-null parameter instead of `if (x) ({ … }) else null`: that shape crashed in a sheet
@@ -120,6 +124,17 @@ fun ConversationSheets(
                 }
             },
             onDismiss = { remindFor = null },
+        )
+    }
+
+    deleteFor?.let { conv ->
+        ConfirmDeleteDialog(
+            pluralStringResource(R.plurals.delete_conversations_title, 1, 1),
+            onConfirm = {
+                deleteFor = null
+                actions.delete(conv)?.let { notices.undo(deleted, it) } ?: needsDefault()
+            },
+            onDismiss = { deleteFor = null },
         )
     }
 }

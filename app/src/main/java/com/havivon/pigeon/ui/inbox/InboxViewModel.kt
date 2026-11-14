@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.inbox
 
+import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.havivon.pigeon.domain.folders.FolderMoves
@@ -205,12 +206,91 @@ class InboxViewModel(
 
     /** Spam opens its own screen, so it is never the chosen chip. */
     fun selectFolder(value: Folder) {
-        if (value != Folder.Spam) folder.value = FolderChoice.BuiltIn(value)
+        if (value != Folder.Spam) {
+            folder.value = FolderChoice.BuiltIn(value)
+            clearSelection()
+        }
     }
 
     /** The chip of one of the user's categories. */
     fun selectCustomFolder(id: Long) {
         folder.value = FolderChoice.Custom(id)
+        clearSelection()
+    }
+
+    // Multi-select, as in the search's results: "Select" in a conversation's long-press sheet starts it, a tap adds or removes a
+    // conversation, and the bar at the bottom acts on all of them. It belongs to the chosen category: another category, or the
+    // Unread list, leaves it. Selection mode lasts while anything is selected.
+
+    private val _selected = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** The selected conversations, by id (some may have left the list since: [selectedConversations] is what is acted on). */
+    val selected: StateFlow<Set<Long>> = _selected.asStateFlow()
+
+    /** Starts selecting with this conversation (from its sheet). */
+    fun selectConversation(id: Long) {
+        _selected.value = _selected.value + id
+    }
+
+    fun toggleSelected(id: Long) {
+        _selected.value = _selected.value.let { if (id in it) it - id else it + id }
+    }
+
+    fun clearSelection() {
+        if (_selected.value.isNotEmpty()) _selected.value = emptySet()
+    }
+
+    /** "Select all": every conversation of the chosen category, the pinned ones too. */
+    fun selectAll() {
+        _selected.value = state.value.conversations.mapTo(LinkedHashSet()) { it.id }
+    }
+
+    /** The selected conversations that are still in the chosen category's list. */
+    fun selectedConversations(): List<Conversation> = state.value.conversations.filter { it.id in _selected.value }
+
+    /** "Mark as read" on the selection; null, and nothing changes (the selection stays), while Pigeon is not the default SMS app. */
+    fun markSelectedRead(): Int? {
+        val read = sheet.markAllRead(selectedConversations()) ?: return null
+        clearSelection()
+        return read
+    }
+
+    /** "Mark as spam" on the selection (the senders' later messages follow it). */
+    fun markSelectedSpam() {
+        sheet.markSpamAll(selectedConversations())
+        clearSelection()
+    }
+
+    /** "Move to category" for the selection (null: back to the automatic sorting). */
+    fun moveSelected(target: FolderChoice?) {
+        sheet.moveAll(selectedConversations(), target)
+        clearSelection()
+    }
+
+    /** A new category the selection is moved into; false (nothing made, the selection kept) when the name cannot be used. */
+    suspend fun createFolderAndMoveSelected(name: String, argb: Long?): Boolean {
+        if (!sheet.createFolderAndMoveAll(selectedConversations(), name, argb)) return false
+        clearSelection()
+        return true
+    }
+
+    /**
+     * Deletes the selected conversations, with one undo for all: how many and the undo. Null, and the selection stays, while
+     * Pigeon is not the default SMS app (or when nothing is selected).
+     */
+    fun deleteSelected(): Pair<Int, PendingDeletion>? {
+        val ids = selectedConversations().mapTo(LinkedHashSet()) { it.id }
+        if (ids.isEmpty()) return null
+        val deletion = sheet.deleteConversations(ids) ?: return null
+        clearSelection()
+        return ids.size to deletion
+    }
+
+    /** "Remind me" on the one selected conversation (only offered for exactly one); true when it was saved. */
+    suspend fun remindSelected(atMillis: Long): Boolean {
+        val one = selectedConversations().singleOrNull() ?: return false
+        clearSelection()
+        return sheet.remind(one, atMillis)
     }
 
     // The long-press sheet's actions are [sheet]'s; these keep the names the inbox's screens and tests use
@@ -226,6 +306,7 @@ class InboxViewModel(
     /** The toggle under the chips: every message of the folder (false) or only the unread ones (true). It applies to every folder. */
     fun selectUnreadOnly(value: Boolean) {
         unreadOnly.value = value
+        if (value) clearSelection()
     }
 
     fun togglePin(c: Conversation) = sheet.togglePin(c)

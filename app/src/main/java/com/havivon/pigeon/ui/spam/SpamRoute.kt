@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.spam
 
+import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Shield
@@ -51,6 +52,9 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
     val state by vm.state.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     var confirmAll by rememberSaveable { mutableStateOf(false) }
+    // The delete questions: one sender's (its card), or the chosen senders' (the selection bar)
+    var askGroup by remember { mutableStateOf<SpamGroup?>(null) }
+    var askSelected by remember { mutableStateOf(false) }
     var link by remember { mutableStateOf<LinkInfo?>(null) }
     // The senders "Move to category" acts on, while its sheet is open
     var moving by remember { mutableStateOf<List<SpamGroup>>(emptyList()) }
@@ -69,11 +73,7 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
             notices.show(backToInbox)
         },
         onMove = { moving = listOf(it) },
-        onDelete = { group ->
-            vm.delete(group)?.let { (n, deletion) ->
-                notices.undo(context.resources.getQuantityString(R.plurals.spam_deleted_all, n, n), deletion)
-            } ?: needsDefault()
-        },
+        onDelete = { group -> if (vm.canWrite) askGroup = group else needsDefault() },
         onOpen = openThread,
         onLink = { link = it },
         onDeleteAll = if (state.items.isNotEmpty()) ({ if (vm.canWrite) confirmAll = true else needsDefault() }) else null,
@@ -87,11 +87,7 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
         onSelect = vm::select,
         onToggleSelected = vm::toggleSelected,
         onClearSelection = vm::clearSelection,
-        onDeleteSelected = {
-            vm.deleteSelected()?.let { (n, deletion) ->
-                notices.undo(context.resources.getQuantityString(R.plurals.spam_deleted_all, n, n), deletion)
-            } ?: run { if (!vm.canWrite) needsDefault() }
-        },
+        onDeleteSelected = { if (vm.canWrite) askSelected = true else needsDefault() },
         onNotSpamSelected = {
             if (vm.notSpamSelected() > 0) notices.show(backToInbox)
         },
@@ -136,6 +132,33 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
                 },
             )
         }
+    }
+
+    askGroup?.let { group ->
+        ConfirmDeleteDialog(
+            pluralStringResource(R.plurals.delete_senders_title, 1, 1),
+            onConfirm = {
+                askGroup = null
+                vm.delete(group)?.let { (n, deletion) ->
+                    notices.undo(context.resources.getQuantityString(R.plurals.spam_deleted_all, n, n), deletion)
+                } ?: needsDefault()
+            },
+            onDismiss = { askGroup = null },
+        )
+    }
+
+    if (askSelected) {
+        val senders = state.selected.size
+        ConfirmDeleteDialog(
+            pluralStringResource(R.plurals.delete_senders_title, senders, senders),
+            onConfirm = {
+                askSelected = false
+                vm.deleteSelected()?.let { (n, deletion) ->
+                    notices.undo(context.resources.getQuantityString(R.plurals.spam_deleted_all, n, n), deletion)
+                } ?: run { if (!vm.canWrite) needsDefault() }
+            },
+            onDismiss = { askSelected = false },
+        )
     }
 
     if (confirmAll) {

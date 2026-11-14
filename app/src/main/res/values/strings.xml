@@ -53,6 +53,10 @@
         <item quantity="one">%1$d result selected</item>
         <item quantity="other">%1$d results selected</item>
     </plurals>
+    <plurals name="inbox_selected_count">
+        <item quantity="one">%1$d conversation selected</item>
+        <item quantity="other">%1$d conversations selected</item>
+    </plurals>
     <plurals name="search_move_applies_to">
         <item quantity="one">This sender, now and later</item>
         <item quantity="other">%1$d senders, now and later</item>
@@ -81,6 +85,24 @@
     <string name="common_tomorrow">Tomorrow</string>
     <string name="common_undo">Undo</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_delete">Delete</string>
+    <string name="delete_confirm_body">They move to the recycle bin, where you can restore them for 30 days.</string>
+    <plurals name="delete_conversations_title">
+        <item quantity="one">Delete this conversation?</item>
+        <item quantity="other">Delete %1$d conversations?</item>
+    </plurals>
+    <plurals name="delete_messages_title">
+        <item quantity="one">Delete this message?</item>
+        <item quantity="other">Delete %1$d messages?</item>
+    </plurals>
+    <plurals name="delete_results_title">
+        <item quantity="one">Delete this result?</item>
+        <item quantity="other">Delete %1$d results?</item>
+    </plurals>
+    <plurals name="delete_senders_title">
+        <item quantity="one">Delete every message from this sender?</item>
+        <item quantity="other">Delete the messages of %1$d senders?</item>
+    </plurals>
 
     <!-- inbox_ -->
     <string name="inbox_settings_description">Settings</string>

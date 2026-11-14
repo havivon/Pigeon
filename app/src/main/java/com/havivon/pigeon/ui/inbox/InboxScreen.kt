@@ -1,5 +1,9 @@
 package com.havivon.pigeon.ui.inbox
 
+import com.havivon.pigeon.ui.search.SelectionAction
+import com.havivon.pigeon.ui.search.SelectMark
+import com.havivon.pigeon.ui.search.SearchSelectionBar
+import com.havivon.pigeon.ui.search.SearchSelectionActions
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandHorizontally
@@ -161,6 +165,16 @@ fun InboxScreen(
     categoryOrder: List<String> = emptyList(),
     /** "Manage categories…" at the end of the category menu. */
     onManageCategories: () -> Unit = {},
+    /**
+     * The selected conversations, by id (multi-select, as in the search's results): while any of the list is selected, a tap adds
+     * or removes a conversation, the header becomes the selection bar (close, how many, select all) and [selectionActions] replace
+     * the new-message button at the bottom. Not in the Unread list.
+     */
+    selectedIds: Set<Long> = emptySet(),
+    onToggleSelected: (Conversation) -> Unit = {},
+    onClearSelection: () -> Unit = {},
+    onSelectAll: () -> Unit = {},
+    selectionActions: List<SelectionAction> = emptyList(),
 ) {
     val c = HebTheme.colors
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
@@ -168,6 +182,11 @@ fun InboxScreen(
     val pinned = conversations.filter { it.pinned }
     // Under "All categories" every row says which category it is in, as the search's results do
     val showCategory = selectedFolder == Folder.All && selectedCustom == null
+    val selectedHere = if (unreadOnly) 0 else conversations.count { it.id in selectedIds }
+    val selecting = selectedHere > 0
+    // While selecting, a tap and a long press both add or remove the conversation
+    val tap: (Conversation) -> Unit = if (selecting) onToggleSelected else onOpen
+    val press: (Conversation) -> Unit = if (selecting) onToggleSelected else onLongPress
     val header = rememberCollapsingHeaderState()
     val listState = rememberLazyListState()
     // A list shorter than the screen keeps the header whole
@@ -187,14 +206,27 @@ fun InboxScreen(
                 val entries = categoryMenu(folderCounts, customFolders, customCounts, selectedFolder, selectedCustom, builtInColors, categoryOrder)
                 val onCategory: (CategoryAction) -> Unit = { it.dispatch(onFolder, onCustomFolder, onManageCategories) }
                 val categories = CategoryMenuState(entries, onCategory)
-                InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
+                if (selecting) {
+                    SearchSelectionBar(selectedHere, onClearSelection, onSelectAll, countLabel = R.plurals.inbox_selected_count)
+                } else {
+                    InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
+                }
             },
-        ) { InboxList(listState, padding, conversations, pinned, ruleById, showCategory, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
-        NewMessageButton(
-            expanded = atTop,
-            onClick = onNewMessage,
-            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(FAB_MARGIN).onSizeChanged { fabHeight = it.height },
-        )
+        ) {
+            InboxList(
+                listState, padding, conversations, pinned, ruleById, showCategory, unreadOnly, nothing, loading, emptyState, banner, unreadMessages,
+                tap, press, onOpenMessage, onLongPressMessage, selecting, selectedIds,
+            )
+        }
+        if (selecting) {
+            Box(Modifier.align(Alignment.BottomCenter)) { SearchSelectionActions(selectionActions) }
+        } else {
+            NewMessageButton(
+                expanded = atTop,
+                onClick = onNewMessage,
+                modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(FAB_MARGIN).onSizeChanged { fabHeight = it.height },
+            )
+        }
     }
 }
 
@@ -220,6 +252,8 @@ private fun InboxList(
     onLongPress: (Conversation) -> Unit,
     onOpenMessage: (UnreadMessage) -> Unit,
     onLongPressMessage: (UnreadMessage) -> Unit,
+    selecting: Boolean,
+    selectedIds: Set<Long>,
 ) {
     LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
         if (banner != null) item { banner() }
@@ -240,7 +274,7 @@ private fun InboxList(
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress) }
+                    items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress, selecting, it.id in selectedIds) }
                 }
             }
         }
@@ -249,7 +283,7 @@ private fun InboxList(
             item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
         }
         items(rest, key = { it.id }) {
-            ConversationCard(it, ruleById[it.ruleId], showCategory, onOpen, onLongPress)
+            ConversationCard(it, ruleById[it.ruleId], showCategory, onOpen, onLongPress, selecting, it.id in selectedIds)
         }
     }
 }
@@ -530,7 +564,14 @@ internal fun CountDot(count: Int, selected: Boolean) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
+private fun PinnedTile(
+    conv: Conversation,
+    rule: ColorRule?,
+    onOpen: (Conversation) -> Unit,
+    onLongPress: (Conversation) -> Unit,
+    selecting: Boolean = false,
+    selected: Boolean = false,
+) {
     val c = HebTheme.colors
     // A matching colour rule frames it; without one, the colour of its category (if it has one)
     val ruleColor = rowColor(rule, conv.category)?.let { Color(it) }
@@ -541,6 +582,7 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
             .shadow(if (c.isDark) 0.dp else 3.dp, shape, spotColor = c.accent.copy(alpha = 0.3f))
             .clip(shape)
             .background(c.surface)
+            .background(if (selected) c.accent.copy(alpha = 0.13f) else Color.Transparent)
             .then(if (ruleColor != null) Modifier.border(2.dp, ruleColor, shape) else Modifier)
             .combinedClickable(onClick = { onOpen(conv) }, onLongClick = { onLongPress(conv) })
             .padding(12.dp),
@@ -548,7 +590,8 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
         Row(verticalAlignment = Alignment.CenterVertically) {
             Avatar(conv.name, conv.avatarArgb, size = 40.dp)
             Spacer(Modifier.weight(1f))
-            if (conv.unread > 0) CountBadge(conv.unread)
+            // While selecting, the check circle in the place of the unread count
+            if (selecting) SelectMark(selected) else if (conv.unread > 0) CountBadge(conv.unread)
         }
         Spacer(Modifier.height(8.dp))
         Text(conv.name, color = c.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -567,7 +610,15 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConversationCard(conv: Conversation, rule: ColorRule?, showCategory: Boolean, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
+private fun ConversationCard(
+    conv: Conversation,
+    rule: ColorRule?,
+    showCategory: Boolean,
+    onOpen: (Conversation) -> Unit,
+    onLongPress: (Conversation) -> Unit,
+    selecting: Boolean = false,
+    selected: Boolean = false,
+) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
     // The frame: a matching colour rule first, then the colour of its category
@@ -581,11 +632,13 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, showCategory:
             .shadow(if (c.isDark) 0.dp else 2.dp, shape, spotColor = c.accent.copy(alpha = 0.25f))
             .clip(shape)
             .background(c.surface)
+            .background(if (selected) c.accent.copy(alpha = 0.13f) else Color.Transparent)
             .then(if (frame != null) Modifier.border(2.dp, frame, shape) else Modifier)
             .combinedClickable(onClick = { onOpen(conv) }, onLongClick = { onLongPress(conv) })
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selecting) SelectMark(selected)
         if (conv.isSpam) SpamAvatar() else Avatar(conv.name, conv.avatarArgb)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {

@@ -1,5 +1,10 @@
 package com.havivon.pigeon.ui.inbox
 
+import com.havivon.pigeon.ui.search.selectionActions
+import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.runtime.LaunchedEffect
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
@@ -92,6 +97,36 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
     val notices = LocalNotices.current
     val needsDefault = rememberNeedsDefaultNotice()
 
+    // Multi-select, as in the search's results: "Select" in the long-press sheet starts it
+    val selected by vm.selected.collectAsStateWithLifecycle()
+    val selectedCount = if (state.unreadOnly) 0 else state.conversations.count { it.id in selected }
+    var askDelete by remember { mutableStateOf(false) }
+    var moveSelection by remember { mutableStateOf(false) }
+    var remindSelection by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val markedRead = stringResource(R.string.search_marked_read)
+    val movedToSpam = stringResource(R.string.thread_moved_to_spam)
+    val reminderCreated = stringResource(R.string.thread_reminder_created)
+    // Back leaves the selection first
+    BackHandler(enabled = selectedCount > 0) { vm.clearSelection() }
+    val actions = selectionActions(
+        hasMessages = false,
+        count = selectedCount,
+        allStarred = false,
+        onCopy = {},
+        onShare = {},
+        onStar = {},
+        onMarkRead = { if (vm.markSelectedRead() != null) notices.show(markedRead) else needsDefault() },
+        onMove = { moveSelection = true },
+        onSpam = {
+            vm.markSelectedSpam()
+            notices.show(movedToSpam)
+        },
+        // Asked first; while Pigeon may not delete, the reason at once instead
+        onDelete = { if (vm.sheet.canDelete) askDelete = true else needsDefault() },
+        onRemind = if (selectedCount == 1) ({ remindSelection = true }) else null,
+    )
+
     InboxScreen(
         conversations = state.conversations,
         rules = state.rules,
@@ -122,6 +157,11 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         onLongPress = { sheetFor = it },
         onSearch = { navigate(Screen.Search) },
         onManageCategories = { navigate(Screen.Folders) },
+        selectedIds = selected,
+        onToggleSelected = { vm.toggleSelected(it.id) },
+        onClearSelection = vm::clearSelection,
+        onSelectAll = vm::selectAll,
+        selectionActions = actions,
         onNewMessage = { navigate(Screen.NewMessage()) },
         emptyState = if (state.loaded) ({ InboxEmpty(state.folder, state.unreadOnly, state.customFolderName) }) else null,
         loading = !state.loaded || (state.unreadOnly && state.unread == null),
@@ -144,7 +184,53 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         )
     }
 
-    ConversationSheets(sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = state.customFolders)
+    ConversationSheets(
+        sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = state.customFolders,
+        onSelect = { vm.selectConversation(it.id) },
+    )
+
+    if (askDelete) {
+        ConfirmDeleteDialog(
+            pluralStringResource(R.plurals.delete_conversations_title, selectedCount, selectedCount),
+            onConfirm = {
+                askDelete = false
+                vm.deleteSelected()?.let { (n, deletion) ->
+                    notices.undo(context.resources.getQuantityString(R.plurals.search_conversations_deleted, n, n), deletion)
+                } ?: needsDefault()
+            },
+            onDismiss = { askDelete = false },
+        )
+    }
+
+    if (moveSelection) {
+        // The selection as it was when the sheet opened; the sheet is drawn for its first conversation
+        val list = remember { vm.selectedConversations() }
+        val first = list.firstOrNull()
+        if (first != null) {
+            MoveWithNotices(
+                first, state.customFolders,
+                problemOf = { vm.folderNameProblem(it) },
+                onMove = { vm.moveSelected(it) },
+                onCreate = { name, argb -> vm.createFolderAndMoveSelected(name, argb) },
+                onDismiss = { moveSelection = false },
+                subtitle = pluralStringResource(R.plurals.search_move_applies_to, list.size, list.size),
+            )
+        } else {
+            LaunchedEffect(Unit) { moveSelection = false }
+        }
+    }
+
+    if (remindSelection) {
+        ReminderSheet(
+            onChoose = { at ->
+                remindSelection = false
+                scope.launch {
+                    if (vm.remindSelected(at)) notices.show(String.format(reminderCreated, dateLabels(context).reminder(at, System.currentTimeMillis(), withTime = true)))
+                }
+            },
+            onDismiss = { remindSelection = false },
+        )
+    }
 }
 
 /** The long-press sheet's content: apart from its window, so the design snapshots can draw it. */

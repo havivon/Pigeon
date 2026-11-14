@@ -350,6 +350,9 @@ class ConversationViewModel(
         return ids.isNotEmpty() && state.value.messages.filter { it.id in ids }.all { it.starred }
     }
 
+    /** Whether deleting can happen now (Pigeon is the default SMS app): the screen asks first only then. */
+    val canDelete: Boolean get() = canWrite()
+
     /** Deletes the selected messages, with undo; returns how many and the pending deletion. */
     fun deleteSelected(): Pair<Int, PendingDeletion>? {
         val ids = _selected.value

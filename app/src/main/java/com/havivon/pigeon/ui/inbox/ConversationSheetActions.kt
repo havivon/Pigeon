@@ -106,6 +106,9 @@ class ConversationSheetActions(
         scheduler.schedule(reminders.get(id) ?: Reminder(id, threadId, messageId, text, atMillis, done = false))
     }
 
+    /** Whether deleting can happen now (Pigeon is the default SMS app): the screen asks first only then, otherwise it says why. */
+    val canDelete: Boolean get() = canWrite()
+
     /** Null, and nothing is deleted, while Pigeon is not the default SMS app: the screen says so. */
     fun delete(c: Conversation): PendingDeletion? = if (canWrite()) messages.deleteThreads(setOf(c.id)) else null
 

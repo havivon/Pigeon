@@ -375,7 +375,7 @@ private fun MessageHit(
 
 /** The check circle at the start of a row while selecting. */
 @Composable
-private fun SelectMark(selected: Boolean) {
+internal fun SelectMark(selected: Boolean) {
     val c = HebTheme.colors
     Icon(
         if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,

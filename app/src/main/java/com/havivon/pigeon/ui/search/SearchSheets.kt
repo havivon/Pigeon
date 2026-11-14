@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -175,6 +176,7 @@ internal fun MessageSheet(
     val scope = rememberCoroutineScope()
     var remindFor by remember { mutableStateOf<SearchHit?>(null) }
     var moveFor by remember { mutableStateOf<SearchHit?>(null) }
+    var deleteFor by remember { mutableStateOf<SearchHit?>(null) }
     val needsDefault = rememberNeedsDefaultNotice()
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
@@ -202,8 +204,8 @@ internal fun MessageSheet(
                 onSelect = { onDone(); onSelect(hit) },
                 onDelete = {
                     onDone()
-                    val messages = context.resources
-                    vm.deleteMessage(hit)?.let { notices.undo(messages.getQuantityString(R.plurals.thread_messages_deleted, 1, 1), it) } ?: needsDefault()
+                    // Asked first; while Pigeon may not delete, the reason at once instead
+                    if (vm.sheet.canDelete) deleteFor = hit else needsDefault()
                 },
                 // Each action takes the conversation as an explicit, non-null parameter: a lambda that captured a
                 // smart-cast `conv` inside this sheet crashed on the phone (ClassCastException: Conversation to Void,
@@ -236,6 +238,17 @@ internal fun MessageSheet(
             )
         }
     } }
+
+    deleteFor?.let { hit ->
+        ConfirmDeleteDialog(
+            pluralStringResource(R.plurals.delete_messages_title, 1, 1),
+            onConfirm = {
+                deleteFor = null
+                vm.deleteMessage(hit)?.let { notices.undo(context.resources.getQuantityString(R.plurals.thread_messages_deleted, 1, 1), it) } ?: needsDefault()
+            },
+            onDismiss = { deleteFor = null },
+        )
+    }
 
     moveFor?.let { hit ->
         hit.conversation?.let { conv ->
@@ -299,16 +312,16 @@ internal fun MoveSelectionFlow(
 /** One action of the selection's row. */
 data class SelectionAction(val icon: ImageVector, val label: String, val danger: Boolean = false, val onClick: () -> Unit)
 
-/** The bar at the top while selecting: leave the selection, how many results are selected, and "select all". */
+/** The bar at the top while selecting: leave the selection, how many are selected ([countLabel]: results, conversations), and "select all". */
 @Composable
-internal fun SearchSelectionBar(count: Int, onClear: () -> Unit, onSelectAll: () -> Unit) {
+internal fun SearchSelectionBar(count: Int, onClear: () -> Unit, onSelectAll: () -> Unit, countLabel: Int = R.plurals.search_selected_count) {
     GradientHeader {
         Row(verticalAlignment = Alignment.CenterVertically) {
             HeaderIcon(Icons.Rounded.Close, stringResource(R.string.thread_clear_selection), onClear)
             // The words, or just the number when the icon leaves too little room for them
             FitOrShort(
                 Modifier.weight(1f),
-                full = { Text(pluralStringResource(R.plurals.search_selected_count, count, count), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1) },
+                full = { Text(pluralStringResource(countLabel, count, count), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1) },
                 short = { Text(count.toString(), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
             HeaderIcon(Icons.Rounded.SelectAll, stringResource(R.string.common_select_all), onSelectAll)
