@@ -21,7 +21,11 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   source was replaced after the first save, and the gestures, made once per item, kept writing the old one, so nothing
   could be dragged again), a swap once the card's leading edge passes the neighbour's middle (the last place is easy to
   reach), and slow auto-scroll near the edges (`ReorderAutoScroll`, 260dp/s at most, by time not by frame).
-- **Not done:** installing 0.7.2 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.3** (versionCode 36): dragging upwards with auto-scroll. A swap with the list's first visible item made
+  the LazyColumn keep that item in place (by key), so the card jumped a place, swapped back and flickered; now
+  `ReorderDragState.pendingScroll` puts the scroll position back (`scrollToItem`) and no swap is decided until then.
+  Compose foundation is 1.6.8 (no `requestScrollToItem`). Not tried on the phone yet: the user tests drags by hand.
+- **Not done:** installing 0.7.3 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

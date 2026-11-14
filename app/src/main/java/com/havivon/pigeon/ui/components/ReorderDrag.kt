@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -32,12 +33,28 @@ class ReorderDragState(private val list: LazyListState, private val isItem: (Any
     private var startOffset = 0f
     private var awaitingLayoutFrom: Int? = null
 
+    /**
+     * The scroll position to put back after a swap with the first visible item, or null. The list keeps its first visible
+     * item where it is when the data changes (by its key), so a swap with it would push the dragged card a place up on the
+     * screen, the next check would swap it back, and the card would flicker in place instead of moving up (the edge under
+     * the header, where the first visible item sits, is exactly where a card dragged upwards goes). [ReorderAutoScroll] puts
+     * the position back at once; no swap is decided until then.
+     */
+    var pendingScroll by mutableStateOf<Pair<Int, Int>?>(null)
+        private set
+
+    /** The position [pendingScroll] asked for was put back. */
+    fun scrollRestored(position: Pair<Int, Int>) {
+        if (pendingScroll == position) pendingScroll = null
+    }
+
     fun begin(key: Any) {
         val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key } ?: return
         draggingKey = key
         startOffset = info.offset.toFloat()
         distance = 0f
         awaitingLayoutFrom = null
+        pendingScroll = null
     }
 
     /** How far the dragged card is from its place in the list right now. */
@@ -55,7 +72,7 @@ class ReorderDragState(private val list: LazyListState, private val isItem: (Any
         distance += delta
         val visible = list.layoutInfo.visibleItemsInfo
         val me = visible.firstOrNull { it.key == key } ?: return null
-        if (awaitingLayoutFrom == me.index) return null
+        if (awaitingLayoutFrom == me.index || pendingScroll != null) return null
         awaitingLayoutFrom = null
         val slots = visible.map { ReorderSlot(it.key, it.index, it.offset, it.size) }
         val targetKey = Reorder.swapTarget(ReorderSlot(me.key, me.index, me.offset, me.size), slots, startOffset + distance, isItem) ?: return null
@@ -63,6 +80,9 @@ class ReorderDragState(private val list: LazyListState, private val isItem: (Any
         val to = order.indexOfFirst { keyOf(it) == targetKey }
         if (from < 0 || to < 0 || from == to) return null
         awaitingLayoutFrom = me.index
+        val first = list.firstVisibleItemIndex
+        val targetIndex = visible.firstOrNull { it.key == targetKey }?.index
+        if (me.index == first || targetIndex == first) pendingScroll = first to list.firstVisibleItemScrollOffset
         return order.toMutableList().apply { add(to, removeAt(from)) }
     }
 
@@ -137,6 +157,16 @@ fun <T> ReorderAutoScroll(drag: ReorderDragState, list: LazyListState, order: Li
     val pxPerSecond = with(density) { AUTO_SCROLL_DP_PER_SECOND.dp.toPx() }
     val currentOrder by rememberUpdatedState(order)
     val currentOnOrder by rememberUpdatedState(onOrder)
+    // A swap with the first visible item: its scroll position back before the list lays out again (see pendingScroll).
+    // Also after the drop, so the last swap does not leave the list a place off.
+    LaunchedEffect(drag, list) {
+        snapshotFlow { drag.pendingScroll }.collect { position ->
+            if (position != null) {
+                list.scrollToItem(position.first, position.second)
+                drag.scrollRestored(position)
+            }
+        }
+    }
     val dragging = drag.draggingKey
     LaunchedEffect(dragging) {
         if (dragging == null) return@LaunchedEffect
