@@ -16,7 +16,12 @@ English or a subagent reports in English). Code, commits and comments stay Engli
 - **0.7.1** (versionCode 34): "Move to category" on the spam screen: a button on each sender card and an icon in the
   selection bar. It releases the senders from spam (allow list, as "Not spam") and files every conversation of
   theirs (and later messages) in the chosen category; Spam is not offered as a target there (`offerSpam = false`).
-- **Not done:** installing 0.7.1 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.2** (versionCode 35): drag-reorder fixed in Settings > Categories and in the colour rules
+  (`ui/components/ReorderDrag.kt`): one order state for the screen's life (`rememberDraggedOrder`; a state keyed by the
+  source was replaced after the first save, and the gestures, made once per item, kept writing the old one, so nothing
+  could be dragged again), a swap once the card's leading edge passes the neighbour's middle (the last place is easy to
+  reach), and slow auto-scroll near the edges (`ReorderAutoScroll`, 260dp/s at most, by time not by frame).
+- **Not done:** installing 0.7.2 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

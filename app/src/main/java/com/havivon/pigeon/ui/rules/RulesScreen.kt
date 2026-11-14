@@ -59,7 +59,9 @@ import com.havivon.pigeon.ui.components.FixedHeaderLayout
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.components.PillButton
+import com.havivon.pigeon.ui.components.ReorderAutoScroll
 import com.havivon.pigeon.ui.components.ReorderDragState
+import com.havivon.pigeon.ui.components.rememberDraggedOrder
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
@@ -90,11 +92,13 @@ fun RulesScreen(
     val c = HebTheme.colors
     val listState = rememberLazyListState()
     val drag = remember { ReorderDragState(listState) { it is Int } }
-    // The order on screen while dragging; the repository's order again as soon as it changes
-    var order by remember(rules) { mutableStateOf(rules) }
+    // The order on screen while dragging (and until the saved one arrives); the repository's order otherwise
+    val dragged = rememberDraggedOrder(rules, drag)
+    val order = dragged.value ?: rules
     val currentRules by rememberUpdatedState(rules)
     val currentOrder by rememberUpdatedState(order)
     val currentOnReorder by rememberUpdatedState(onReorder)
+    ReorderAutoScroll(drag, listState, order, keyOf = { it.id }, onOrder = { dragged.value = it })
 
     FixedHeaderLayout(
         Modifier.fillMaxSize().background(c.background),
@@ -132,16 +136,16 @@ fun RulesScreen(
                                 onDragStart = { drag.begin(rule.id) },
                                 onDrag = { change, amount ->
                                     change.consume()
-                                    drag.dragBy(amount.y, currentOrder) { it.id }?.let { order = it }
+                                    drag.dragBy(amount.y, currentOrder) { it.id }?.let { dragged.value = it }
                                 },
                                 onDragEnd = {
                                     drag.release()
                                     val ids = currentOrder.map { it.id }
-                                    if (ids != currentRules.map { it.id }) currentOnReorder(ids)
+                                    if (ids != currentRules.map { it.id }) currentOnReorder(ids) else dragged.value = null
                                 },
                                 onDragCancel = {
                                     drag.release()
-                                    order = currentRules
+                                    dragged.value = null
                                 },
                             )
                         }

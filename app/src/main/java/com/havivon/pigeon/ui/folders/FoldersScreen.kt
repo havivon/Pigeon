@@ -66,7 +66,9 @@ import com.havivon.pigeon.ui.components.HeaderIcon
 import com.havivon.pigeon.ui.inbox.CustomCategoryIcon
 import com.havivon.pigeon.ui.inbox.categoryIcon
 import com.havivon.pigeon.ui.components.PillButton
+import com.havivon.pigeon.ui.components.ReorderAutoScroll
 import com.havivon.pigeon.ui.components.ReorderDragState
+import com.havivon.pigeon.ui.components.rememberDraggedOrder
 import com.havivon.pigeon.ui.components.listBottomPadding
 import com.havivon.pigeon.ui.theme.HebTheme
 
@@ -103,10 +105,12 @@ fun FoldersScreen(
     val listState = rememberLazyListState()
     val drag = remember { ReorderDragState(listState) { it is String && (it.startsWith("b:") || it.startsWith("c:")) } }
     val slots = remember(order, folders) { CategoryOrder.resolve(order, folders) }
-    // The order on screen while dragging; the repository's order again as soon as it changes
-    var arranged by remember(slots) { mutableStateOf(slots) }
+    // The order on screen while dragging (and until the saved one arrives); the repository's order otherwise
+    val dragged = rememberDraggedOrder(slots, drag)
+    val arranged = dragged.value ?: slots
     val currentSlots by rememberUpdatedState(slots)
     val currentArranged by rememberUpdatedState(arranged)
+    ReorderAutoScroll(drag, listState, arranged, keyOf = { it.token }, onOrder = { dragged.value = it })
     val currentOnReorder by rememberUpdatedState(onReorder)
     val previewToken = previewDragging?.let { CategoryOrder.customToken(it) }
 
@@ -157,16 +161,16 @@ fun FoldersScreen(
                             onDragStart = { drag.begin(token) },
                             onDrag = { change, amount ->
                                 change.consume()
-                                drag.dragBy(amount.y, currentArranged) { it.token }?.let { arranged = it }
+                                drag.dragBy(amount.y, currentArranged) { it.token }?.let { dragged.value = it }
                             },
                             onDragEnd = {
                                 drag.release()
                                 val tokens = currentArranged.map { it.token }
-                                if (tokens != currentSlots.map { it.token }) currentOnReorder(tokens)
+                                if (tokens != currentSlots.map { it.token }) currentOnReorder(tokens) else dragged.value = null
                             },
                             onDragCancel = {
                                 drag.release()
-                                arranged = currentSlots
+                                dragged.value = null
                             },
                         )
                     }
