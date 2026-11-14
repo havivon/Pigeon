@@ -37,6 +37,7 @@ import com.havivon.pigeon.data.sms.TelephonySmsSender
 import com.havivon.pigeon.widget.WidgetRefresher
 import com.havivon.pigeon.widget.refreshSignals
 import com.havivon.pigeon.domain.backup.SettingsBackupManager
+import com.havivon.pigeon.domain.analysis.CodeSpamRelease
 import com.havivon.pigeon.domain.analysis.SpamOnRead
 import com.havivon.pigeon.domain.bin.RecycleBin
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
@@ -173,7 +174,7 @@ class AppContainer(
      * screens call it with every new list; what was judged is remembered, so it is judged once.
      */
     val spamOnRead: SpamOnRead by lazy {
-        SpamOnRead(hook, SpamOnReadMemory(app)) { threadId ->
+        SpamOnRead(hook, SpamOnReadMemory(app), release = CodeSpamRelease(spam, blockedKeywords)::release) { threadId ->
             // Someone the user wrote to is never spam: no need to judge at all
             messages.recentMessages(threadId, SPAM_ON_READ_DEPTH).let { list -> if (list.any { it.type.outgoing }) null else list.lastOrNull() }
         }

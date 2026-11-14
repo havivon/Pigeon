@@ -30,12 +30,14 @@ fun FoldersRoute(onBack: () -> Unit) {
     val vm = pigeonViewModel { app -> FoldersViewModel(app.folders, FolderMoves(app.folders, app.spam, reservedFolderNames(context))) }
     val folders by vm.folders.collectAsStateWithLifecycle()
     val builtInColors by vm.builtInColors.collectAsStateWithLifecycle()
+    val order by vm.order.collectAsStateWithLifecycle()
     val picking by vm.picking.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     var renaming by remember { mutableStateOf<CustomFolder?>(null) }
     var deleting by remember { mutableStateOf<CustomFolder?>(null) }
     var creating by rememberSaveable { mutableStateOf(false) }
     val created = stringResource(R.string.folders_created)
+    val orderReset = stringResource(R.string.folders_reset_order_done)
 
     FoldersScreen(
         folders = folders,
@@ -45,7 +47,12 @@ fun FoldersRoute(onBack: () -> Unit) {
         onNew = { creating = true },
         builtInColors = builtInColors,
         onColor = vm::pickColorFor,
-        onReorder = vm::reorder,
+        order = order,
+        onReorder = vm::reorderAll,
+        onResetOrder = {
+            vm.resetOrder()
+            notices.show(orderReset)
+        },
     )
 
     if (creating) {

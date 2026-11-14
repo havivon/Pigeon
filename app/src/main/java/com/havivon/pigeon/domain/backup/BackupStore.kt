@@ -30,6 +30,11 @@ data class RestorePlan(
     val categoryColors: List<Long?> = emptyList(),
     /** The built-in folders' colours; null leaves the phone's as they are (a version 1 file has none). */
     val folderColors: Map<Folder, Long>? = null,
+    /**
+     * The order of all the categories: "b:Banks" for a built-in one and "c:2" for the category at index 2 of [categories].
+     * Empty is the default order; null leaves the phone's order of the built-in ones as it is (a file before version 3).
+     */
+    val categoryOrder: List<String>? = null,
     val moves: List<PlannedMove>,
     val pinnedThreadIds: Set<Long>?,
     val lockedThreadIds: Set<Long>?,

@@ -120,3 +120,13 @@ data class CategoryColorEntity(
     @PrimaryKey val folder: String,
     val argb: Long,
 )
+
+/**
+ * A place in the list of all the categories (see `CategoryOrder`): [token] is "b:Banks" for a built-in category or "c:12" for
+ * the user's category with id 12. Added in database version 5. No rows means the default order.
+ */
+@Entity(tableName = "category_order")
+data class CategoryOrderEntity(
+    @PrimaryKey val token: String,
+    val position: Int,
+)

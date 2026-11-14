@@ -15,14 +15,33 @@ import com.havivon.pigeon.domain.model.Folder
  *    is shaped like the user's own policy: a policy or claim number, or a kind of insurance ("ביטוח רכב",
  *    "הפוליסה", "health insurance") together with what happened to it (renewed, expires, approved, received).
  *    Never an ad: a text with an opt-out line or with offer words ("הצעת מחיר", "השוו", "quote") is not.
- * 5. [Folder.Deliveries]: the sender is a known courier, or the text is shaped like a shipment update: a
+ * 5. [Folder.Telecom]: the sender is a known telecom company (HOT, Partner, Pelephone, Cellcom, Bezeq...), or the text is a
+ *    line's notice (the browsing settings, a technician's visit, an unpaid line's bill) that names a telecom company or a line.
+ * 6. [Folder.Health]: the sender is a health fund, hospital or ambulance service, or the text is an appointment, a prescription,
+ *    a test or a sick note. A health fund's feedback form or perk is not a notice.
+ * 7. [Folder.Bills]: the sender is a utility, a water corporation or a municipality, or the text is a bill (a consumer number, a
+ *    debt, a fee, "תושבים יקרים") or a payment confirmation.
+ * 8. [Folder.Transport]: the sender is a parking app, Rav-Kav, a toll road, a taxi app, a railway or bus operator, a tracker
+ *    company or the Ministry of Transport ("mot", whose notices are the vehicle's licence and test), or the text is a parking,
+ *    ride or vehicle-test notice.
+ * 9. [Folder.Travel]: the sender is an airline, a hotel chain or a booking site, or the text is a flight, a check-in or a hotel booking.
+ * 10. [Folder.Shopping]: the sender is a known shop, restaurant or pharmacy chain (its shipment update is a Delivery), or the text
+ *    is a receipt, an invoice, an order confirmation or a voucher.
+ * 11. [Folder.Deliveries]: the sender is a known courier, or the text is shaped like a shipment update: a
  *    tracking number, or the user's package or order together with what happened to it.
- * 6. [Folder.Personal]: the sender is a saved contact, or someone the user wrote to. An unknown phone number
+ * 12. [Folder.Personal]: the sender is a saved contact, or someone the user wrote to. An unknown phone number
  *    is not personal (without the contacts permission only the people written to are).
  *
- * An ad is never a bank, an insurer or a delivery, even from a known institution: a message with an opt-out
- * line ("הסר", "להסרה", "STOP", "unsubscribe") or opening with the ad marker ("פרסומת", "Ad:"), both of which
- * Israeli law requires only in advertising, goes to [Folder.All] (or to [Folder.Spam] when the scorer says so). A code with an opt-out line is still a code.
+ * Why this order: the more specific institution wins over the more general one. A bank's charge is a bank's even when it names
+ * a shop; a pharmacy's prescription is Health although its sender is a shop (the sender is only the weakest sign); a shop's "your
+ * order was shipped" is a delivery, but its receipt is Shopping; a courier's update stays a delivery. Spam and codes come first
+ * because they are the user's safety and the one-tap copy.
+ *
+ * An ad (a message with an opt-out line: "הסר", "להסרה", "STOP", "unsubscribe", or opening with the ad marker "פרסומת", "Ad:", both
+ * of which Israeli law requires only in advertising) is filed by its sender alone: from a known institution's sender id (the
+ * Phoenix, Cellcom, Shufersal...) it stays in that institution's category, so the conversation does not leave it whenever the
+ * latest message is an ad; its text never decides, so an advertiser's ad that says "ביטוח" or "סלולר" goes to [Folder.All] (or
+ * to [Folder.Spam] when the scorer says so). A code with an opt-out line is still a code.
  *
  * The senders are recognised first (banks, then insurers, then couriers), then the shapes of the text in
  * the same order. Anything else (an advertiser, a service with an alphanumeric id, a stranger's number) stays
@@ -40,36 +59,60 @@ object FolderClassifier {
         if (CodeExtractor.extract(sms.body, sms.address, knownPerson = sms.isContact || sms.userWrote) != null) return Folder.Codes
         val known = sms.isContact || sms.userWrote
         val service = serviceFolder(sms)
-        if (service != null) return if (isAd(sms.body, Text.words(sms.body))) Folder.All else service
+        if (service != null) return if (isAd(sms.body, Text.words(sms.body))) senderFolder(sms) ?: Folder.All else service
         return if (known) Folder.Personal else Folder.All
     }
 
     /**
-     * The service folder [sms] is shaped for, whether or not it is an ad: [Folder.Banks], [Folder.Insurance] or
-     * [Folder.Deliveries] by its sender or the shape of its text, or null. [SpamScorer] asks it so that a real
+     * The service folder [sms] is shaped for, whether or not it is an ad: [Folder.Banks], [Folder.Insurance], [Folder.Telecom],
+     * [Folder.Health], [Folder.Bills], [Folder.Transport], [Folder.Travel], [Folder.Shopping] or [Folder.Deliveries] by its
+     * sender or the shape of its text, or null. [SpamScorer] asks it so that a real
      * institution's notice with an opt-out line is not taken for a stranger's ad.
      */
+    /**
+     * The folder of [sms] by its sender alone (a known bank, insurer, service, courier or shop), or null: what an ad is filed
+     * by (see the class comment). A saved contact counts only by the distinctive names, as in [serviceFolder].
+     */
+    private fun senderFolder(sms: IncomingSms): Folder? {
+        val name = sms.senderName?.let { Text.words(it) }.orEmpty()
+        val address = Text.words(sms.address)
+        if (isBank(address, plainNames = true) || isBank(name, plainNames = !sms.isContact)) return Folder.Banks
+        if (isInsurer(address, plainNames = true) || isInsurer(name, plainNames = !sms.isContact)) return Folder.Insurance
+        ServiceCategories.folderBySender(address, name, sms.isContact, Text.words(sms.body))?.let { return it }
+        if (isCourier(address) || isCourier(name)) return Folder.Deliveries
+        return if (ServiceCategories.isShoppingSender(address, name, sms.isContact)) Folder.Shopping else null
+    }
+
     internal fun serviceFolder(sms: IncomingSms): Folder? {
         val name = sms.senderName?.let { Text.words(it) }.orEmpty()
         val address = Text.words(sms.address)
         // A contact named "Max" is a person: the names that are also everyday words count only for a sender id
         if (isBank(address, plainNames = true) || isBank(name, plainNames = !sms.isContact)) return Folder.Banks
         if (isInsurer(address, plainNames = true) || isInsurer(name, plainNames = !sms.isContact)) return Folder.Insurance
-        if (isCourier(address) || isCourier(name)) return Folder.Deliveries
-        if (sms.isContact || sms.userWrote) return null
-        val normalized = Text.normalize(sms.body)
         val words = Text.words(sms.body)
+        ServiceCategories.folderBySender(address, name, sms.isContact, words)?.let { return it }
+        if (isCourier(address) || isCourier(name)) return Folder.Deliveries
+        val shop = ServiceCategories.isShoppingSender(address, name, sms.isContact)
+        if (sms.isContact || sms.userWrote) return if (shop) Folder.Shopping else null
+        val normalized = Text.normalize(sms.body)
         if (isTransaction(normalized, words)) return Folder.Banks
         if (isInsuranceNotice(normalized, words)) return Folder.Insurance
-        if (isShipmentUpdate(sms.body, normalized, words)) return Folder.Deliveries
-        return null
+        ServiceCategories.folderByText(words)?.let { return it }
+        val shipment = isShipmentUpdate(sms.body, normalized, words)
+        // A shop's own "your order was shipped" is a delivery; anything else from a shop, and a receipt from anyone, is shopping
+        if (shop) return if (shipment) Folder.Deliveries else Folder.Shopping
+        if (ServiceCategories.isShoppingNotice(words)) return Folder.Shopping
+        return if (shipment) Folder.Deliveries else null
     }
 
-    /** Whether the sender id (or a saved contact's name) is one of the known banks, insurers or couriers. */
+    /**
+     * Whether the sender id (or a saved contact's name) is one of the known banks, insurers or couriers, or a known telecom
+     * company, health fund, utility, transport service, airline or shop ([ServiceCategories]).
+     */
     internal fun isInstitution(sms: IncomingSms): Boolean {
         val address = Text.words(sms.address)
         val name = sms.senderName?.let { Text.words(it) }.orEmpty()
-        return isBank(address, plainNames = true) || isInsurer(address, plainNames = true) || isCourier(address) ||
+        return ServiceCategories.isKnownSender(address, name) || isBank(address, plainNames = true) || isInsurer(address, plainNames = true) || isCourier(address) ||
             isBank(name, plainNames = false) || isInsurer(name, plainNames = false) || isCourier(name)
     }
 

@@ -99,6 +99,7 @@ class ConversationMapper(
             addresses = c.addresses,
             locked = isLocked,
             messageCount = c.incomingCount,
+            totalCount = c.totalCount,
             customFolderId = (moved as? FolderChoice.Custom)?.id,
             folderOverridden = moved != null,
             category = categoryTag(spam, moved ?: FolderChoice.BuiltIn(analysis.folder), categories),

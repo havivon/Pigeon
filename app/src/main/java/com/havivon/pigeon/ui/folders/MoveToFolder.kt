@@ -22,7 +22,13 @@ import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.CellTower
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DirectionsBus
+import androidx.compose.material.icons.rounded.Flight
+import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.Key
@@ -57,6 +63,7 @@ import androidx.compose.ui.window.Dialog
 import com.havivon.pigeon.R
 import com.havivon.pigeon.domain.folders.FolderKeys
 import com.havivon.pigeon.domain.folders.FolderNameProblem
+import com.havivon.pigeon.domain.folders.CategoryOrder
 import com.havivon.pigeon.domain.folders.FolderNames
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.CustomFolder
@@ -70,11 +77,11 @@ import com.havivon.pigeon.ui.components.SpamAvatar
 import com.havivon.pigeon.ui.rules.SwatchRow
 import com.havivon.pigeon.ui.theme.HebTheme
 
-/** The built-in folders a conversation can be moved to, in the chips' order ("All" holds everything, Spam comes last). */
-val MoveTargets = listOf(Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries)
+/** The built-in folders a conversation can be moved to, in their default order ("All" holds everything, Spam comes last). */
+val MoveTargets = CategoryOrder.defaultBuiltIns.filter { it.isMoveTarget }
 
 /** The built-in categories the settings list, with their colours: "No category" (a filter, not a target) and the move targets. */
-val BuiltInCategories = listOf(Folder.Uncategorized) + MoveTargets
+val BuiltInCategories = CategoryOrder.defaultBuiltIns
 
 /** The icon of a built-in folder in the "Move to category" sheet. */
 fun folderIcon(folder: Folder): ImageVector = when (folder) {
@@ -83,6 +90,12 @@ fun folderIcon(folder: Folder): ImageVector = when (folder) {
     Folder.Personal -> Icons.Rounded.Person
     Folder.Banks -> Icons.Rounded.AccountBalance
     Folder.Insurance -> Icons.Rounded.HealthAndSafety
+    Folder.Telecom -> Icons.Rounded.CellTower
+    Folder.Health -> Icons.Rounded.MonitorHeart
+    Folder.Bills -> Icons.AutoMirrored.Rounded.ReceiptLong
+    Folder.Transport -> Icons.Rounded.DirectionsBus
+    Folder.Travel -> Icons.Rounded.Flight
+    Folder.Shopping -> Icons.Rounded.ShoppingCart
     Folder.Codes -> Icons.Rounded.Key
     Folder.Deliveries -> Icons.Rounded.LocalShipping
     Folder.Spam -> Icons.Rounded.Report

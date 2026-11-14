@@ -34,7 +34,10 @@ class CategoryMenuTest {
     fun `the lines come in order - built-in folders, the user categories, Spam, Manage`() {
         val m = menu()
         assertEquals(
-            listOf(Folder.All, Folder.Uncategorized, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries),
+            listOf(
+                Folder.All, Folder.Uncategorized, Folder.Personal, Folder.Telecom, Folder.Health, Folder.Bills, Folder.Transport, Folder.Travel,
+                Folder.Shopping, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries,
+            ),
             m.filterIsInstance<CategoryEntry.BuiltIn>().map { it.folder },
         )
         assertEquals(listOf(work, committee), m.filterIsInstance<CategoryEntry.Custom>().map { it.folder })

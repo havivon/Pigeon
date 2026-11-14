@@ -46,8 +46,11 @@ object SpamScorer {
      * 6: an opt-out line from any sender that is no known brand and no service is an ad, more phishing wording (a locked
      * account, a wrong parcel address), pension-withdrawal and class-action lures, cannabis and gambling sold in slang,
      * political campaigns by the names of politicians and parties, and religious chain messages.
+     * 7: a message with a one-time code is never spam by score alone (only a blocked word or the user's own mark makes it
+     * spam), the six new service categories (telecom, health, bills, transport, travel, shopping) are service notices, and a
+     * receipt on a receipt site (wee.ai, payper) is no short-link scam.
      */
-    const val VERSION = 6
+    const val VERSION = 7
 
     /**
      * The score from which a message goes to the spam folder. Every message from an unknown sender starts
@@ -497,7 +500,10 @@ object SpamScorer {
     )
 
     /** The folders of a service notice, whose opt-out line is no ad. */
-    private val SERVICE_FOLDERS = setOf(Folder.Codes, Folder.Banks, Folder.Insurance, Folder.Deliveries)
+    private val SERVICE_FOLDERS = setOf(
+        Folder.Codes, Folder.Banks, Folder.Insurance, Folder.Deliveries,
+        Folder.Telecom, Folder.Health, Folder.Bills, Folder.Transport, Folder.Travel, Folder.Shopping,
+    )
 
     private val NOT_SPAM = SpamVerdict(0, emptyList())
 
@@ -522,7 +528,8 @@ object SpamScorer {
 
         val links = LinkAnalyzer.findLinks(sms.body)
         // A known shortener, or a home-made one such as "lp6.me/nejcz" (LinkAnalyzer.looksShortened)
-        if (links.any { it.isShortener }) {
+        // Except the link to an online receipt (wee.ai, payper) in a receipt: those sites are shorteners by shape and receipts by use
+        if (links.any { it.isShortener && !ServiceCategories.isReceiptWithLink(it.host, sms.body) }) {
             score += SHORT_LINK
             reasons += SpamReason.ShortLink
         }
@@ -638,6 +645,12 @@ object SpamScorer {
         if (blocked.isNotEmpty()) {
             score = maxOf(score, BLOCKED_SCORE)
             reasons.addAll(0, blocked.map { SpamReason.BlockedKeyword(it.trim()) })
+        }
+        // Version 7: a one-time code is what the user waits for. With a code in it the score alone never makes the message spam: an
+        // insurer's code with an opt-out line and a short link ("HAREL: 66655 ... להסרה ... bit.ly/x") must reach the Codes folder. The word the
+        // user blocked still does, and so does the user's own "Mark as spam", which is not judged here.
+        if (blocked.isEmpty() && score >= SPAM_THRESHOLD && CodeExtractor.extract(sms.body, sms.address, knownPerson = false) != null) {
+            score = SPAM_THRESHOLD - 1
         }
         return SpamVerdict(score, reasons)
     }

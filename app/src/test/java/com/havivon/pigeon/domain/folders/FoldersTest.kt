@@ -87,7 +87,7 @@ class FoldersTest {
         assertEquals(FolderChoice.BuiltIn(Folder.Banks), FolderChoiceCodec.decode("Banks", null))
         assertEquals(FolderChoice.Custom(4), FolderChoiceCodec.decode(null, 4))
         // A folder of a later version, or a value that was never allowed: no move
-        assertNull(FolderChoiceCodec.decode("Travel", null))
+        assertNull(FolderChoiceCodec.decode("Cruises", null))
         assertNull(FolderChoiceCodec.decode("Spam", null))
         assertNull(FolderChoiceCodec.decode(null, null))
     }

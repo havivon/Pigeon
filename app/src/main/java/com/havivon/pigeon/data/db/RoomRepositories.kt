@@ -2,6 +2,7 @@ package com.havivon.pigeon.data.db
 
 import androidx.room.withTransaction
 import com.havivon.pigeon.domain.PhoneNumbers
+import com.havivon.pigeon.domain.folders.CategoryOrder
 import com.havivon.pigeon.domain.model.BlockedKeyword
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.CustomFolder
@@ -121,6 +122,8 @@ class RoomSpamRepository(db: PigeonDatabase, private val now: () -> Long = Syste
         return true
     }
 
+    override suspend fun removeVerdict(address: String) = dao.deleteVerdicts(address)
+
     override suspend fun markNotSpam(address: String) {
         val key = PhoneNumbers.normalize(address)
         if (key.isNotEmpty()) dao.markNotSpam(NotSpamEntity(key, now()))
@@ -184,6 +187,15 @@ class RoomFoldersRepository(private val db: PigeonDatabase, private val now: () 
         list.mapNotNull { e -> FolderChoiceCodec.decode(e.builtIn, e.customFolderId)?.let { e.key to it } }.toMap()
     }
 
+    override val categoryOrder: Flow<List<String>> = dao.observeOrder().map { list -> list.map { it.token } }
+
+    override suspend fun setCategoryOrder(tokens: List<String>) = db.withTransaction {
+        val distinct = tokens.distinct()
+        dao.replaceOrder(distinct, reorderedPositions(dao.folders().map { it.id }, CategoryOrder.customIds(distinct)))
+    }
+
+    override suspend fun resetCategoryOrder() = dao.deleteAllOrder()
+
     override suspend fun add(name: String, argb: Long?): Long = db.withTransaction {
         dao.insertFolder(CustomFolderEntity(name = name, position = dao.nextPosition(), createdAtMillis = now(), argb = argb))
     }
@@ -201,10 +213,6 @@ class RoomFoldersRepository(private val db: PigeonDatabase, private val now: () 
     override suspend fun rename(id: Long, name: String) = dao.rename(id, name)
 
     override suspend fun delete(id: Long) = dao.deleteFolderAndOverrides(id)
-
-    override suspend fun reorder(idsInOrder: List<Long>) = db.withTransaction {
-        dao.setPositions(reorderedPositions(dao.folders().map { it.id }, idsInOrder))
-    }
 
     override suspend fun overrideFor(key: String): FolderChoice? =
         dao.override(key)?.let { FolderChoiceCodec.decode(it.builtIn, it.customFolderId) }

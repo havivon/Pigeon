@@ -272,6 +272,7 @@ class FakeSpam : SpamRepository {
         verdictState.update { list -> list.filter { it.address != key } + SpamVerdict(key, threadId, reasons, 0) }
         return true
     }
+    override suspend fun removeVerdict(address: String) = verdictState.update { list -> list.filter { !PhoneNumbers.same(it.address, address) } }
     override suspend fun markNotSpam(address: String) {
         val key = PhoneNumbers.normalize(address)
         verdictState.update { list -> list.filter { !PhoneNumbers.same(it.address, key) } }
@@ -354,11 +355,21 @@ class FakeFolders(initial: List<CustomFolder> = emptyList()) : FoldersRepository
     override suspend fun rename(id: Long, name: String) = folderState.update { list -> list.map { if (it.id == id) it.copy(name = name) else it } }
     override suspend fun delete(id: Long) {
         overrideState.update { map -> map.filterValues { it != FolderChoice.Custom(id) } }
+        orderState.update { list -> list.filter { it != "c:$id" } }
         folderState.update { list -> list.filter { it.id != id } }
     }
-    override suspend fun reorder(idsInOrder: List<Long>) = folderState.update { list ->
-        val listed = idsInOrder.mapNotNull { id -> list.firstOrNull { it.id == id } }.distinct()
-        listed + list.filter { it !in listed }
+    val orderState = MutableStateFlow<List<String>>(emptyList())
+    override val categoryOrder: Flow<List<String>> = orderState
+    override suspend fun setCategoryOrder(tokens: List<String>) {
+        orderState.value = tokens.distinct()
+        val ids = tokens.mapNotNull { it.removePrefix("c:").takeIf { id -> id != it }?.toLongOrNull() }
+        folderState.update { list ->
+            val listed = ids.mapNotNull { id -> list.firstOrNull { it.id == id } }.distinct()
+            listed + list.filter { it !in listed }
+        }
+    }
+    override suspend fun resetCategoryOrder() {
+        orderState.value = emptyList()
     }
     override suspend fun overrideFor(key: String): FolderChoice? = overrideState.value[key]
     override suspend fun setOverride(key: String, choice: FolderChoice) {
@@ -370,8 +381,10 @@ class FakeFolders(initial: List<CustomFolder> = emptyList()) : FoldersRepository
 
 /** The built-in folders' names in English and Hebrew, and the "All" filter, as `reservedFolderNames` reads them from the resources. */
 val ReservedFolderNames = setOf(
-    "All categories", "Personal", "Banks", "Insurance", "Codes", "Deliveries", "Spam", "All",
-    "כל הקטגוריות", "אישי", "בנקים", "ביטוח", "קודים", "משלוחים", "ספאם", "הכל",
+    "All categories", "Personal", "Banks", "Insurance", "Codes", "Deliveries", "Telecom", "Health", "Bills & services",
+    "Transport", "Travel", "Shopping", "Spam", "All",
+    "כל הקטגוריות", "אישי", "בנקים", "ביטוח", "קודים", "משלוחים", "תקשורת", "בריאות", "חשבונות ושירותים",
+    "תחבורה", "תיירות", "קניות", "ספאם", "הכל",
 )
 
 fun testMoves(folders: FoldersRepository, spam: com.havivon.pigeon.domain.repository.SpamRepository) = FolderMoves(folders, spam, ReservedFolderNames)

@@ -9,6 +9,7 @@ import com.havivon.pigeon.domain.backup.BackupReminder
 import com.havivon.pigeon.domain.backup.BackupRule
 import com.havivon.pigeon.domain.backup.BackupSettings
 import com.havivon.pigeon.domain.backup.SettingsBackup
+import com.havivon.pigeon.domain.folders.CategoryOrder
 import com.havivon.pigeon.domain.folders.FolderNames
 import com.havivon.pigeon.domain.model.AppIcon
 import com.havivon.pigeon.domain.model.AppLanguage
@@ -23,13 +24,17 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * [SettingsBackup] as the versioned JSON file `{"format":"pigeon-settings","version":2,...}` (org.json,
+ * [SettingsBackup] as the versioned JSON file `{"format":"pigeon-settings","version":3,...}` (org.json,
  * which Android already has: no new library).
  *
  * Version 2 adds the colours of the categories (`categoryColors`, `folderColors`); a version 1 file is still read, and has
  * none (an import then leaves the phone's colours of the built-in folders as they are). The skin (`settings.skin`, 0.6.0)
  * is an optional field of version 2: a file without it leaves the phone's skin as it is, and an id this version does not
  * know (a skin added later) imports as Sunset.
+ *
+ * Version 3 adds the order of all the categories (`categoryOrder`: "b:Banks" for a built-in one, "c:Work" for one of the user's by
+ * name); an older file has none (an import then leaves the phone's order of the built-in ones as it is). The built-in categories
+ * a later version adds (Telecom, Health...) need no bump: they are read by name like the others, and an unknown name is dropped.
  *
  * Writing never includes a message body (see `SettingsBackup`). Reading is defensive, since the file comes
  * from outside: a file over [BackupLimits.MAX_FILE_BYTES], not JSON, of another format or of a newer
@@ -82,6 +87,8 @@ object BackupJson {
         root.put("categories", array(backup.categories) { it })
         // Version 2: the colours (an object per kind, name to "#AARRGGBB"); a folder or category without one is left out
         root.put("categoryColors", JSONObject().apply { backup.categoryColors.forEach { (name, argb) -> put(name, colorText(argb)) } })
+        // Version 3: the order of all the categories (an empty list is the default order)
+        backup.categoryOrder?.let { order -> root.put("categoryOrder", array(order) { it }) }
         backup.folderColors?.let { colors -> root.put("folderColors", JSONObject().apply { colors.forEach { (folder, argb) -> put(folder.name, colorText(argb)) } }) }
         root.put(
             "categoryMoves",
@@ -158,6 +165,7 @@ object BackupJson {
                 categories = categories,
                 categoryColors = if (version >= 2) readCategoryColors(root, categories) else emptyMap(),
                 folderColors = if (version >= 2) readFolderColors(root) else null,
+                categoryOrder = if (version >= 3) readCategoryOrder(root, categories) else null,
                 moves = readMoves(root, categories),
                 pinned = root.strings("pinned", BackupLimits.MAX_CHATS, BackupLimits.MAX_KEY),
                 locked = root.strings("locked", BackupLimits.MAX_CHATS, BackupLimits.MAX_KEY),
@@ -237,6 +245,22 @@ object BackupJson {
             parseColor(o.str(key, 12))?.let { out[folder] = it }
         }
         return out
+    }
+
+    /** Null when the file does not carry an order; otherwise the places it names that this version knows, once each. */
+    private fun readCategoryOrder(root: JSONObject, categories: List<String>): List<String>? {
+        if (root.opt("categoryOrder") !is JSONArray) return null
+        val byLowerName = categories.associateBy { it.lowercase(Locale.ROOT) }
+        val builtIn = CategoryOrder.defaultBuiltIns.associateBy { CategoryOrder.token(it) }
+        val seen = HashSet<String>()
+        return root.strings("categoryOrder", BackupLimits.MAX_CATEGORIES + builtIn.size, BackupLimits.MAX_CATEGORY_NAME * 4 + 2).mapNotNull { raw ->
+            val token = when {
+                raw in builtIn -> raw
+                raw.startsWith("c:") -> byLowerName[FolderNames.clean(raw.removePrefix("c:")).lowercase(Locale.ROOT)]?.let { "c:$it" }
+                else -> null
+            }
+            token?.takeIf { seen.add(it) }
+        }
     }
 
     private fun readMoves(root: JSONObject, categories: List<String>): List<BackupMove> {

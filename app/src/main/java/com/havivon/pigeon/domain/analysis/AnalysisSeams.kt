@@ -2,6 +2,7 @@ package com.havivon.pigeon.domain.analysis
 
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.domain.model.SmsConversation
+import com.havivon.pigeon.domain.model.SpamReason
 import com.havivon.pigeon.domain.repository.BlockedKeywordsRepository
 import com.havivon.pigeon.domain.repository.ContactsRepository
 import com.havivon.pigeon.domain.repository.SpamRepository
@@ -91,5 +92,33 @@ class SpamFilterHook(
         // False for a sender on the "not spam" list: then it is not spam after all
         val stored = spam.markSpam(message.address, message.threadId, verdict.reasons)
         return if (stored) IncomingVerdict.Silent else IncomingVerdict.Notify
+    }
+}
+
+/**
+ * Version 7 of the spam rules: a message with a one-time code is never spam by score alone. A verdict the filter stored
+ * under an older version for such a message is dropped, when the message is read again and the new rules do not call it
+ * spam. Never the user's own "Mark as spam", a number blocked on the phone or a word the user blocked, and never a message
+ * without a code: only the filter's own earlier mistake on a code is undone. The sender is not put on the "not spam" list,
+ * so the filter keeps judging its next messages.
+ */
+class CodeSpamRelease(
+    private val spam: SpamRepository,
+    private val blockedKeywords: BlockedKeywordsRepository,
+) {
+    /** Drops the verdict on [message]'s sender when the rules above say so. */
+    suspend fun release(message: StoredIncomingSms) {
+        if (CodeExtractor.extract(message.body, message.address, knownPerson = false) == null) return
+        val verdict = spam.verdictFor(message.address) ?: return
+        if (verdict.reasons.any { it == SpamReason.MarkedByUser || it == SpamReason.BlockedOnPhone || it is SpamReason.BlockedKeyword }) return
+        val again = SpamScorer.score(
+            IncomingSms(
+                address = message.address,
+                body = message.body,
+                allowedSenders = spam.notSpam.first(),
+                blockedKeywords = blockedKeywords.keywords.first().map { it.word },
+            ),
+        )
+        if (!again.isSpam) spam.removeVerdict(message.address)
     }
 }

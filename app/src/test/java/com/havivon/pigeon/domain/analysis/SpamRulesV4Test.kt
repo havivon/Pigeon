@@ -256,13 +256,13 @@ class SpamRulesV4Test {
     }
 
     @Test
-    fun aBrandsAdWithTheMarkerIsNotSpamAndNotAServiceFolder() {
+    fun aBrandsAdWithTheMarkerIsNotSpamAndStaysInTheBrandsFolder() {
         val cases = listOf(
-            Triple("פרסומת: מבצע סוף עונה בסופר-פארם! 20% הנחה. להסרה השב הסר", "SuperPharm", Folder.All),
-            Triple("פרסומת: כרטיס אשראי חדש עם הטבות! להסרה השב הסר", "Max", Folder.All),
-            Triple("פרסומת: כרטיס אשראי חדש עם הטבות!", "Max", Folder.All),
-            Triple("פרסומת: ביטוח נסיעות ב-20% הנחה", "Harel", Folder.All),
-            Triple("פרסומת: משלוח חינם על כל הזמנה", "IsraelPost", Folder.All),
+            Triple("פרסומת: מבצע סוף עונה בסופר-פארם! 20% הנחה. להסרה השב הסר", "SuperPharm", Folder.Shopping),
+            Triple("פרסומת: כרטיס אשראי חדש עם הטבות! להסרה השב הסר", "Max", Folder.Banks),
+            Triple("פרסומת: כרטיס אשראי חדש עם הטבות!", "Max", Folder.Banks),
+            Triple("פרסומת: ביטוח נסיעות ב-20% הנחה", "Harel", Folder.Insurance),
+            Triple("פרסומת: משלוח חינם על כל הזמנה", "IsraelPost", Folder.Deliveries),
             Triple("Fox: פרסומת - קולקציה חדשה באתר https://www.fox.co.il", "Fox", Folder.All),
             Triple("Ad: your next order ships free | Reply STOP to opt out", "Amazon", Folder.All),
         )

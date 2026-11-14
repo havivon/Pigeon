@@ -124,5 +124,24 @@ class FolderMoves(
     /** Deletes the category; its conversations go back to the automatic sorting. */
     suspend fun delete(id: Long) = folders.delete(id)
 
-    suspend fun reorder(idsInOrder: List<Long>) = folders.reorder(idsInOrder)
+    /**
+     * Puts all the categories, built-in and the user's, in this order (after a drag). Tokens ([CategoryOrder]) that are
+     * not listed keep their relative order after the listed ones.
+     */
+    suspend fun reorderAll(tokensInOrder: List<String>) {
+        val current = CategoryOrder.resolve(folders.categoryOrder.first(), folders.folders.first()).map { it.token }
+        val listed = tokensInOrder.filter { it in current }.distinct()
+        folders.setCategoryOrder(listed + current.filter { it !in listed })
+    }
+
+    /** Puts the user's own categories in this order among themselves, leaving the built-in ones and the places they sit in. */
+    suspend fun reorder(idsInOrder: List<Long>) {
+        val current = CategoryOrder.resolve(folders.categoryOrder.first(), folders.folders.first()).map { it.token }
+        val listed = idsInOrder.map { CategoryOrder.customToken(it) }.filter { it in current }.distinct()
+        val queue = (listed + current.filter { it.startsWith("c:") && it !in listed }).iterator()
+        folders.setCategoryOrder(current.map { if (it.startsWith("c:")) queue.next() else it })
+    }
+
+    /** Back to the default order of all the categories. */
+    suspend fun resetOrder() = folders.resetCategoryOrder()
 }

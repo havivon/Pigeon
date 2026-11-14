@@ -77,6 +77,12 @@ interface SpamRepository {
     /** Records a verdict; ignored (returns false) for a sender on the "not spam" list. */
     suspend fun markSpam(address: String, threadId: Long, reasons: List<SpamReason>): Boolean
 
+    /**
+     * Drops the filter's verdict on this sender without a decision by the user: the filter may judge it again, unlike
+     * [markNotSpam]. For a verdict that newer rules would not make (a one-time code, see `SpamOnRead`).
+     */
+    suspend fun removeVerdict(address: String)
+
     /** "Not spam": drops the verdict and keeps the filter away from this sender from now on. */
     suspend fun markNotSpam(address: String)
 
@@ -128,6 +134,18 @@ interface FoldersRepository {
     /** Every move by hand, by conversation key. */
     val overrides: Flow<Map<String, FolderChoice>>
 
+    /**
+     * The saved order of ALL the categories, built-in and the user's together, as tokens (see `CategoryOrder`). Empty
+     * until the user drags one: the default order.
+     */
+    val categoryOrder: Flow<List<String>>
+
+    /** Saves the order of all the categories (after a drag); the user's own also take their places among themselves. */
+    suspend fun setCategoryOrder(tokens: List<String>)
+
+    /** Back to the default order. */
+    suspend fun resetCategoryOrder()
+
     /** Adds a category at the end of the list and returns its id. The name is checked by the caller (`FolderNames`). */
     suspend fun add(name: String, argb: Long? = null): Long
 
@@ -138,9 +156,6 @@ interface FoldersRepository {
 
     /** Deletes a category; the conversations in it go back to the automatic sorting. */
     suspend fun delete(id: Long)
-
-    /** Puts the categories in this order (after a drag). Those not listed keep their relative order, after the listed ones. */
-    suspend fun reorder(idsInOrder: List<Long>)
 
     suspend fun overrideFor(key: String): FolderChoice?
 

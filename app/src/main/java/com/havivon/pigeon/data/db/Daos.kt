@@ -151,6 +151,12 @@ interface SpamDao {
     @Query("SELECT address FROM spam_verdicts")
     suspend fun verdictAddresses(): List<String>
 
+    /** The verdicts on this sender, under every way its number was written (see [sameSender]); the allow-list is not touched. */
+    @Transaction
+    suspend fun deleteVerdicts(address: String) {
+        sameSender(verdictAddresses(), address).forEach { deleteVerdict(it) }
+    }
+
     @Query("SELECT address FROM not_spam")
     suspend fun notSpamAddresses(): List<String>
 
@@ -249,11 +255,36 @@ interface FolderDao {
     @Query("DELETE FROM folder_overrides WHERE customFolderId = :folderId")
     suspend fun deleteOverridesOf(folderId: Long)
 
-    /** A category and the moves into it, together: its conversations go back to the automatic sorting. */
+    /** A category, the moves into it and its place in the order, together: its conversations go back to the automatic sorting. */
     @Transaction
     suspend fun deleteFolderAndOverrides(id: Long) {
         deleteOverridesOf(id)
+        deleteOrderToken("c:$id")
         deleteFolder(id)
+    }
+
+    @Query("SELECT * FROM category_order ORDER BY position")
+    fun observeOrder(): Flow<List<CategoryOrderEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrder(entry: CategoryOrderEntity)
+
+    @Query("DELETE FROM category_order")
+    suspend fun deleteAllOrder()
+
+    @Query("DELETE FROM category_order WHERE token = :token")
+    suspend fun deleteOrderToken(token: String)
+
+    /** The places of the user's categories only (their ids are the phone's own): for an import that carries no order. */
+    @Query("DELETE FROM category_order WHERE token LIKE 'c:%'")
+    suspend fun deleteCustomOrder()
+
+    /** The whole order replaced, and the user's categories' own positions made to follow it. */
+    @Transaction
+    suspend fun replaceOrder(tokens: List<String>, customPositions: Map<Long, Int>) {
+        deleteAllOrder()
+        tokens.forEachIndexed { position, token -> insertOrder(CategoryOrderEntity(token, position)) }
+        setPositions(customPositions)
     }
 
     @Transaction

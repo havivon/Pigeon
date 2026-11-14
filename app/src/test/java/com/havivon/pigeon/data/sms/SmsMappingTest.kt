@@ -110,6 +110,9 @@ class SmsMappingTest {
         assertTrue(list.getValue(1).userWrote)
         val conversation = list.getValue(2).toConversation("hi", emptyMap())
         assertEquals(2, conversation.incomingCount)
+        // "All" counts every message, incoming and sent (failed sends too); drafts are no messages
+        for ((id, summary) in list) assertEquals(rows.count { it.threadId == id && it.type != SmsType.Draft }, summary.totalCount)
+        assertEquals(list.getValue(2).totalCount, conversation.totalCount)
         assertTrue(conversation.userWrote)
     }
 

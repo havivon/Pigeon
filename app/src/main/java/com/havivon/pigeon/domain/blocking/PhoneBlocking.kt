@@ -140,6 +140,8 @@ class PhoneAwareSpamRepository(
         return marked
     }
 
+    override suspend fun removeVerdict(address: String) = stored.removeVerdict(address)
+
     override suspend fun markNotSpam(address: String) {
         stored.markNotSpam(address)
         if (BlockedOnPhone.blockable(address) && BlockedOnPhone.isOn(blockedNow(), address)) {

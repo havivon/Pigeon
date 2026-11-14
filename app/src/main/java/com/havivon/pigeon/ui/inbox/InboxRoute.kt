@@ -104,9 +104,11 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         selectedCustom = state.customFolder,
         onCustomFolder = { vm.selectCustomFolder(it.id) },
         builtInColors = state.builtInColors,
+        categoryOrder = state.categoryOrder,
         onOpen = { openThread(it.id) },
         unreadOnly = state.unreadOnly,
         unreadCount = state.unreadCount,
+        totalCount = state.totalCount,
         onUnreadOnly = vm::selectUnreadOnly,
         // A viewer is told why at once; nothing is written, and no question is asked
         onMarkAllRead = { if (access.mode.canWrite) confirmMarkAll = true else needsDefault() },

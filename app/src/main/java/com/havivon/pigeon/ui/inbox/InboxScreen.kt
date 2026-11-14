@@ -134,6 +134,8 @@ fun InboxScreen(
     unreadOnly: Boolean = false,
     /** The number on the toggle's "Unread": the unread messages of [selectedFolder]. */
     unreadCount: Int = 0,
+    /** The number on the toggle's "All": every message of [selectedFolder], read and unread. */
+    totalCount: Int = 0,
     onUnreadOnly: (Boolean) -> Unit = {},
     /** "Mark all read" at the other end of the All / Unread row: asks first; dimmed and inert while [unreadCount] is 0. */
     onMarkAllRead: () -> Unit = {},
@@ -155,6 +157,8 @@ fun InboxScreen(
     onCustomFolder: (CustomFolder) -> Unit = {},
     /** The colours the user gave to built-in folders: a dot on their chips. */
     builtInColors: Map<Folder, Long> = emptyMap(),
+    /** The order of all the categories in the menu (tokens of `CategoryOrder`); empty is the default order. */
+    categoryOrder: List<String> = emptyList(),
     /** "Manage categories…" at the end of the category menu. */
     onManageCategories: () -> Unit = {},
 ) {
@@ -178,10 +182,10 @@ fun InboxScreen(
             header,
             Modifier.fillMaxSize(),
             header = {
-                val entries = categoryMenu(folderCounts, customFolders, customCounts, selectedFolder, selectedCustom, builtInColors)
+                val entries = categoryMenu(folderCounts, customFolders, customCounts, selectedFolder, selectedCustom, builtInColors, categoryOrder)
                 val onCategory: (CategoryAction) -> Unit = { it.dispatch(onFolder, onCustomFolder, onManageCategories) }
                 val categories = CategoryMenuState(entries, onCategory)
-                InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
+                InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
             },
         ) { InboxList(listState, padding, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
         NewMessageButton(
@@ -264,6 +268,7 @@ private fun InboxHeader(
     categories: CategoryMenuState,
     unreadOnly: Boolean,
     unreadCount: Int,
+    totalCount: Int,
     onUnreadOnly: (Boolean) -> Unit,
     onMarkAllRead: () -> Unit,
     onSettings: () -> Unit,
@@ -294,7 +299,7 @@ private fun InboxHeader(
             Spacer(Modifier.height(12.dp))
         }
         // Stays: the chosen category (a menu of them) and the All / Unread row
-        UnreadButtons(categories, unreadOnly, unreadCount, onUnreadOnly, onMarkAllRead)
+        UnreadButtons(categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead)
         Spacer(Modifier.height(4.dp))
     }
 }
@@ -353,13 +358,13 @@ private fun SearchPill(onSearch: () -> Unit) {
  * all of it on one line, the category goes on a line of its own above the rest.
  */
 @Composable
-private fun UnreadButtons(categories: CategoryMenuState, unreadOnly: Boolean, unreadCount: Int, onChange: (Boolean) -> Unit, onMarkAllRead: () -> Unit) {
+private fun UnreadButtons(categories: CategoryMenuState, unreadOnly: Boolean, unreadCount: Int, totalCount: Int, onChange: (Boolean) -> Unit, onMarkAllRead: () -> Unit) {
     FilterRow(
         lead = { CategoryDropdown(categories.entries, categories.onAction) },
         filters = {
             // Scrolls sideways only in the extreme case where even the icon leaves the two too little room
             Row(Modifier.selectableGroup().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilterButton(stringResource(R.string.inbox_filter_all), count = 0, selected = !unreadOnly) { onChange(false) }
+                FilterButton(stringResource(R.string.inbox_filter_all), count = totalCount, selected = !unreadOnly) { onChange(false) }
                 FilterButton(stringResource(R.string.inbox_filter_unread), count = unreadCount, selected = unreadOnly) { onChange(true) }
             }
         },

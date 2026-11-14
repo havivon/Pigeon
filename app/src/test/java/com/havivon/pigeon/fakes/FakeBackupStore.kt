@@ -30,6 +30,9 @@ class FakeBackupStore(
         val categories = plan.categories.mapIndexed { i, name -> CustomFolder(i + 1L, name, plan.categoryColors.getOrNull(i)) }
         plan.folderColors?.let { folders.builtInColorState.value = it }
         folders.folderState.value = categories
+        plan.categoryOrder?.let { order ->
+            folders.orderState.value = order.mapNotNull { t -> if (t.startsWith("c:")) t.removePrefix("c:").toIntOrNull()?.let { "c:${it + 1}" } else t }
+        } ?: run { folders.orderState.value = folders.orderState.value.filterNot { it.startsWith("c:") } }
         folders.overrideState.value = plan.moves.mapNotNull { m ->
             val choice = m.folder?.let { FolderChoice.BuiltIn(it) } ?: m.categoryIndex?.let { categories.getOrNull(it) }?.let { FolderChoice.Custom(it.id) }
             choice?.let { m.key to it }

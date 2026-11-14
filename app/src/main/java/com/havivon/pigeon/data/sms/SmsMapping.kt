@@ -44,6 +44,8 @@ data class ThreadSummary(
     val unreadCount: Int,
     val hasFailed: Boolean,
     val incomingCount: Int = 0,
+    /** All its messages, incoming and sent (drafts not counted). */
+    val totalCount: Int = 0,
     val userWrote: Boolean = false,
     /** The unread incoming messages, newest first; [unreadCount] is their number. */
     val unreadIds: List<Long> = emptyList(),
@@ -70,6 +72,7 @@ fun summarizeThreads(rows: List<SmsSummaryRow>, hidden: Set<Long> = emptySet()):
                 unreadCount = unread.size,
                 hasFailed = messages.any { it.type == SmsType.Failed },
                 incomingCount = messages.count { it.type == SmsType.Inbox },
+                totalCount = messages.size,
                 userWrote = messages.any { it.type.outgoing },
                 unreadIds = unread,
             )
@@ -88,6 +91,7 @@ fun ThreadSummary.toConversation(snippet: String, names: Map<String, String?>): 
         unreadCount = unreadCount,
         hasFailed = hasFailed,
         incomingCount = incomingCount,
+        totalCount = totalCount,
         userWrote = userWrote,
         unreadIds = unreadIds,
     )

@@ -2,6 +2,7 @@ package com.havivon.pigeon.data.db
 
 import androidx.room.withTransaction
 import com.havivon.pigeon.domain.backup.BackupStore
+import com.havivon.pigeon.domain.folders.CategoryOrder
 import com.havivon.pigeon.domain.backup.RestorePlan
 import com.havivon.pigeon.domain.model.Reminder
 import java.util.Locale
@@ -29,6 +30,16 @@ class RoomBackupStore(private val db: PigeonDatabase, private val now: () -> Lon
         }
         val folderIds = plan.categories.mapIndexed { position, name ->
             folderDao.insertFolder(CustomFolderEntity(name = name, position = position, createdAtMillis = at, argb = plan.categoryColors.getOrNull(position)))
+        }
+        // The order: the file's (its categories by their new ids), or, from a file without one, the phone's built-in places only
+        if (plan.categoryOrder == null) {
+            folderDao.deleteCustomOrder()
+        } else {
+            folderDao.deleteAllOrder()
+            val tokens = plan.categoryOrder.mapNotNull { token ->
+                if (token.startsWith("c:")) token.removePrefix("c:").toIntOrNull()?.let { folderIds.getOrNull(it) }?.let { CategoryOrder.customToken(it) } else token
+            }
+            tokens.distinct().forEachIndexed { position, token -> folderDao.insertOrder(CategoryOrderEntity(token, position)) }
         }
         for (move in plan.moves) {
             val customId = move.categoryIndex?.let { folderIds.getOrNull(it) }

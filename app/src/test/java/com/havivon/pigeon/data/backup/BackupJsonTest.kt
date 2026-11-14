@@ -69,7 +69,7 @@ class BackupJsonTest {
     fun `the file names its format and version`() {
         val json = BackupJson.encode(sample).replace(" ", "")
         assertTrue(json.contains("\"format\":\"pigeon-settings\""))
-        assertTrue(json.contains("\"version\":2"))
+        assertTrue(json.contains("\"version\":3"))
         assertTrue(json.contains("\"appVersion\":\"0.4.5\""))
         assertTrue(json.contains("\"exportedAt\""))
     }
@@ -177,7 +177,7 @@ class BackupJsonTest {
 
     @Test
     fun `a newer version is refused with its own reason`() {
-        assertEquals(BackupError.TooNew, failure(file(version = 3)))
+        assertEquals(BackupError.TooNew, failure(file(version = 4)))
         assertEquals(BackupError.TooNew, failure(file(version = 999)))
     }
 

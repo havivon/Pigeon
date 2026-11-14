@@ -37,6 +37,8 @@ data class SmsConversation(
     val hasFailed: Boolean,
     /** How many of its messages came in (the Spam folder counts a sender's messages). */
     val incomingCount: Int = 0,
+    /** All its messages, incoming and sent, read and unread: the number on the inbox's "All" button sums these. */
+    val totalCount: Int = 0,
     /** The user wrote in it (sent, or tried to): the other side is someone they talk to, never spam, and Personal. */
     val userWrote: Boolean = false,
     /**

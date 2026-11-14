@@ -3,12 +3,22 @@ package com.havivon.pigeon.domain.model
 import androidx.annotation.StringRes
 import com.havivon.pigeon.R
 
+/**
+ * The built-in categories, declared in their default order (the order the dropdown and Settings start with; the user
+ * can drag them, see `CategoryOrder`). This is not the order of the automatic sorting, which `FolderClassifier` documents.
+ */
 enum class Folder(@StringRes val labelRes: Int) {
     All(R.string.common_folder_all),
 
     /** A filter, not a place: every conversation (not spam) in no built-in folder and in none of the user's categories. */
     Uncategorized(R.string.common_folder_uncategorized),
     Personal(R.string.common_folder_personal),
+    Telecom(R.string.common_folder_telecom),
+    Health(R.string.common_folder_health),
+    Bills(R.string.common_folder_bills),
+    Transport(R.string.common_folder_transport),
+    Travel(R.string.common_folder_travel),
+    Shopping(R.string.common_folder_shopping),
     Banks(R.string.common_folder_banks),
     Insurance(R.string.common_folder_insurance),
     Codes(R.string.common_folder_codes),
@@ -41,8 +51,8 @@ sealed interface FolderChoice {
 
 /**
  * The categories as a row is labelled with them: the user's own ([custom], with their colours) and the colours
- * the user gave to built-in folders ([builtInColors]; Personal, Banks, Insurance, Codes and Deliveries can have
- * one, All and Spam never do: spam keeps its own red).
+ * the user gave to built-in folders ([builtInColors]; every built-in category but All and Spam can have
+ * one: spam keeps its own red).
  */
 data class Categories(val custom: List<CustomFolder> = emptyList(), val builtInColors: Map<Folder, Long> = emptyMap()) {
     /** The colour of [choice], or null for none. */
@@ -146,6 +156,8 @@ data class Conversation(
     val locked: Boolean = false,
     /** How many messages came in (the Spam folder counts a sender's messages). */
     val messageCount: Int = 0,
+    /** All its messages, incoming and sent, read and unread (the inbox's "All" button sums them). */
+    val totalCount: Int = 0,
     /** The user's own category it was moved to; its [folder] is then [Folder.All] (no built-in one). */
     val customFolderId: Long? = null,
     /** The user moved it by hand ([folder] or [customFolderId] is theirs, not the automatic sorting's). */

@@ -26,13 +26,18 @@ import com.havivon.pigeon.domain.model.SpamVerdict as StoredVerdict
  * The memory carries the [version] of the rules it was judged with ([SpamScorer.VERSION]). Better rules
  * (a new version) forget it and judge every conversation again, once, off the main thread like any pass;
  * conversations with a stored verdict (the filter's, or the user's own "Mark as spam") are still left alone,
- * and the senders the user called "Not spam" are never put back (the hook keeps them out).
+ * and the senders the user called "Not spam" are never put back (the hook keeps them out). One exception, [release]: a
+ * stored verdict of the filter on a conversation whose newest message carries a one-time code is judged again with the
+ * new rules, and dropped if they no longer call it spam (version 7: a code is never spam by score alone). The user's own
+ * mark, a number blocked on the phone and a word the user blocked are never released.
  */
 class SpamOnRead(
     private val hook: IncomingMessageHook,
     private val memory: JudgedMemory = JudgedMemory.None,
     /** The rules' version: what [memory] judged with another one is judged again. */
     private val version: Int = SpamScorer.VERSION,
+    /** Drops the filter's verdict on a conversation's newest message when the rules no longer make it spam (see [CodeSpamRelease]). */
+    private val release: suspend (StoredIncomingSms) -> Unit = {},
     /** The conversation's newest incoming message, or null when it has none. */
     private val newestIncoming: suspend (threadId: Long) -> SmsMessage?,
 ) {
@@ -51,9 +56,10 @@ class SpamOnRead(
                 if (judged[c.threadId] == c.dateMillis) continue
                 // One number written two ways ("+972541234567" and "0541234567" in the same thread) is one sender, not a group
                 val address = c.addresses.fold(emptyList<String>()) { acc, a -> if (acc.any { PhoneNumbers.same(it, a) }) acc else acc + a }.singleOrNull()
-                val needed = address != null && c.contactName == null && !c.userWrote && verdicts.none { PhoneNumbers.same(it.address, address) }
-                if (needed) {
-                    val ok = judgeOne(c.threadId, address!!)
+                val unknown = address != null && c.contactName == null && !c.userWrote
+                val stored = unknown && verdicts.any { PhoneNumbers.same(it.address, address!!) }
+                if (unknown) {
+                    val ok = judgeOne(c.threadId, address!!, alreadyJudged = stored)
                     // Unreadable right now (a provider that failed): tried again on the next read
                     if (!ok) continue
                 }
@@ -67,9 +73,13 @@ class SpamOnRead(
         }
     }
 
-    private suspend fun judgeOne(threadId: Long, address: String): Boolean = try {
+    /** Judges the newest incoming message; with a stored verdict ([alreadyJudged]) it only asks [release] whether to drop it. */
+    private suspend fun judgeOne(threadId: Long, address: String, alreadyJudged: Boolean): Boolean = try {
         val m = newestIncoming(threadId)
-        if (m != null) hook.onStored(StoredIncomingSms(m.id, threadId, m.address.ifBlank { address }, m.body, m.dateMillis))
+        if (m != null) {
+            val stored = StoredIncomingSms(m.id, threadId, m.address.ifBlank { address }, m.body, m.dateMillis)
+            if (alreadyJudged) release(stored) else hook.onStored(stored)
+        }
         true
     } catch (e: CancellationException) {
         throw e

@@ -119,6 +119,14 @@ class SettingsBackupManager(
             categories = categories.map { it.name },
             categoryColors = categories.mapNotNull { c -> c.argb?.let { c.name to it } }.toMap(),
             folderColors = folders.builtInColors.first(),
+            categoryOrder = folders.categoryOrder.first().mapNotNull { token ->
+                if (token.startsWith("c:")) {
+                    val id = token.removePrefix("c:").toLongOrNull()
+                    categories.firstOrNull { it.id == id }?.let { "c:${it.name}" }
+                } else {
+                    token.takeIf { it.startsWith("b:") }
+                }
+            },
             moves = moves,
             pinned = pins.pinnedThreadIds.first().mapNotNull { chatOf[it] }.distinct().sorted(),
             locked = locks.lockedThreadIds.first().mapNotNull { chatOf[it] }.distinct().sorted(),
@@ -184,6 +192,9 @@ class SettingsBackupManager(
             categories = backup.categories,
             categoryColors = backup.categories.map { backup.categoryColors[it] },
             folderColors = backup.folderColors,
+            categoryOrder = backup.categoryOrder?.mapNotNull { token ->
+                if (token.startsWith("c:")) backup.categories.indexOf(token.removePrefix("c:")).takeIf { it >= 0 }?.let { "c:$it" } else token
+            },
             moves = moves,
             pinnedThreadIds = pinned.takeIf { canResolve },
             lockedThreadIds = locked.takeIf { canResolve },

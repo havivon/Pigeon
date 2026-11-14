@@ -60,6 +60,8 @@ data class InboxUiState(
     val customFolders: List<CustomFolder> = emptyList(),
     /** The colours the user gave to built-in folders (their chips show a dot of it). */
     val builtInColors: Map<Folder, Long> = emptyMap(),
+    /** The saved order of all the categories (tokens of `CategoryOrder`); empty is the default order. */
+    val categoryOrder: List<String> = emptyList(),
     /** The "Unread" side of the toggle under the chips is on: the list shows [unread] instead of [conversations]. */
     val unreadOnly: Boolean = false,
     val rules: List<ColorRule> = emptyList(),
@@ -85,6 +87,9 @@ data class InboxUiState(
 
     /** The number on the toggle's "Unread": the unread messages of the chosen folder (as on its chip). */
     val unreadCount: Int get() = inFolder(all, choice).sumOf { it.unread }
+
+    /** The number on the toggle's "All": every message of the chosen folder, incoming and sent, read and unread. */
+    val totalCount: Int get() = inFolder(all, choice).sumOf { it.totalCount }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -155,12 +160,12 @@ class InboxViewModel(
      * [SmsConversation.unreadIds]), never from a query of its own: a folder's number and its list always agree.
      * It is read only while shown, and while it is read again after a change the previous list stays.
      */
-    val state: StateFlow<InboxUiState> = combine(mapped, folder, unreadOnly, folders.folders) { m, chosen, only, custom ->
+    val state: StateFlow<InboxUiState> = combine(mapped, folder, unreadOnly, folders.folders, folders.categoryOrder) { m, chosen, only, custom, order ->
         // A category deleted while it was chosen: back to All
         val f = chosen.takeIf { c -> c !is FolderChoice.Custom || custom.any { it.id == c.id } } ?: FolderChoice.BuiltIn(Folder.All)
-        Selection(m, f, only, custom)
+        Selection(m, f, only, custom, order)
     }
-        .transformLatest { (m, f, only, custom) ->
+        .transformLatest { (m, f, only, custom, order) ->
             fun state(unread: List<UnreadMessage>?) = InboxUiState(
                 loaded = true,
                 all = m.all,
@@ -168,6 +173,7 @@ class InboxViewModel(
                 customFolder = (f as? FolderChoice.Custom)?.id,
                 customFolders = custom,
                 builtInColors = m.builtInColors,
+                categoryOrder = order,
                 unreadOnly = only,
                 rules = m.rules,
                 dateLine = dateLine(),
@@ -187,7 +193,7 @@ class InboxViewModel(
         }
         .flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InboxUiState(dateLine = dateLine()))
 
-    private data class Selection(val m: Mapped, val folder: FolderChoice, val unreadOnly: Boolean, val custom: List<CustomFolder>)
+    private data class Selection(val m: Mapped, val folder: FolderChoice, val unreadOnly: Boolean, val custom: List<CustomFolder>, val order: List<String>)
 
     private suspend fun mapUnread(m: Mapped, folder: FolderChoice): List<UnreadMessage> {
         val sources = m.sources.associateBy { it.threadId }

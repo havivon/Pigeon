@@ -21,6 +21,9 @@ class FoldersViewModel(folders: FoldersRepository, private val moves: FolderMove
 
     val folders: StateFlow<List<CustomFolder>> = folders.folders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** The saved order of all the categories (tokens of `CategoryOrder`); empty is the default order. */
+    val order: StateFlow<List<String>> = folders.categoryOrder.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** The colours the user gave to built-in folders. */
     val builtInColors: StateFlow<Map<Folder, Long>> = folders.builtInColors.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
@@ -67,8 +70,18 @@ class FoldersViewModel(folders: FoldersRepository, private val moves: FolderMove
         viewModelScope.launch { moves.delete(folder.id) }
     }
 
-    /** After a drag: the categories in this order (the chips follow it). */
+    /** After a drag: every category, built-in and the user's, in this order (the dropdown follows it). */
+    fun reorderAll(tokensInOrder: List<String>) {
+        viewModelScope.launch { moves.reorderAll(tokensInOrder) }
+    }
+
+    /** The user's own categories in this order among themselves. */
     fun reorder(idsInOrder: List<Long>) {
         viewModelScope.launch { moves.reorder(idsInOrder) }
+    }
+
+    /** "Reset to default order". */
+    fun resetOrder() {
+        viewModelScope.launch { moves.resetOrder() }
     }
 }

@@ -132,7 +132,9 @@ class MappingTest {
     @Test
     fun `the chips count unread messages per folder, with no chip for unread`() {
         val counts = folderCounts(folderConversations)
-        assertEquals(setOf(Folder.All, Folder.Uncategorized, Folder.Personal, Folder.Banks, Folder.Insurance, Folder.Codes, Folder.Deliveries, Folder.Spam), counts.keys)
+        assertEquals(Folder.entries.toSet(), counts.keys)
+        assertEquals(0, counts[Folder.Telecom])
+        assertEquals(0, counts[Folder.Shopping])
         assertEquals(12, counts[Folder.All])
         assertEquals(4, counts[Folder.Uncategorized])
         assertEquals(2, counts[Folder.Personal])

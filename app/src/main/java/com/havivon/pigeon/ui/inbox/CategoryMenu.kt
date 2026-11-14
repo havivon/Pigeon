@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.havivon.pigeon.R
+import com.havivon.pigeon.domain.folders.CategoryOrder
+import com.havivon.pigeon.domain.folders.CategorySlot
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.Folder
 import com.havivon.pigeon.ui.folders.folderIcon
@@ -73,9 +75,10 @@ sealed interface CategoryAction {
 }
 
 /**
- * The menu's lines, in order: the built-in folders (All, Personal, Banks, Insurance, Codes, Deliveries), the user's
- * categories in their order, then Spam and "Manage categories…". The chosen one is [selectedCustom] when it is one of
- * [custom], else [selected] (a deleted category of the user's falls back to All).
+ * The menu's lines, in order: "All categories" always first; then every other category, the built-in ones (No category,
+ * Personal, Telecom, ...) and the user's own together, in the order the user gave them in Settings ([order], tokens of
+ * `CategoryOrder`; empty is the default order); then Spam and "Manage categories…", always last. The chosen one is
+ * [selectedCustom] when it is one of [custom], else [selected] (a deleted category of the user's falls back to All).
  */
 fun categoryMenu(
     counts: Map<Folder, Int>,
@@ -84,14 +87,18 @@ fun categoryMenu(
     selected: Folder,
     selectedCustom: Long?,
     builtInColors: Map<Folder, Long> = emptyMap(),
+    order: List<String> = emptyList(),
 ): List<CategoryEntry> {
     val customChosen = selectedCustom != null && custom.any { it.id == selectedCustom }
     val builtIn = if (customChosen) null else selected.takeUnless { it == Folder.Spam } ?: Folder.All
     return buildList {
-        Folder.entries.filter { it != Folder.Spam }.forEach { f ->
-            add(CategoryEntry.BuiltIn(f, counts[f] ?: 0, builtInColors[f], selected = f == builtIn))
+        add(CategoryEntry.BuiltIn(Folder.All, counts[Folder.All] ?: 0, builtInColors[Folder.All], selected = Folder.All == builtIn))
+        CategoryOrder.resolve(order, custom).forEach { slot ->
+            when (slot) {
+                is CategorySlot.BuiltIn -> add(CategoryEntry.BuiltIn(slot.folder, counts[slot.folder] ?: 0, builtInColors[slot.folder], selected = slot.folder == builtIn))
+                is CategorySlot.Custom -> add(CategoryEntry.Custom(slot.folder, customCounts[slot.folder.id] ?: 0, selected = customChosen && slot.folder.id == selectedCustom))
+            }
         }
-        custom.forEach { f -> add(CategoryEntry.Custom(f, customCounts[f.id] ?: 0, selected = customChosen && f.id == selectedCustom)) }
         add(CategoryEntry.Spam(counts[Folder.Spam] ?: 0))
         add(CategoryEntry.Manage)
     }
@@ -119,7 +126,7 @@ private fun CategoryEntry.label(): String = when (this) {
 
 /**
  * The icon of a built-in category: "All categories" has the one the Settings screen gives its "Categories" row, the others
- * their own (Personal, Banks, Insurance, Codes, Deliveries). Used by the menu and by Settings → Categories.
+ * their own (Personal, Telecom, Health, ..., Shopping, Banks, Insurance, Codes, Deliveries). Used by the menu and by Settings → Categories.
  */
 fun categoryIcon(folder: Folder): ImageVector = if (folder == Folder.All) Icons.Rounded.Category else folderIcon(folder)
 
@@ -252,7 +259,8 @@ private fun CategoryMenuItem(entry: CategoryEntry, onClick: () -> Unit) {
         },
         // The category's own icon, in its colour when it has one
         leadingIcon = { Icon(entry.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp)) },
-        trailingIcon = if (entry.count > 0) ({ MenuCount(entry.count) }) else null,
+        // Always a lambda: an if/else of a lambda and null compiles to a Void cast that crashes (see 0.6.3)
+        trailingIcon = { if (entry.count > 0) MenuCount(entry.count) },
         onClick = onClick,
     )
 }

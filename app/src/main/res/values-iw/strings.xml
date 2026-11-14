@@ -73,6 +73,12 @@
     <string name="common_folder_insurance">ביטוח</string>
     <string name="common_folder_codes">קודים</string>
     <string name="common_folder_deliveries">משלוחים</string>
+    <string name="common_folder_telecom">תקשורת</string>
+    <string name="common_folder_health">בריאות</string>
+    <string name="common_folder_bills">חשבונות ושירותים</string>
+    <string name="common_folder_transport">תחבורה</string>
+    <string name="common_folder_travel">תיירות</string>
+    <string name="common_folder_shopping">קניות</string>
     <string name="common_folder_spam">ספאם</string>
     <string name="common_today">היום</string>
     <string name="common_yesterday">אתמול</string>
@@ -590,9 +596,9 @@
     <string name="folder_create">צור והעבר</string>
     <string name="folder_save">שמור</string>
     <string name="folders_title">קטגוריות</string>
-    <string name="folders_subtitle">המובנות, ואז שלך · לוחצים על נקודה כדי לצבוע · גוררים את שלך כדי לסדר</string>
-    <string name="folders_builtin_section">קטגוריות מובנות</string>
-    <string name="folders_section">הקטגוריות שלך</string>
+    <string name="folders_subtitle">כולן ברשימה אחת · גוררים כדי לסדר · לוחצים על נקודה כדי לצבוע</string>
+    <string name="folders_reset_order">החזר לסדר ברירת המחדל</string>
+    <string name="folders_reset_order_done">הסדר אופס</string>
     <string name="folders_color">הצבע של %1$s</string>
     <string name="folder_color_title">צבע ל„%1$s”</string>
     <string name="folder_color_label">צבע (לא חובה)</string>

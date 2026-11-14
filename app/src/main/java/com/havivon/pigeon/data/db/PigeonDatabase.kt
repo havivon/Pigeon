@@ -23,13 +23,15 @@ import androidx.room.RoomDatabase
         CustomFolderEntity::class,
         FolderOverrideEntity::class,
         CategoryColorEntity::class,
+        CategoryOrderEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
     // 2: pinned conversations (a new table, nothing else changes)
     // 3: the user's categories and the conversations moved by hand (two new tables)
     // 4: a colour for a category (a nullable column on custom_folders) and for a built-in folder (a new table)
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
+    // 5: the order of all the categories, built-in and the user's together (a new table; no rows is the default order)
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5)],
 )
 abstract class PigeonDatabase : RoomDatabase() {
     abstract fun colorRules(): ColorRuleDao

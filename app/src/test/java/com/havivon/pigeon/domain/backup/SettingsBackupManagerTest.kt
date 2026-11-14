@@ -95,6 +95,8 @@ private class Phone(val shift: Long = 0) {
         // Colours: one category and one built-in folder have one, the rest none
         folders.setColor(FolderChoice.Custom(work), 0xFF2F80EDL)
         folders.setColor(FolderChoice.BuiltIn(Folder.Banks), 0xFF1E9E6AL)
+        // Their order: the user's two among the built-in ones
+        folders.setCategoryOrder(listOf("b:Codes", "c:$work", "b:Banks", "c:$family"))
         folders.setOverride(FolderKeys.of(dana, listOf("0525550101")), FolderChoice.Custom(work))
         folders.setOverride(FolderKeys.of(bank, listOf("Leumi")), FolderChoice.BuiltIn(Folder.Banks))
         folders.setOverride(FolderKeys.of(group, listOf("0525550103", "0525550104")), FolderChoice.Custom(family))
@@ -123,6 +125,7 @@ private class Phone(val shift: Long = 0) {
             "categories" to categories.map { it.name },
             "categoryColors" to categories.map { it.name to it.argb },
             "builtInColors" to folders.builtInColorState.value,
+            "order" to folders.orderState.value.map { t -> if (t.startsWith("c:")) "c:" + categories.first { it.id == t.removePrefix("c:").toLong() }.name else t },
             "overrides" to folders.overrideState.value.map { (key, choice) ->
                 val chat = FolderKeys.threadOf(key)?.let { chatOf[it] } ?: key
                 chat to when (choice) {
@@ -189,6 +192,30 @@ class SettingsBackupManagerTest {
         c.manager.restore(file.copy(categoryColors = emptyMap(), folderColors = null), canLock = true)
         assertEquals("a version 1 file has none: the phone keeps its own", mapOf(Folder.Codes to 0xFFE0559BL), c.folders.builtInColorState.value)
         assertTrue(c.folders.folderState.value.all { it.argb == null })
+    }
+
+    @Test
+    fun `the order of the categories travels with the file, and an older file keeps the phone's built-in places`() = runTest {
+        val a = Phone()
+        a.setUp()
+        val file = parsed(a.exportJson())
+        assertEquals(listOf("b:Codes", "c:Work", "b:Banks", "c:Family"), file.categoryOrder)
+
+        val b = Phone(shift = 50)
+        b.manager.restore(file, canLock = true)
+        assertEquals(listOf("b:Codes", "c:Work", "b:Banks", "c:Family"), b.appData()["order"])
+
+        // A file from before version 3: the phone's built-in places stay, and the categories it brings take the default places
+        val c = Phone()
+        c.folders.setCategoryOrder(listOf("b:Deliveries", "c:7", "b:Personal"))
+        c.manager.restore(file.copy(categoryOrder = null), canLock = true)
+        assertEquals(listOf("b:Deliveries", "b:Personal"), c.folders.orderState.value)
+
+        // An empty order is the default one
+        val d = Phone()
+        d.folders.setCategoryOrder(listOf("b:Deliveries"))
+        d.manager.restore(file.copy(categoryOrder = emptyList()), canLock = true)
+        assertEquals(emptyList<String>(), d.folders.orderState.value)
     }
 
     @Test
