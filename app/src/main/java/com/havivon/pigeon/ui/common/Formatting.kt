@@ -4,7 +4,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Locale
 
 /**
@@ -22,68 +21,34 @@ class DateLabels(
 ) {
     private val english = locale.language == "en"
     private val timeFormat = DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm a", locale)
-    private val weekdayLong = DateTimeFormatter.ofPattern("EEEE", locale)
     private val weekdayShort = DateTimeFormatter.ofPattern("EEE", locale)
     private val shortDayMonth = DateTimeFormatter.ofPattern(if (english) "MMM d" else "d MMM", locale)
-    private val numericDate = DateTimeFormatter.ofPattern(if (english) "M/d/yy" else "d.M.yy", locale)
-    private val bubbleDate = DateTimeFormatter.ofPattern(if (english) "MMM d" else "d.M", locale)
-    private val bubbleDateYear = DateTimeFormatter.ofPattern(if (english) "MMM d, yyyy" else "d.M.yyyy", locale)
+
+    /** A message's date, in every language and everywhere a message's day is shown: "26/10/2026" (the user's choice). */
+    private val messageDate = DateTimeFormatter.ofPattern("dd/MM/yyyy", locale)
 
     fun date(millis: Long): LocalDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
 
     /** The time of day: "14:05", or "2:05 PM" on a 12-hour phone. */
     fun time(millis: Long): String = timeFormat.format(Instant.ofEpochMilli(millis).atZone(zone))
 
-    /**
-     * The small footer of a message bubble: the time with its day. "Today 13:14", a short weekday within the last
-     * week ("Tue 13:14"), otherwise the date ("3.10 13:14", with the year when it is not this year: "3.10.2026 13:14").
-     */
+    /** The small footer of a message bubble: "Today 13:14", otherwise the date and the time, "26/10/2026 13:14". */
     fun bubble(millis: Long, nowMillis: Long): String {
         val d = date(millis)
-        val n = date(nowMillis)
-        val day = when {
-            !d.isBefore(n) -> today
-            d.isAfter(n.minusDays(7)) -> weekdayShort.format(d)
-            d.year == n.year -> bubbleDate.format(d)
-            else -> bubbleDateYear.format(d)
-        }
+        val day = if (!d.isBefore(date(nowMillis))) today else messageDate.format(d)
         return "$day ${time(millis)}"
     }
 
-    /** The separator above a day's messages: Today, Yesterday, the weekday within the week, otherwise the date. */
+    /** The separator above a day's messages: Today, otherwise the date, "26/10/2026". */
     fun day(millis: Long, nowMillis: Long): String {
         val d = date(millis)
-        val n = date(nowMillis)
-        return when {
-            d == n -> today
-            d == n.minusDays(1) -> yesterday
-            d.isBefore(n) && d.isAfter(n.minusDays(7)) -> weekdayLong.format(d)
-            d.year == n.year -> longDate(d, withYear = false)
-            else -> longDate(d, withYear = true)
-        }
+        return if (d == date(nowMillis)) today else messageDate.format(d)
     }
 
-    /**
-     * "November 15" or, in Hebrew, "15 בנובמבר". The month's stand-alone name, with the Hebrew "ב"
-     * added here: phones differ in whether their date format already has it.
-     */
-    private fun longDate(d: LocalDate, withYear: Boolean): String {
-        val month = d.month.getDisplayName(TextStyle.FULL_STANDALONE, locale)
-        val text = if (english) "$month ${d.dayOfMonth}" else "${d.dayOfMonth} ב$month"
-        return if (!withYear) text else if (english) "$text, ${d.year}" else "$text ${d.year}"
-    }
-
-    /** The time in the conversation list: the time today, Yesterday, a short weekday within the week, otherwise a date. */
+    /** The time in the conversation list: the time today, otherwise the date, "26/10/2026". */
     fun listTime(millis: Long, nowMillis: Long): String {
         val d = date(millis)
-        val n = date(nowMillis)
-        return when {
-            !d.isBefore(n) -> time(millis)
-            d == n.minusDays(1) -> yesterday
-            d.isAfter(n.minusDays(7)) -> weekdayShort.format(d)
-            d.year == n.year -> shortDayMonth.format(d)
-            else -> numericDate.format(d)
-        }
+        return if (!d.isBefore(date(nowMillis))) time(millis) else messageDate.format(d)
     }
 
     /** When a reminder fires, for its button: "Tomorrow 10:00", "Today 18:30", "Tue 20:00", "15 Nov". */
@@ -99,12 +64,12 @@ class DateLabels(
         return if (withTime) "$day ${time(millis)}" else day
     }
 
-    /** A short numeric date, "20.10.26" or "10/20/26", for the favourites widget. */
-    fun shortDate(millis: Long): String = numericDate.format(date(millis))
+    /** A message's date, "20/10/2026", for the favourites widget. */
+    fun shortDate(millis: Long): String = messageDate.format(date(millis))
 
     /** The stamp of a copied or shared message: the time, with the date when the messages span days. */
     fun stamp(millis: Long, withDate: Boolean): String =
-        if (withDate) "${numericDate.format(date(millis))} ${time(millis)}" else time(millis)
+        if (withDate) "${messageDate.format(date(millis))} ${time(millis)}" else time(millis)
 }
 
 /** The avatar colours, in the app's palette. A sender always gets the same one. */

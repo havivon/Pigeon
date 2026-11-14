@@ -198,7 +198,7 @@ class WidgetDataTest {
     fun `favourites show the sender, the date and the text`() {
         val data = WidgetDataBuilder.favorites(listOf(favorite(1, 5, "Danny", "12 Maple Street")), emptySet(), englishLabels(), showText = true)
         val row = data.rows.single()
-        assertEquals(WidgetFavorite(5, "Danny", "12 Maple Street", "10/20/26", row.avatarArgb), row)
+        assertEquals(WidgetFavorite(5, "Danny", "12 Maple Street", "20/10/2026", row.avatarArgb), row)
     }
 
     @Test

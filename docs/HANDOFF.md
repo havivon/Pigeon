@@ -25,7 +25,12 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   the LazyColumn keep that item in place (by key), so the card jumped a place, swapped back and flickered; now
   `ReorderDragState.pendingScroll` puts the scroll position back (`scrollToItem`) and no swap is decided until then.
   Compose foundation is 1.6.8 (no `requestScrollToItem`). Not tried on the phone yet: the user tests drags by hand.
-- **Not done:** installing 0.7.3 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.4** (versionCode 37): under "All categories" every inbox row (and unread row) shows its category tag, as
+  search results do ("No category" too; elsewhere only coloured categories show a tag). Message dates are
+  dd/MM/yyyy everywhere (the user's request): list rows (today = the time), bubbles ("Today 13:14" or
+  "26/10/2026 13:14"), day dividers ("Today" or the date), copied/shared stamps and the favourites widget.
+  Reminders keep their own labels. `DateLabels` in `ui/common/Formatting.kt`.
+- **Not done:** installing 0.7.4 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

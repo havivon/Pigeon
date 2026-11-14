@@ -15,29 +15,27 @@ class FormattingTest {
     private val he = hebrewLabels()
 
     @Test
-    fun `day separators say today, yesterday, the weekday, then the date`() {
+    fun `day separators say today, then the date as dd-mm-yyyy`() {
         assertEquals("Today", en.day(millis(2026, 11, 1, 8, 0), Now))
-        assertEquals("Yesterday", en.day(millis(2026, 10, 31, 23, 59), Now))
-        assertEquals("Tuesday", en.day(millis(2026, 10, 27, 9, 0), Now))
-        assertEquals("October 25", en.day(millis(2026, 10, 25, 9, 0), Now))
-        assertEquals("December 31, 2025", en.day(millis(2025, 12, 31, 9, 0), Now))
+        assertEquals("31/10/2026", en.day(millis(2026, 10, 31, 23, 59), Now))
+        assertEquals("27/10/2026", en.day(millis(2026, 10, 27, 9, 0), Now))
+        assertEquals("31/12/2025", en.day(millis(2025, 12, 31, 9, 0), Now))
     }
 
     @Test
     fun `day separators in Hebrew`() {
         assertEquals("היום", he.day(millis(2026, 11, 1, 8, 0), Now))
-        assertEquals("אתמול", he.day(millis(2026, 10, 31, 9, 0), Now))
-        assertEquals("יום שלישי", he.day(millis(2026, 10, 27, 9, 0), Now))
-        assertEquals("25 באוקטובר", he.day(millis(2026, 10, 25, 9, 0), Now))
+        assertEquals("31/10/2026", he.day(millis(2026, 10, 31, 9, 0), Now))
+        assertEquals("05/01/2026", he.day(millis(2026, 1, 5, 9, 0), Now))
     }
 
     @Test
-    fun `the list shows the time today and shorter labels before`() {
+    fun `the list shows the time today and the date as dd-mm-yyyy before`() {
         assertEquals("09:05", en.listTime(millis(2026, 11, 1, 9, 5), Now))
-        assertEquals("Yesterday", en.listTime(millis(2026, 10, 31, 9, 5), Now))
-        assertEquals("Thu", en.listTime(millis(2026, 10, 29, 9, 5), Now))
-        assertEquals("Oct 2", en.listTime(millis(2026, 10, 2, 9, 5), Now))
-        assertEquals("3/4/25", en.listTime(millis(2025, 3, 4, 9, 5), Now))
+        assertEquals("31/10/2026", en.listTime(millis(2026, 10, 31, 9, 5), Now))
+        assertEquals("02/10/2026", en.listTime(millis(2026, 10, 2, 9, 5), Now))
+        assertEquals("04/03/2025", en.listTime(millis(2025, 3, 4, 9, 5), Now))
+        assertEquals("04/03/2025", he.listTime(millis(2025, 3, 4, 9, 5), Now))
     }
 
     private val en12 = com.havivon.pigeon.ui.common.DateLabels(java.util.Locale.ENGLISH, com.havivon.pigeon.fakes.Utc, false, "Today", "Yesterday", "Tomorrow")
@@ -52,23 +50,12 @@ class FormattingTest {
     }
 
     @Test
-    fun `a bubble footer within the last week names the weekday`() {
-        assertEquals("Sat 13:14", en.bubble(millis(2026, 10, 31, 13, 14), Now))
-        assertEquals("Tue 13:14", en.bubble(millis(2026, 10, 27, 13, 14), Now))
-        assertEquals("Mon 13:14", en.bubble(millis(2026, 10, 26, 13, 14), Now))
-        assertEquals("Tue 1:14 PM", en12.bubble(millis(2026, 10, 27, 13, 14), Now))
-        assertEquals("יום ג׳ 13:14", he.bubble(millis(2026, 10, 27, 13, 14), Now))
-    }
-
-    @Test
-    fun `a bubble footer a week or more back has the date, with the year only when it is not this year`() {
-        assertEquals("Oct 25 13:14", en.bubble(millis(2026, 10, 25, 13, 14), Now))
-        assertEquals("Oct 3 13:14", en.bubble(millis(2026, 10, 3, 13, 14), Now))
-        assertEquals("3.10 13:14", he.bubble(millis(2026, 10, 3, 13, 14), Now))
-        assertEquals("Oct 3, 2025 13:14", en.bubble(millis(2025, 10, 3, 13, 14), Now))
-        assertEquals("3.10.2025 13:14", he.bubble(millis(2025, 10, 3, 13, 14), Now))
-        assertEquals("Oct 3, 2025 1:14 PM", en12.bubble(millis(2025, 10, 3, 13, 14), Now))
-        assertEquals("3.10.2025 1:14 אחה״צ", he12.bubble(millis(2025, 10, 3, 13, 14), Now))
+    fun `a bubble footer before today has the date as dd-mm-yyyy and the time`() {
+        assertEquals("31/10/2026 13:14", en.bubble(millis(2026, 10, 31, 13, 14), Now))
+        assertEquals("27/10/2026 1:14 PM", en12.bubble(millis(2026, 10, 27, 13, 14), Now))
+        assertEquals("03/10/2026 13:14", he.bubble(millis(2026, 10, 3, 13, 14), Now))
+        assertEquals("03/10/2025 13:14", en.bubble(millis(2025, 10, 3, 13, 14), Now))
+        assertEquals("03/10/2025 1:14 אחה״צ", he12.bubble(millis(2025, 10, 3, 13, 14), Now))
     }
 
     @Test

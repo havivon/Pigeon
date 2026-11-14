@@ -38,7 +38,7 @@ class MappingTest {
         )
         val items = threadItems(list, labels, Now) { Message(it.id, it.body, labels.time(it.dateMillis), it.type.outgoing) }
         val shape = items.map { if (it is ThreadItem.Day) "[${it.label}]" else (it as ThreadItem.Msg).message.text }
-        assertEquals(listOf("[Friday]", "a", "[Yesterday]", "b", "c", "[Today]", "d"), shape)
+        assertEquals(listOf("[30/10/2026]", "a", "[31/10/2026]", "b", "c", "[Today]", "d"), shape)
     }
 
     @Test
@@ -332,7 +332,7 @@ class MappingTest {
     fun `copied messages from several days carry the date`() {
         val list = listOf(sms(1, 1, "a", millis(2026, 10, 31, 9, 0)), sms(2, 1, "b", millis(2026, 11, 1, 9, 0)))
         // The name loses its direction marks on the clipboard
-        assertEquals("[10/31/26 09:00] 052: a\n[11/1/26 09:00] 052: b", formatForCopy(list, labels, "Me") { ltr("052") })
+        assertEquals("[31/10/2026 09:00] 052: a\n[01/11/2026 09:00] 052: b", formatForCopy(list, labels, "Me") { ltr("052") })
     }
 
     @Test

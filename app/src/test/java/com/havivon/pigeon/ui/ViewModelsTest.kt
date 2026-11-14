@@ -354,7 +354,7 @@ class ViewModelsTest {
         assertTrue(1L in messages.markedRead)
         assertTrue(1L in cancelled)
         val items = vm.state.value.items
-        assertEquals(ThreadItem.Day("Yesterday"), items.first())
+        assertEquals(ThreadItem.Day("31/10/2026"), items.first())
         assertEquals(ThreadItem.Day("Today"), items[3])
         assertEquals("Danny", vm.state.value.conversation?.name)
     }
@@ -509,7 +509,7 @@ class ViewModelsTest {
         collect(vm.state)
         vm.select(12)
         vm.select(11)
-        assertEquals("[10/31/26 18:24] Me: Yes, sure\n[11/1/26 11:02] Danny: The address: 12 Maple Street", vm.selectedText())
+        assertEquals("[31/10/2026 18:24] Me: Yes, sure\n[01/11/2026 11:02] Danny: The address: 12 Maple Street", vm.selectedText())
         vm.starSelected()
         assertTrue(vm.selected.value.isEmpty())
         assertEquals(setOf(11L, 12L), favorites.state.value.map { it.messageId }.toSet())

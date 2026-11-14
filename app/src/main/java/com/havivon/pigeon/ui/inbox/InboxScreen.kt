@@ -107,7 +107,7 @@ import com.havivon.pigeon.ui.components.rememberHeaderPadding
 import com.havivon.pigeon.ui.components.scaledAtMost
 import com.havivon.pigeon.ui.components.GradientHeader
 import com.havivon.pigeon.ui.components.HeaderIcon
-import com.havivon.pigeon.ui.components.CategoryTagIfColoured
+import com.havivon.pigeon.ui.components.CategoryTagChip
 import com.havivon.pigeon.ui.components.RuleTag
 import com.havivon.pigeon.ui.components.SectionLabel
 import com.havivon.pigeon.ui.components.SpamAvatar
@@ -166,6 +166,8 @@ fun InboxScreen(
     val ruleById = rules.filter { it.enabled }.associateBy { it.id }
     val nothing = if (unreadOnly) unreadMessages.isEmpty() else conversations.isEmpty()
     val pinned = conversations.filter { it.pinned }
+    // Under "All categories" every row says which category it is in, as the search's results do
+    val showCategory = selectedFolder == Folder.All && selectedCustom == null
     val header = rememberCollapsingHeaderState()
     val listState = rememberLazyListState()
     // A list shorter than the screen keeps the header whole
@@ -187,7 +189,7 @@ fun InboxScreen(
                 val categories = CategoryMenuState(entries, onCategory)
                 InboxHeader(header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders, hasReminders, onSearch)
             },
-        ) { InboxList(listState, padding, conversations, pinned, ruleById, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
+        ) { InboxList(listState, padding, conversations, pinned, ruleById, showCategory, unreadOnly, nothing, loading, emptyState, banner, unreadMessages, onOpen, onLongPress, onOpenMessage, onLongPressMessage) }
         NewMessageButton(
             expanded = atTop,
             onClick = onNewMessage,
@@ -206,6 +208,8 @@ private fun InboxList(
     conversations: List<Conversation>,
     pinned: List<Conversation>,
     ruleById: Map<Int, ColorRule>,
+    /** Under "All categories": every row shows its category's tag. */
+    showCategory: Boolean,
     unreadMode: Boolean,
     nothing: Boolean,
     loading: Boolean,
@@ -226,7 +230,7 @@ private fun InboxList(
         }
         if (unreadMode) {
             // No pinned row and no sections: just the messages
-            items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], onOpenMessage, onLongPressMessage) }
+            items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], showCategory, onOpenMessage, onLongPressMessage) }
             return@LazyColumn
         }
         if (pinned.isNotEmpty()) {
@@ -245,7 +249,7 @@ private fun InboxList(
             item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
         }
         items(rest, key = { it.id }) {
-            ConversationCard(it, ruleById[it.ruleId], onOpen, onLongPress)
+            ConversationCard(it, ruleById[it.ruleId], showCategory, onOpen, onLongPress)
         }
     }
 }
@@ -563,7 +567,7 @@ private fun PinnedTile(conv: Conversation, rule: ColorRule?, onOpen: (Conversati
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
+private fun ConversationCard(conv: Conversation, rule: ColorRule?, showCategory: Boolean, onOpen: (Conversation) -> Unit, onLongPress: (Conversation) -> Unit) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
     // The frame: a matching colour rule first, then the colour of its category
@@ -585,7 +589,7 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
         if (conv.isSpam) SpamAvatar() else Avatar(conv.name, conv.avatarArgb)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            RowNameLine(conv.name, conv.time, unread, rule, ruleColor, conv.category)
+            RowNameLine(conv.name, conv.time, unread, rule, ruleColor, conv.category, showCategory)
             Spacer(Modifier.height(3.dp))
             // The code's copy button (or the unread count) at the end; under the snippet when the font is too large for both
             TrailingOrBelow(
@@ -618,12 +622,16 @@ private fun ConversationCard(conv: Conversation, rule: ColorRule?, onOpen: (Conv
 
 /**
  * The first line of a row: the name, its rule and category tags, and the time at the end. The name has priority:
- * the time and the tags are shortened first (see [NameLine]).
+ * the time and the tags are shortened first (see [NameLine]). The category's tag shows for a category the user coloured;
+ * with [showCategory] (under "All categories") for every row, "No category" too, as in the search's results, and on a line
+ * of its own under the name when the line is too tight for it.
  */
 @Composable
-private fun RowNameLine(name: String, time: String, unread: Boolean, rule: ColorRule?, ruleColor: Color?, category: CategoryTag?) {
+private fun RowNameLine(name: String, time: String, unread: Boolean, rule: ColorRule?, ruleColor: Color?, category: CategoryTag?, showCategory: Boolean) {
     val c = HebTheme.colors
-    val hasTags = (rule != null && ruleColor != null) || category?.argb != null
+    val noCategory = stringResource(R.string.search_no_category)
+    val shownTag = if (showCategory) category ?: CategoryTag(noCategory) else category?.takeIf { it.argb != null }
+    val hasTags = (rule != null && ruleColor != null) || shownTag != null
     NameLine(
         name = {
             Text(
@@ -641,9 +649,13 @@ private fun RowNameLine(name: String, time: String, unread: Boolean, rule: Color
                     Spacer(Modifier.width(6.dp))
                     RuleTag(rule.label, ruleColor)
                 }
-                CategoryTagIfColoured(category)
+                if (shownTag != null) {
+                    Spacer(Modifier.width(6.dp))
+                    CategoryTagChip(shownTag)
+                }
             }
         }),
+        tagsUnderWhenTight = showCategory,
         time = {
             Text(
                 time,
@@ -663,7 +675,7 @@ private fun RowNameLine(name: String, time: String, unread: Boolean, rule: Color
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, onOpen: (UnreadMessage) -> Unit, onLongPress: (UnreadMessage) -> Unit) {
+private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, showCategory: Boolean, onOpen: (UnreadMessage) -> Unit, onLongPress: (UnreadMessage) -> Unit) {
     val c = HebTheme.colors
     val ruleColor = rule?.let { Color(it.argb) }
     val frame = rowColor(rule, msg.category)?.let { Color(it) }
@@ -682,7 +694,7 @@ private fun UnreadMessageCard(msg: UnreadMessage, rule: ColorRule?, onOpen: (Unr
         Avatar(msg.name, msg.avatarArgb)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            RowNameLine(msg.name, msg.time, unread = true, rule, ruleColor, msg.category)
+            RowNameLine(msg.name, msg.time, unread = true, rule, ruleColor, msg.category, showCategory)
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.Top) {
                 if (msg.locked) {

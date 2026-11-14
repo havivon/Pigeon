@@ -215,13 +215,6 @@ fun CategoryTagChip(tag: CategoryTag, fallbackArgb: Long? = null) {
     RuleTag(tag.label, (tag.argb ?: fallbackArgb)?.let { Color(it) } ?: HebTheme.colors.onSurfaceMuted)
 }
 
-/** The inbox's rows show the tag only for a category the user coloured (nothing changes for those who never do). */
-@Composable
-fun RowScope.CategoryTagIfColoured(tag: CategoryTag?) {
-    if (tag?.argb == null) return
-    Spacer(Modifier.width(6.dp))
-    CategoryTagChip(tag)
-}
 
 
 @Composable

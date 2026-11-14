@@ -1,6 +1,7 @@
 package com.havivon.pigeon.data.sample
 
 import com.havivon.pigeon.domain.model.ColorRule
+import com.havivon.pigeon.domain.model.CategoryTag
 import com.havivon.pigeon.domain.model.Conversation
 import com.havivon.pigeon.domain.model.FavoriteMessage
 import com.havivon.pigeon.domain.model.Folder
@@ -43,7 +44,7 @@ object SampleData {
                 spamReasons = listOf(SpamReason.LookalikeDomain, SpamReason.Keyword("חבילה ממתינה")),
             ),
             Conversation(
-                103, "054-000-1111", "סקר קצר: לאיזו מפלגה תצביעו בבחירות? השיבו 1 או 2. להסרה השב הסר", "אתמול", 0xFFE53935,
+                103, "054-000-1111", "סקר קצר: לאיזו מפלגה תצביעו בבחירות? השיבו 1 או 2. להסרה השב הסר", "30/10/2026", 0xFFE53935,
                 folder = Folder.Spam,
                 spamReasons = listOf(SpamReason.UnknownSender, SpamReason.Poll, SpamReason.Keyword("הסר")),
                 messageCount = 3,
@@ -58,19 +59,19 @@ object SampleData {
                 ColorRule(4, "עבודה", RuleMatch.Keyword("פגישה"), 0xFF2F80ED, enabled = false),
             ),
             inbox = listOf(
-                Conversation(1, "אמא", "תביא לחם בדרך הביתה ❤️", "12:41", 0xFFE0559B, unread = 2, pinned = true, ruleId = 3, totalCount = 48),
-                Conversation(2, "דני כהן", "ותביא בבקשה את הטופס החתום 🙏", "11:05", 0xFF2F80ED, pinned = true, totalCount = 23),
-                Conversation(3, "הבנק", "חיוב בכרטיס המסתיים ב-4821 בסך 249.90 ₪", "10:32", 0xFF1E9E6A, unread = 1, ruleId = 1, folder = Folder.Banks, totalCount = 12),
-                Conversation(4, "שליחויות", "המשלוח שלך יגיע היום בין 14:00 ל-18:00", "09:15", 0xFFF08A24, ruleId = 2, folder = Folder.Deliveries, totalCount = 5),
-                Conversation(5, "Verify", "קוד האימות שלך הוא 482913", "08:50", 0xFF7C5CE0, unread = 1, folder = Folder.Codes, code = "482913", totalCount = 3),
-                Conversation(6, "נועה לוי", "חחח בדיוק חשבתי עלייך", "אתמול", 0xFF14A3B8, totalCount = 31),
-                Conversation(7, "ועד הבית", "תזכורת: אסיפת דיירים ביום שלישי ב-20:00", "אתמול", 0xFF8D6E63, totalCount = 9),
-                Conversation(8, "יוסי", "הפגישה זזה ל-15:30, מתאים?", "יום ה׳", 0xFF5C6BC0, totalCount = 17),
+                Conversation(1, "אמא", "תביא לחם בדרך הביתה ❤️", "12:41", 0xFFE0559B, unread = 2, pinned = true, ruleId = 3, totalCount = 48, category = CategoryTag("אישי")),
+                Conversation(2, "דני כהן", "ותביא בבקשה את הטופס החתום 🙏", "11:05", 0xFF2F80ED, pinned = true, totalCount = 23, category = CategoryTag("אישי")),
+                Conversation(3, "הבנק", "חיוב בכרטיס המסתיים ב-4821 בסך 249.90 ₪", "10:32", 0xFF1E9E6A, unread = 1, ruleId = 1, folder = Folder.Banks, totalCount = 12, category = CategoryTag("בנקים")),
+                Conversation(4, "שליחויות", "המשלוח שלך יגיע היום בין 14:00 ל-18:00", "09:15", 0xFFF08A24, ruleId = 2, folder = Folder.Deliveries, totalCount = 5, category = CategoryTag("משלוחים")),
+                Conversation(5, "Verify", "קוד האימות שלך הוא 482913", "08:50", 0xFF7C5CE0, unread = 1, folder = Folder.Codes, code = "482913", totalCount = 3, category = CategoryTag("קודים")),
+                Conversation(6, "נועה לוי", "חחח בדיוק חשבתי עלייך", "30/10/2026", 0xFF14A3B8, totalCount = 31, category = CategoryTag("אישי")),
+                Conversation(7, "ועד הבית", "תזכורת: אסיפת דיירים ביום שלישי ב-20:00", "30/10/2026", 0xFF8D6E63, totalCount = 9, folder = Folder.All),
+                Conversation(8, "יוסי", "הפגישה זזה ל-15:30, מתאים?", "29/10/2026", 0xFF5C6BC0, totalCount = 17, category = CategoryTag("אישי")),
             ),
             spam = spam,
             folderCounts = folderCounts(spam),
             dannyThread = listOf(
-                ThreadItem.Day("אתמול"),
+                ThreadItem.Day("30/10/2026"),
                 ThreadItem.Msg(Message(1, "היי, מה קורה? יש לך זמן השבוע לעבור על ההצעה?", "18:20", outgoing = false)),
                 ThreadItem.Msg(Message(2, "כן, בטח. מתי נוח לך?", "18:24", outgoing = true)),
                 ThreadItem.Msg(Message(3, "אולי מחר בבוקר?", "18:25", outgoing = false)),
@@ -104,7 +105,7 @@ object SampleData {
                 spamReasons = listOf(SpamReason.LookalikeDomain, SpamReason.Keyword("package waiting")),
             ),
             Conversation(
-                103, "555-000-1111", "Quick poll: who will you vote for in the election? Reply 1 or 2. Reply STOP to opt out", "Yesterday", 0xFFE53935,
+                103, "555-000-1111", "Quick poll: who will you vote for in the election? Reply 1 or 2. Reply STOP to opt out", "30/10/2026", 0xFFE53935,
                 folder = Folder.Spam,
                 spamReasons = listOf(SpamReason.UnknownSender, SpamReason.Poll, SpamReason.Keyword("STOP")),
                 messageCount = 3,
@@ -119,19 +120,19 @@ object SampleData {
                 ColorRule(4, "Work", RuleMatch.Keyword("meeting"), 0xFF2F80ED, enabled = false),
             ),
             inbox = listOf(
-                Conversation(1, "Mom", "Pick up some bread on your way home ❤️", "12:41 PM", 0xFFE0559B, unread = 2, pinned = true, ruleId = 3, totalCount = 48),
-                Conversation(2, "Danny Cole", "And please bring the signed form 🙏", "11:05 AM", 0xFF2F80ED, pinned = true, totalCount = 23),
-                Conversation(3, "Bank", "Charge on the card ending in 4821 for $249.90", "10:32 AM", 0xFF1E9E6A, unread = 1, ruleId = 1, folder = Folder.Banks, totalCount = 12),
-                Conversation(4, "Couriers", "Your delivery will arrive today between 2:00 PM and 6:00 PM", "9:15 AM", 0xFFF08A24, ruleId = 2, folder = Folder.Deliveries, totalCount = 5),
-                Conversation(5, "Verify", "Your verification code is 482913", "8:50 AM", 0xFF7C5CE0, unread = 1, folder = Folder.Codes, code = "482913", totalCount = 3),
-                Conversation(6, "Nora Lewis", "lol I was just thinking about you", "Yesterday", 0xFF14A3B8, totalCount = 31),
-                Conversation(7, "Building Committee", "Reminder: residents' meeting on Tuesday at 8:00 PM", "Yesterday", 0xFF8D6E63, totalCount = 9),
-                Conversation(8, "Joe", "The meeting moved to 3:30 PM, does that work?", "Thu", 0xFF5C6BC0, totalCount = 17),
+                Conversation(1, "Mom", "Pick up some bread on your way home ❤️", "12:41 PM", 0xFFE0559B, unread = 2, pinned = true, ruleId = 3, totalCount = 48, category = CategoryTag("Personal")),
+                Conversation(2, "Danny Cole", "And please bring the signed form 🙏", "11:05 AM", 0xFF2F80ED, pinned = true, totalCount = 23, category = CategoryTag("Personal")),
+                Conversation(3, "Bank", "Charge on the card ending in 4821 for $249.90", "10:32 AM", 0xFF1E9E6A, unread = 1, ruleId = 1, folder = Folder.Banks, totalCount = 12, category = CategoryTag("Banks")),
+                Conversation(4, "Couriers", "Your delivery will arrive today between 2:00 PM and 6:00 PM", "9:15 AM", 0xFFF08A24, ruleId = 2, folder = Folder.Deliveries, totalCount = 5, category = CategoryTag("Deliveries")),
+                Conversation(5, "Verify", "Your verification code is 482913", "8:50 AM", 0xFF7C5CE0, unread = 1, folder = Folder.Codes, code = "482913", totalCount = 3, category = CategoryTag("Codes")),
+                Conversation(6, "Nora Lewis", "lol I was just thinking about you", "30/10/2026", 0xFF14A3B8, totalCount = 31, category = CategoryTag("Personal")),
+                Conversation(7, "Building Committee", "Reminder: residents' meeting on Tuesday at 8:00 PM", "30/10/2026", 0xFF8D6E63, totalCount = 9, folder = Folder.All),
+                Conversation(8, "Joe", "The meeting moved to 3:30 PM, does that work?", "29/10/2026", 0xFF5C6BC0, totalCount = 17, category = CategoryTag("Personal")),
             ),
             spam = spam,
             folderCounts = folderCounts(spam),
             dannyThread = listOf(
-                ThreadItem.Day("Yesterday"),
+                ThreadItem.Day("30/10/2026"),
                 ThreadItem.Msg(Message(1, "Hey, what's up? Do you have time this week to go over the proposal?", "6:20 PM", outgoing = false)),
                 ThreadItem.Msg(Message(2, "Yes, sure. When works for you?", "6:24 PM", outgoing = true)),
                 ThreadItem.Msg(Message(3, "Maybe tomorrow morning?", "6:25 PM", outgoing = false)),

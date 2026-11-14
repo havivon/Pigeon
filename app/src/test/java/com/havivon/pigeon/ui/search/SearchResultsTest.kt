@@ -322,9 +322,9 @@ class SearchResultsTest {
         vm.toggleSelected(11)
         vm.toggleSelected(10)
         assertEquals(
-            "[10/31/26 18:24] Me: Did you park on Maple Street?\n" +
-                "[11/1/26 10:00] Leumi: Maple card charge of 249.90\n" +
-                "[11/1/26 11:02] Danny: The address: 12 Maple Street",
+            "[31/10/2026 18:24] Me: Did you park on Maple Street?\n" +
+                "[01/11/2026 10:00] Leumi: Maple card charge of 249.90\n" +
+                "[01/11/2026 11:02] Danny: The address: 12 Maple Street",
             vm.selectedText(),
         )
     }
