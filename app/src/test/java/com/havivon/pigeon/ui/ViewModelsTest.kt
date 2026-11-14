@@ -4,6 +4,7 @@ import com.havivon.pigeon.domain.analysis.AnalysisSeams
 import com.havivon.pigeon.domain.model.ColorRule
 import com.havivon.pigeon.domain.model.Contact
 import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.RuleMatch
 import com.havivon.pigeon.domain.model.SearchResults
 import com.havivon.pigeon.domain.model.SendStatus
@@ -618,6 +619,42 @@ class ViewModelsTest {
         assertTrue(spam.isNotSpam("Polls"))
         assertFalse(vm.state.value.selecting)
         assertEquals(listOf(4L, 6L), vm.state.value.items.map { it.id })
+    }
+
+    @Test
+    fun `move to category takes senders out of spam and into the category, every conversation of theirs`() = runTest {
+        seedSpam()
+        markSeededSpam()
+        spam.markSpam("0551234567", 6, listOf(SpamReason.UnknownSender))
+        val vm = SpamViewModel(
+            messages, spam, locks, mapper, MutableStateFlow(0), CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { Now }, work = main.dispatcher,
+            moves = com.havivon.pigeon.domain.folders.FolderMoves(folders, spam, emptySet()), customFolders = folders.folders,
+        )
+        collect(vm.state)
+        val (number, polls) = vm.state.value.groups
+        fun movedTo(c: Conversation) = folders.overrideState.value[com.havivon.pigeon.domain.folders.FolderKeys.of(c.id, c.addresses)]
+
+        vm.move(listOf(polls), FolderChoice.BuiltIn(Folder.Insurance))
+        assertTrue(spam.isNotSpam("Polls"))
+        polls.conversations.forEach { assertEquals(FolderChoice.BuiltIn(Folder.Insurance), movedTo(it)) }
+
+        // Spam is no target from the spam screen: nothing changes
+        vm.move(listOf(number), FolderChoice.BuiltIn(Folder.Spam))
+        assertFalse(spam.isNotSpam("0551234567"))
+        assertTrue(number.conversations.all { movedTo(it) == null })
+
+        // A new category, from the selection: both conversations of the number go into it
+        vm.select(number)
+        val chosen = vm.selectedForMove()
+        vm.clearSelection()
+        assertTrue(vm.createAndMove(chosen, "Work", null))
+        val work = folders.folderState.value.single { it.name == "Work" }.id
+        assertTrue(spam.isNotSpam("0551234567"))
+        assertEquals(2, number.conversations.size)
+        number.conversations.forEach { assertEquals(FolderChoice.Custom(work), movedTo(it)) }
+        // A name that cannot be used makes nothing
+        assertFalse(vm.createAndMove(chosen, "", null))
     }
 
     @Test

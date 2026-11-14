@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -89,6 +90,8 @@ fun SpamScreen(
     messages: Map<String, List<SpamMessage>> = emptyMap(),
     onToggle: (SpamGroup) -> Unit = {},
     onNotSpam: (SpamGroup) -> Unit = {},
+    /** "Move to category": out of spam and into the category the user picks, with every later message of the sender. */
+    onMove: (SpamGroup) -> Unit = {},
     onDelete: (SpamGroup) -> Unit = {},
     /** A message tapped: its conversation, at that message (null for a locked chat's line). */
     onOpen: (threadId: Long, messageId: Long?) -> Unit = { _, _ -> },
@@ -114,6 +117,8 @@ fun SpamScreen(
     onClearSelection: () -> Unit = {},
     onDeleteSelected: () -> Unit = {},
     onNotSpamSelected: () -> Unit = {},
+    /** "Move to category" for every chosen sender. */
+    onMoveSelected: () -> Unit = {},
 ) {
     val c = HebTheme.colors
     val selecting = selected.isNotEmpty()
@@ -129,7 +134,7 @@ fun SpamScreen(
         header = {
             GradientHeader {
                 if (selecting) {
-                    SpamSelectionBar(selected.size, onClearSelection, onNotSpamSelected, onDeleteSelected)
+                    SpamSelectionBar(selected.size, onClearSelection, onNotSpamSelected, onMoveSelected, onDeleteSelected)
                 } else {
                     Column(if (collapsing) Modifier.collapsible(header) else Modifier) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -173,6 +178,7 @@ fun SpamScreen(
                     selecting = selecting,
                     selected = group.key in selected,
                     onNotSpam = onNotSpam,
+                    onMove = onMove,
                     onDelete = onDelete,
                     onOpen = onOpen,
                     onLink = onLink,
@@ -184,7 +190,7 @@ fun SpamScreen(
 
 /** The header in selection mode: X to leave it, the number chosen, and the actions on all of them. */
 @Composable
-private fun SpamSelectionBar(count: Int, onClose: () -> Unit, onNotSpam: () -> Unit, onDelete: () -> Unit) {
+private fun SpamSelectionBar(count: Int, onClose: () -> Unit, onNotSpam: () -> Unit, onMove: () -> Unit, onDelete: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         HeaderIcon(Icons.Rounded.Close, stringResource(R.string.thread_clear_selection), onClose)
         Text(
@@ -198,6 +204,7 @@ private fun SpamSelectionBar(count: Int, onClose: () -> Unit, onNotSpam: () -> U
         )
         HeaderChip(stringResource(R.string.spam_not_spam), selected = false, onClick = onNotSpam)
         Spacer(Modifier.width(4.dp))
+        HeaderIcon(Icons.AutoMirrored.Rounded.DriveFileMove, stringResource(R.string.action_move_to_folder), onMove)
         HeaderIcon(Icons.Rounded.Delete, stringResource(R.string.spam_delete), onDelete)
     }
 }
@@ -231,6 +238,7 @@ private fun SpamGroupCard(
     selecting: Boolean,
     selected: Boolean,
     onNotSpam: (SpamGroup) -> Unit,
+    onMove: (SpamGroup) -> Unit,
     onDelete: (SpamGroup) -> Unit,
     onOpen: (Long, Long?) -> Unit,
     onLink: (LinkInfo) -> Unit,
@@ -312,6 +320,7 @@ private fun SpamGroupCard(
         if (!selecting) {
             ButtonsRow(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
                 PillButton(stringResource(R.string.spam_not_spam), color = c.spam, onClick = { onNotSpam(group) })
+                PillButton(stringResource(R.string.action_move_to_folder), icon = Icons.AutoMirrored.Rounded.DriveFileMove, onClick = { onMove(group) })
                 PillButton(stringResource(R.string.spam_delete), icon = Icons.Rounded.Delete, color = c.spam, onClick = { onDelete(group) })
             }
         }

@@ -125,6 +125,8 @@ fun MoveToFolderFlow(
     onDismiss: () -> Unit,
     /** For several conversations at once (the search's selection): says whom the move applies to; nothing is "current" or "unchanged" then. */
     subtitle: String? = null,
+    /** False leaves Spam out of the targets: the spam screen moves out of spam only. */
+    offerSpam: Boolean = true,
 ) {
     var naming by rememberSaveable { mutableStateOf(false) }
     if (naming) {
@@ -154,6 +156,7 @@ fun MoveToFolderFlow(
             },
             onNew = { naming = true },
             subtitleOverride = subtitle,
+            offerSpam = offerSpam,
         )
     }
 }
@@ -168,6 +171,8 @@ fun MoveToFolderContent(
     onNew: () -> Unit,
     /** Replaces the line under the title (see [MoveToFolderFlow]); also turns off the check on the current place. */
     subtitleOverride: String? = null,
+    /** False leaves Spam out of the targets (see [MoveToFolderFlow]). */
+    offerSpam: Boolean = true,
 ) {
     val current = if (subtitleOverride != null) null else currentFolder(conversation)
     val subtitle = subtitleOverride ?: if (FolderKeys.bySender(conversation.addresses)) {
@@ -198,8 +203,10 @@ fun MoveToFolderContent(
             }
         }
         RowsDivider()
-        val spam = FolderChoice.BuiltIn(Folder.Spam)
-        TargetRow(folderIcon(Folder.Spam), stringResource(Folder.Spam.labelRes), checked = current == spam, danger = true) { onChoose(spam) }
+        if (offerSpam) {
+            val spam = FolderChoice.BuiltIn(Folder.Spam)
+            TargetRow(folderIcon(Folder.Spam), stringResource(Folder.Spam.labelRes), checked = current == spam, danger = true) { onChoose(spam) }
+        }
         if (conversation.folderOverridden) {
             TargetRow(Icons.Rounded.AutoAwesome, stringResource(R.string.move_folder_automatic), checked = false) { onChoose(null) }
         }

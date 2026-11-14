@@ -13,7 +13,10 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   - **an ad from a known institution's sender id stays in its category** (the user's choice, after the Phoenix
     conversation fell out of Insurance because its latest message was an ad). An ad's *text* still never decides.
     `FolderClassifier.senderFolder`. A conversation's folder is still from its latest message only.
-- **Not done:** installing 0.7.0 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.1** (versionCode 34): "Move to category" on the spam screen: a button on each sender card and an icon in the
+  selection bar. It releases the senders from spam (allow list, as "Not spam") and files every conversation of
+  theirs (and later messages) in the chosen category; Spam is not offered as a target there (`offerSpam = false`).
+- **Not done:** installing 0.7.1 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

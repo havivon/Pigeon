@@ -137,6 +137,8 @@ fun MoveWithNotices(
     onCreate: suspend (name: String, argb: Long?) -> Boolean,
     onDismiss: () -> Unit,
     subtitle: String? = null,
+    /** False leaves Spam out of the targets (the spam screen). */
+    offerSpam: Boolean = true,
 ) {
     val context = LocalContext.current
     val notices = LocalNotices.current
@@ -162,5 +164,6 @@ fun MoveWithNotices(
         onCreate = { name, argb -> scope.launch { if (onCreate(name, argb)) notices.show(String.format(movedTo, FolderNames.clean(name))) } },
         onDismiss = onDismiss,
         subtitle = subtitle,
+        offerSpam = offerSpam,
     )
 }

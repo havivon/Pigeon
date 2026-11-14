@@ -23,6 +23,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.havivon.pigeon.R
 import com.havivon.pigeon.data.SensitiveClipboard
 import com.havivon.pigeon.domain.analysis.LinkInfo
+import com.havivon.pigeon.domain.folders.FolderMoves
+import com.havivon.pigeon.ui.common.reservedFolderNames
+import com.havivon.pigeon.ui.inbox.MoveWithNotices
 import com.havivon.pigeon.ui.conversation.LinkDetails
 import com.havivon.pigeon.ui.conversation.openInBrowser
 import com.havivon.pigeon.ui.app.LocalNotices
@@ -41,12 +44,17 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
             app.messages, app.spam, app.locks, conversationMapper(context, app), app.accessChanges, app.appScope,
             canWriteNow = app::canWrite,
             judgeSpam = app.spamOnRead::judge,
+            moves = FolderMoves(app.folders, app.spam, reservedFolderNames(context)),
+            customFolders = app.folders.folders,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
     val notices = LocalNotices.current
     var confirmAll by rememberSaveable { mutableStateOf(false) }
     var link by remember { mutableStateOf<LinkInfo?>(null) }
+    // The senders "Move to category" acts on, while its sheet is open
+    var moving by remember { mutableStateOf<List<SpamGroup>>(emptyList()) }
+    val customFolders by vm.customFolders.collectAsStateWithLifecycle()
     val backToInbox = stringResource(R.string.spam_back_to_inbox)
     val needsDefault = rememberNeedsDefaultNotice()
 
@@ -60,6 +68,7 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
             vm.notSpam(it)
             notices.show(backToInbox)
         },
+        onMove = { moving = listOf(it) },
         onDelete = { group ->
             vm.delete(group)?.let { (n, deletion) ->
                 notices.undo(context.resources.getQuantityString(R.plurals.spam_deleted_all, n, n), deletion)
@@ -86,7 +95,27 @@ fun SpamRoute(onBack: () -> Unit, openThread: (threadId: Long, messageId: Long?)
         onNotSpamSelected = {
             if (vm.notSpamSelected() > 0) notices.show(backToInbox)
         },
+        onMoveSelected = {
+            moving = vm.selectedForMove()
+            vm.clearSelection()
+        },
     )
+
+    // "Move to category": the sheet is drawn for the first sender's newest conversation; the move takes every conversation of each
+    val movingFirst = moving.firstOrNull()?.conversations?.firstOrNull()
+    if (movingFirst != null) {
+        val groups = moving
+        MoveWithNotices(
+            movingFirst,
+            customFolders,
+            problemOf = { vm.folderNameProblem(it, customFolders) },
+            onMove = { vm.move(groups, it) },
+            onCreate = { name, argb -> vm.createAndMove(groups, name, argb) },
+            onDismiss = { moving = emptyList() },
+            subtitle = if (groups.size > 1) pluralStringResource(R.plurals.search_move_applies_to, groups.size, groups.size) else null,
+            offerSpam = false,
+        )
+    }
 
     // Back leaves selection mode first, then the search, before it leaves the screen
     BackHandler(enabled = state.selecting) { vm.clearSelection() }

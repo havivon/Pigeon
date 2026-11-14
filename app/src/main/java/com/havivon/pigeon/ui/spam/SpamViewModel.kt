@@ -2,7 +2,12 @@ package com.havivon.pigeon.ui.spam
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.havivon.pigeon.domain.folders.FolderMoves
+import com.havivon.pigeon.domain.folders.FolderNameProblem
 import com.havivon.pigeon.domain.model.Conversation
+import com.havivon.pigeon.domain.model.CustomFolder
+import com.havivon.pigeon.domain.model.Folder
+import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.domain.model.PendingDeletion
 import com.havivon.pigeon.domain.model.SmsConversation
 import com.havivon.pigeon.domain.model.SpamVerdict
@@ -80,7 +85,15 @@ class SpamViewModel(
     private val work: CoroutineDispatcher = Dispatchers.Default,
     /** How long after the list is read the spam-on-read starts. */
     judgeDelayMillis: Long = JUDGE_AFTER_MILLIS,
+    /** "Move to category"; null (the tests that do not move) leaves it inert. */
+    private val moves: FolderMoves? = null,
+    /** The user's categories, the move's targets after the built-in ones. */
+    customFolders: Flow<List<CustomFolder>> = flowOf(emptyList()),
 ) : ViewModel() {
+
+    /** The user's categories, for "Move to category". */
+    val customFolders: StateFlow<List<CustomFolder>> =
+        customFolders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val spamJudging = SpamJudging(viewModelScope, work, judgeSpam, judgeDelayMillis)
 
@@ -209,6 +222,32 @@ class SpamViewModel(
 
     /** Deleting needs Pigeon to be the default SMS app; until then the screen says so instead. */
     val canWrite: Boolean get() = canWriteNow()
+
+    /**
+     * "Move to category" for these senders: every conversation of theirs leaves spam (the senders join the allow list, as with
+     * [notSpam]) and goes to [target], it and the senders' later messages. Spam itself is no target here: nothing happens.
+     */
+    fun move(groups: List<SpamGroup>, target: FolderChoice?) {
+        val m = moves ?: return
+        if (target == FolderChoice.BuiltIn(Folder.Spam) || groups.isEmpty()) return
+        expanded.update { it - groups.mapTo(HashSet()) { g -> g.key } }
+        appScope.launch {
+            for (g in groups) for (c in g.conversations) m.move(c.id, c.addresses, isSpam = true, target = target)
+        }
+    }
+
+    /** The chosen senders, before "Move to category" clears the selection (the sheet acts on these). */
+    fun selectedForMove(): List<SpamGroup> = selectedGroups()
+
+    /** Why [name] cannot be a new category's, or null when it can. */
+    fun folderNameProblem(name: String, existing: List<CustomFolder>): FolderNameProblem? = moves?.problem(name, existing)
+
+    /** "New category…" from the move: makes it (coloured [argb], if given) and moves [groups] into it; false when the name cannot be used. */
+    suspend fun createAndMove(groups: List<SpamGroup>, name: String, argb: Long?): Boolean {
+        val id = moves?.create(name, argb) ?: return false
+        move(groups, FolderChoice.Custom(id))
+        return true
+    }
 
     /**
      * Every spam conversation of this sender, with one undo: the number deleted and the undo. Null, and
