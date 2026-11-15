@@ -48,8 +48,7 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   (`cacheDir/inbox-snapshot.json`, app-private, not backed up) keeps the last read list; `TelephonyMessageRepository`
   emits it first (`onStart`, only while READ_SMS is granted, else it is deleted) and the full read replaces it.
   Locked chats are saved without their text. Documented in CLAUDE.md (security).
-- **Not done:** installing 0.7.8 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
-  push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
+- 0.7.8 is installed on the phone (2026-11-15), its APK is in `/sdcard/Download/`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.
 
