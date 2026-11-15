@@ -1,5 +1,7 @@
 package com.havivon.pigeon.data
 
+import java.io.File
+import com.havivon.pigeon.data.sms.ConversationSnapshot
 import android.content.Context
 import android.util.Log
 import com.havivon.pigeon.PigeonApp
@@ -133,7 +135,13 @@ class AppContainer(
     /** Messages sent as a viewer, until Android has stored them. */
     val pendingSends = PendingSends()
 
-    val messages: MessageRepository by lazy { TelephonyMessageRepository(app, contacts, locks, pins, appScope, pendingSends, ::canWrite, refresh = accessChanges, bin = recycleBin) }
+    val messages: MessageRepository by lazy {
+        TelephonyMessageRepository(
+            app, contacts, locks, pins, appScope, pendingSends, ::canWrite, refresh = accessChanges, bin = recycleBin,
+            // App-private cache: never backed up, and only a first picture until the database is read (see ConversationSnapshot)
+            snapshot = ConversationSnapshot(File(app.cacheDir, "inbox-snapshot.json")),
+        )
+    }
     val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages, pendingSends, ::canWrite) }
     val notifier: MessageNotifier by lazy {
         MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })

@@ -57,6 +57,10 @@ Baseline, always on, never a setting:
   everything else backs up as before). Restoring (default app only) re-inserts into the provider through
   `getOrCreateThreadId`. Locked chats' messages show in the bin only after `BiometricPrompt`. The bin is
   opened from Settings only, and its content is never logged.
+- **Inbox snapshot.** The conversation list as last read is kept in the app's cache directory
+  (`inbox-snapshot.json`: app-private, never backed up, the system may clear it) and shown at once on the next
+  launch while the SMS database is read again, which replaces it. Locked chats are kept without their text; it is
+  dropped, never shown, while Pigeon may not read SMS.
 - **No message content in logs**, ever. Release builds: R8 on, not debuggable, signed with the
   user's own key (kept out of the repo).
 - **Copied codes and messages** are flagged sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`,

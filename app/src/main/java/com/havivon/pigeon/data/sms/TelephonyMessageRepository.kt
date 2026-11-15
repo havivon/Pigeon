@@ -1,5 +1,10 @@
 package com.havivon.pigeon.data.sms
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -99,6 +104,8 @@ class TelephonyMessageRepository(
     refresh: Flow<Any?> = flowOf(Unit),
     /** Where deleted messages wait 30 days; null deletes for good at once. */
     private val bin: RecycleBin? = null,
+    /** The list as last read, shown at once on the next launch while the database is read again; null for none. */
+    private val snapshot: ConversationSnapshot? = null,
 ) : MessageRepository {
 
     private val resolver = context.contentResolver
@@ -115,8 +122,10 @@ class TelephonyMessageRepository(
     override val conversations: Flow<List<SmsConversation>> =
         refresh.flatMapLatest {
             resolver.changes(Telephony.MmsSms.CONTENT_CONVERSATIONS_URI, Telephony.Sms.CONTENT_URI, ContactsContract.Contacts.CONTENT_URI)
-                .mapNotNull { readConversationsOrKeep() }
+                .mapNotNull { readConversationsOrKeep()?.also { keepForNextLaunch(it) } }
         }
+            // The list as last read, at once, while the first read of this launch runs (it replaces it as soon as it is done)
+            .onStart { firstPicture()?.let { emit(it) } }
             .combine(hidden) { list, h -> list.filter { it.threadId !in h.threads }.map { it.withoutHidden(h.messages) } }
             .flowOn(Dispatchers.IO)
             .shareIn(appScope, SharingStarted.WhileSubscribed(KEEP_READING_MILLIS), replay = 1)
@@ -186,6 +195,22 @@ class TelephonyMessageRepository(
     }
 
     /** The conversations, or null (the last list stays) when a maker's provider failed in a way it should not. */
+    /** The snapshot of the last launch, only while Pigeon may read SMS (otherwise it is dropped, never shown). */
+    private fun firstPicture(): List<SmsConversation>? {
+        val kept = snapshot ?: return null
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+            kept.clear()
+            return null
+        }
+        return kept.load()
+    }
+
+    /** Saves the list for the next launch, without the text of the locked chats. */
+    private suspend fun keepForNextLaunch(list: List<SmsConversation>) {
+        val kept = snapshot ?: return
+        kept.save(ConversationSnapshot.forSaving(list, locks.lockedThreadIds.first()))
+    }
+
     private suspend fun readConversationsOrKeep(): List<SmsConversation>? = try {
         readConversations()
     } catch (e: CancellationException) {

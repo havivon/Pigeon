@@ -44,7 +44,11 @@ English or a subagent reports in English). Code, commits and comments stay Engli
 - **0.7.7** (versionCode 40): unlocking a locked chat (conversation menu, inbox sheet, search sheet) and changing the
   app lock always ask (`Authenticator.authenticateNow`), skipping the 10-second reuse of a recent success that let
   "unlock" through right after the chat was opened with a fingerprint.
-- **Not done:** installing 0.7.7 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.8** (versionCode 41): the inbox no longer shows a loading sign on every launch. `ConversationSnapshot`
+  (`cacheDir/inbox-snapshot.json`, app-private, not backed up) keeps the last read list; `TelephonyMessageRepository`
+  emits it first (`onStart`, only while READ_SMS is granted, else it is deleted) and the full read replaces it.
+  Locked chats are saved without their text. Documented in CLAUDE.md (security).
+- **Not done:** installing 0.7.8 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.
@@ -59,7 +63,10 @@ politics/charity/religion not caught, ~7 pension reports, ~8 private people. Kno
 - **Subagents on Sonnet** by default (usage quota). Opus only for a hard bug Sonnet failed on.
 - **Compose crash rule:** never `if (x != null) ({…}) else null` lambdas or smart-cast captures inside
   composable/sheet content — caused `ClassCastException … to java.lang.Void` (fixed 0.6.3). After builds,
-  scan compiled UI classes with javap for `checkcast java/lang/Void`.
+  scan compiled UI classes with javap for `checkcast java/lang/Void`, in batches (35 s; one javap per class takes
+  minutes, and one javap for all of them exceeds the Windows command line and silently reads nothing):
+  `find app/build/tmp/kotlin-classes/debug/com/havivon/pigeon/ui -name "*.class" | xargs -n 150 javap -c -p | grep -c "checkcast.*java/lang/Void"`
+  (check that a plain `grep -c checkcast` is in the thousands, so the scan really read the classes).
 - Gate: `export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" && ./gradlew --no-daemon
   :app:testDebugUnitTest :app:verifyPaparazziDebug :app:lintDebug :app:assembleDebug` (record shots first
   when UI changes). Never `export MSYS_NO_PATHCONV=1` in a shell that runs gradlew.
