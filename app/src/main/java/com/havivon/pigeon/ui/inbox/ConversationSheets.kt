@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.inbox
 
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.CoroutineStart
 import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -176,7 +178,15 @@ fun MoveWithNotices(
                 },
             )
         },
-        onCreate = { name, argb -> scope.launch { if (onCreate(name, argb)) notices.show(String.format(movedTo, FolderNames.clean(name))) } },
+        onCreate = { name, argb ->
+            // The name dialog closes this flow first (onDismiss), which takes this composable and its scope away on the next
+            // frame: launched on it as it was, the work was cancelled before it began (nothing happened) or between making the
+            // category and moving into it (the category was made, the conversation not moved). Started at once and not
+            // cancellable, it always finishes
+            scope.launch(NonCancellable, start = CoroutineStart.UNDISPATCHED) {
+                if (onCreate(name, argb)) notices.show(String.format(movedTo, FolderNames.clean(name)))
+            }
+        },
         onDismiss = onDismiss,
         subtitle = subtitle,
         offerSpam = offerSpam,
