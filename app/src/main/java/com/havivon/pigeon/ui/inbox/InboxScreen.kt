@@ -50,6 +50,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -131,6 +132,8 @@ fun InboxScreen(
     /** The bell next to the settings gear opens the reminders; it wears a small dot while [hasReminders]. */
     onReminders: () -> Unit = {},
     hasReminders: Boolean = false,
+    /** The star next to the bell opens the starred messages. */
+    onStarred: () -> Unit = {},
     onLongPress: (Conversation) -> Unit = {},
     onSearch: () -> Unit = {},
     onNewMessage: () -> Unit = {},
@@ -216,7 +219,7 @@ fun InboxScreen(
                 } else {
                     InboxHeader(
                         header, dateLine, categories, unreadOnly, unreadCount, totalCount, onUnreadOnly, onMarkAllRead, onSettings, onReminders,
-                        hasReminders, onSearch, onStartSelecting.takeIf { canSelect },
+                        hasReminders, onStarred, onSearch, onStartSelecting.takeIf { canSelect },
                     )
                 }
             },
@@ -321,6 +324,7 @@ private fun InboxHeader(
     onSettings: () -> Unit,
     onReminders: () -> Unit,
     hasReminders: Boolean,
+    onStarred: () -> Unit,
     onSearch: () -> Unit,
     /** The "Select" button (multi-select), as in the search's header; null hides it (nothing to select). */
     onStartSelecting: (() -> Unit)?,
@@ -341,6 +345,7 @@ private fun InboxHeader(
                     Text(dateLine, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (onStartSelecting != null) HeaderIcon(Icons.Rounded.Checklist, stringResource(R.string.search_select_button), onStartSelecting)
+                HeaderIcon(Icons.Rounded.Star, stringResource(R.string.inbox_starred_description), onStarred)
                 RemindersBell(hasReminders, onReminders)
                 HeaderIcon(Icons.Rounded.Settings, stringResource(R.string.inbox_settings_description), onSettings)
             }

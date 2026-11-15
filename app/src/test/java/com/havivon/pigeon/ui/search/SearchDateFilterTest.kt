@@ -61,13 +61,13 @@ class SearchDateFilterTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect { } }
     }
 
-    private fun TestScope.search() = SearchViewModel(
+    private fun TestScope.search(starred: Boolean = false) = SearchViewModel(
         messages, testMapper(labels), labels, AnalysisSeams.codeFinder, FakeRules(), FakePins(), spam, folders, favorites,
         ConversationSheetActions(
             messages, FakePins(), locks, testMoves(folders, spam), FakeReminders(), FakeScheduler(),
             CoroutineScope(UnconfinedTestDispatcher(testScheduler)), {}, { true }, { Now },
         ),
-        "Me", now = { Now }, lockedThreads = locks.state, work = main.dispatcher, zone = Utc,
+        "Me", now = { Now }, lockedThreads = locks.state, work = main.dispatcher, zone = Utc, starred = starred,
     )
 
     // Danny (thread 1) on the 3rd, 5th and 10th of October; the bank (thread 2) on the 10th (a code) and the 11th
@@ -176,6 +176,18 @@ class SearchDateFilterTest {
         vm.toggleHasCode()
         advanceTimeBy(300)
         assertEquals("a code in those days", listOf(4L), vm.state.value.ids())
+    }
+
+    @Test
+    fun `the inbox's star opens the search on every starred message, without typing`() = runTest {
+        seed()
+        favorites.star(2, 1, "0525550100", "Danny", october5.body, october5.dateMillis)
+        favorites.star(5, 2, "Leumi", null, october11.body, october11.dateMillis)
+        val vm = search(starred = true)
+        collect(vm.state)
+        advanceTimeBy(300)
+        assertTrue(vm.state.value.filters.starred)
+        assertEquals(listOf(2L, 5L), vm.state.value.ids())
     }
 
     @Test

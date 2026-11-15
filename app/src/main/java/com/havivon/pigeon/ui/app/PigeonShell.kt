@@ -196,6 +196,7 @@ private fun Screens(navigator: Navigator, container: AppContainer, authenticator
             Screen.Spam -> SpamRoute(onBack = { navigator.pop() }, openThread = { threadId, messageId -> openThread(threadId, messageId = messageId) })
             is Screen.Search -> SearchRoute(
                 category = screen.category,
+                starred = screen.starred,
                 onBack = { navigator.pop() },
                 openThread = { openThread(it) },
                 openMessage = { threadId, messageId -> openThread(threadId, messageId = messageId) },

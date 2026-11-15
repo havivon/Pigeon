@@ -28,7 +28,8 @@ sealed interface Screen {
     data class Thread(val threadId: Long, val messageId: Long? = null) : Screen
     data object Spam : Screen
     /** The search; from a category of the inbox, [category] keeps the results to it (a chip in the search widens them to all). */
-    data class Search(val category: FolderChoice? = null) : Screen
+    /** [starred] opens it on the starred messages (the inbox's star). */
+    data class Search(val category: FolderChoice? = null, val starred: Boolean = false) : Screen
     /** A new message; [recipients] and [body] come prefilled from an `sms:` link. */
     data class NewMessage(val recipients: List<String> = emptyList(), val body: String = "") : Screen
     data object Settings : Screen

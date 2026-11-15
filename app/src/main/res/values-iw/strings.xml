@@ -416,6 +416,7 @@
     <string name="reminders_moved">התזכורת הועברה ל%1$s</string>
     <string name="reminders_open_description">%1$s, %2$s. פותח את השיחה</string>
     <string name="inbox_reminders_description">תזכורות</string>
+    <string name="inbox_starred_description">הודעות מסומנות בכוכב</string>
     <string name="inbox_reminders_description_upcoming">תזכורות. יש תזכורות קרובות</string>
     <string name="settings_reminders">תזכורות</string>
 

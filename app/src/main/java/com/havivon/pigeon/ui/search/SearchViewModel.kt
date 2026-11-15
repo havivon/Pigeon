@@ -215,6 +215,8 @@ class SearchViewModel(
     private val zone: ZoneId = ZoneId.systemDefault(),
     /** The category the search was opened from (see [SearchFilters.category]); null for everywhere. */
     category: FolderChoice? = null,
+    /** Opened with the "Starred" filter on (the inbox's star). */
+    starred: Boolean = false,
 ) : ViewModel() {
 
     /** What decides whether the browse list is read again: the sender (and so its conversations), whether any filter is on, the stars and the days. */
@@ -224,7 +226,7 @@ class SearchViewModel(
 
     /** The field's text as typed, straight from here: never behind the keyboard. */
     val queryText: StateFlow<String> = query.asStateFlow()
-    private val filters = MutableStateFlow(SearchFilters(category = category))
+    private val filters = MutableStateFlow(SearchFilters(category = category, starred = starred))
 
     /** The user's categories, for the sheet's "Move to category". */
     val customFolders: StateFlow<List<CustomFolder>> = folders.folders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

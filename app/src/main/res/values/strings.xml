@@ -392,6 +392,7 @@
     <string name="reminders_moved">Reminder moved to %1$s</string>
     <string name="reminders_open_description">%1$s, %2$s. Opens the conversation</string>
     <string name="inbox_reminders_description">Reminders</string>
+    <string name="inbox_starred_description">Starred messages</string>
     <string name="inbox_reminders_description_upcoming">Reminders. You have upcoming reminders</string>
     <string name="settings_reminders">Reminders</string>
 

@@ -155,6 +155,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         onSettings = { navigate(Screen.Settings) },
         onReminders = { navigate(Screen.Reminders) },
         hasReminders = hasReminders,
+        onStarred = { navigate(Screen.Search(starred = true)) },
         onLongPress = { sheetFor = it },
         // From a category, the search looks only in it; from "All categories", everywhere
         onSearch = { navigate(Screen.Search(state.choice.takeIf { it != FolderChoice.BuiltIn(Folder.All) })) },

@@ -35,6 +35,8 @@ fun SearchRoute(
     openMessage: (threadId: Long, messageId: Long) -> Unit,
     /** The category the search was opened from; its results keep to it until the chip's X. */
     category: FolderChoice? = null,
+    /** Opened on the starred messages (the "Starred" filter on, no keyboard). */
+    starred: Boolean = false,
 ) {
     val context = LocalContext.current
     val me = stringResource(R.string.thread_sender_me)
@@ -49,6 +51,7 @@ fun SearchRoute(
             app.rules, app.pins, app.spam, app.folders, app.favorites, sheet, me,
             lockedThreads = app.locks.lockedThreadIds,
             category = category,
+            starred = starred,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -115,6 +118,7 @@ fun SearchRoute(
 
     SearchScreen(
         state = state.copy(query = query, searching = state.searching || state.query != query),
+        autoFocus = !starred,
         onQuery = vm::setQuery,
         customFolders = customFolders,
         onClearCategory = vm::clearCategory,
