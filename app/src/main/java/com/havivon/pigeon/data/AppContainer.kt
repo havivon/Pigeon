@@ -1,5 +1,7 @@
 package com.havivon.pigeon.data
 
+import androidx.core.content.pm.PackageInfoCompat
+import com.havivon.pigeon.ui.common.AnalysisCache
 import java.io.File
 import com.havivon.pigeon.data.sms.ConversationSnapshot
 import android.content.Context
@@ -134,6 +136,19 @@ class AppContainer(
 
     /** Messages sent as a viewer, until Android has stored them. */
     val pendingSends = PendingSends()
+
+    /**
+     * The automatic folder of each conversation from one launch to the next (no text: see AnalysisCache), so the inbox
+     * does not classify every conversation again at each start. A new version of the app (new rules) starts it over.
+     */
+    val analysisCache: AnalysisCache by lazy {
+        val version = try {
+            PackageInfoCompat.getLongVersionCode(app.packageManager.getPackageInfo(app.packageName, 0))
+        } catch (_: Exception) {
+            0L
+        }
+        AnalysisCache(File(app.cacheDir, "analysis-cache.json"), version)
+    }
 
     val messages: MessageRepository by lazy {
         TelephonyMessageRepository(

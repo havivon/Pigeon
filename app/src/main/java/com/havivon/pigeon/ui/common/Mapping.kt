@@ -42,6 +42,8 @@ class ConversationMapper(
     private val lockedSnippet: String,
     /** A built-in folder's name, as the user reads it (the text of a category tag). */
     private val folderLabel: (Folder) -> String = { it.name },
+    /** The folders kept from the last launch (see [AnalysisCache]); null classifies every conversation anew. */
+    private val cache: AnalysisCache? = null,
 ) {
     /** The folder and code of a conversation's last message: the analysis, done again only when that message changes. */
     private data class Analysis(val sender: String?, val address: String, val snippet: String, val userWrote: Boolean, val folder: Folder, val code: String?)
@@ -52,7 +54,14 @@ class ConversationMapper(
     private fun analysis(c: SmsConversation, address: String): Analysis {
         analyses[c.threadId]?.takeIf { it.sender == c.contactName && it.address == address && it.snippet == c.snippet && it.userWrote == c.userWrote }
             ?.let { return it }
-        return Analysis(c.contactName, address, c.snippet, c.userWrote, folders.classify(c), codeFinder.find(c.snippet, address, c.contactName != null || c.userWrote)).also { analyses[c.threadId] = it }
+        // The folder kept from the last launch when the conversation did not change since; the code is found anew (it is cheap)
+        val folder = cache?.folderFor(c) ?: folders.classify(c).also { cache?.put(c, it) }
+        return Analysis(c.contactName, address, c.snippet, c.userWrote, folder, codeFinder.find(c.snippet, address, c.contactName != null || c.userWrote)).also { analyses[c.threadId] = it }
+    }
+
+    /** Keeps the folders for the next launch, when any is new (after a whole list was mapped). */
+    fun flush() {
+        cache?.flush()
     }
 
     fun map(
@@ -196,9 +205,34 @@ suspend fun <T, R> mapAll(items: List<T>, map: (T) -> R): List<R> =
         coroutineScope { items.chunked(MAP_CHUNK).map { part -> async { part.map(map) } }.awaitAll().flatten() }
     }
 
-/** The stored verdict on one of the conversation's senders, or null when it is not spam. */
-fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? =
-    verdicts.firstOrNull { v -> c.addresses.any { PhoneNumbers.same(it, v.address) } }
+/**
+ * The stored verdict on one of the conversation's senders, or null when it is not spam: the first in [verdicts] whose
+ * address is [PhoneNumbers.same] as one of the conversation's. Looked up in a table of the verdicts by
+ * [PhoneNumbers.sameKey], made once per list of verdicts: the inbox asks for every conversation on every change, and
+ * comparing each with every verdict (900 conversations, 600 verdicts) took two seconds of the phone's start.
+ */
+fun verdictFor(c: SmsConversation, verdicts: List<SpamVerdict>): SpamVerdict? {
+    if (verdicts.isEmpty()) return null
+    val index = lastVerdictIndex?.takeIf { it.source === verdicts } ?: VerdictIndex(verdicts).also { lastVerdictIndex = it }
+    return index.find(c.addresses)
+}
+
+/** The verdicts by [PhoneNumbers.sameKey], each key with the first verdict that has it (its place in the list kept). */
+private class VerdictIndex(val source: List<SpamVerdict>) {
+    private val byKey = HashMap<String, IndexedValue<SpamVerdict>>()
+
+    init {
+        source.forEachIndexed { i, v -> PhoneNumbers.sameKey(v.address)?.let { byKey.putIfAbsent(it, IndexedValue(i, v)) } }
+    }
+
+    /** The earliest verdict in the list that matches one of [addresses] (as the scan it replaces found it). */
+    fun find(addresses: List<String>): SpamVerdict? =
+        addresses.mapNotNull { a -> PhoneNumbers.sameKey(a)?.let { byKey[it] } }.minByOrNull { it.index }?.value
+}
+
+/** The table of the last list of verdicts asked about (the screens all map from the same list until it changes). */
+@Volatile
+private var lastVerdictIndex: VerdictIndex? = null
 
 /** Where the user moved [c] by hand, by its [FolderKeys] key; null when it is sorted automatically. */
 fun overrideFor(c: SmsConversation, overrides: Map<String, FolderChoice>): FolderChoice? =

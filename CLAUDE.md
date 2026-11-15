@@ -60,7 +60,8 @@ Baseline, always on, never a setting:
 - **Inbox snapshot.** The conversation list as last read is kept in the app's cache directory
   (`inbox-snapshot.json`: app-private, never backed up, the system may clear it) and shown at once on the next
   launch while the SMS database is read again, which replaces it. Locked chats are kept without their text; it is
-  dropped, never shown, while Pigeon may not read SMS.
+  dropped, never shown, while Pigeon may not read SMS. Next to it `analysis-cache.json` keeps each conversation's
+  automatic folder (thread id, a fingerprint and the folder; no text, no sender), dropped when the app's version changes.
 - **No message content in logs**, ever. Release builds: R8 on, not debuggable, signed with the
   user's own key (kept out of the repo).
 - **Copied codes and messages** are flagged sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`,

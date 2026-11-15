@@ -148,6 +148,7 @@ class InboxViewModel(
         spamJudging.offer(conversations, verdicts)
         val t = now()
         val all = mapAll(conversations) { mapper.map(it, t, ruleList, pinned, locked, verdictFor(it, verdicts), overrideFor(it, overrides), categories) }
+        mapper.flush()
         Mapped(all, conversations, ruleList, locked, categories.builtInColors)
     }.conflate()
 

@@ -36,6 +36,7 @@ object PhoneNumbers {
      * "0525550123").
      */
     fun same(a: String, b: String): Boolean {
+        // Keep [sameKey] in step with this
         val na = normalize(a)
         val nb = normalize(b)
         if (na.isEmpty() || nb.isEmpty()) return false
@@ -52,6 +53,19 @@ object PhoneNumbers {
      * 00972 written as the local 0 first ("+972 3-123-4567" and "03-1234567" are one key); a shorter
      * number or short code as its digits; a sender ID in lower case. Null for a blank address.
      */
+    /**
+     * A key with [same]'s meaning: two addresses are [same] exactly when their keys are equal (and not null). For finding a
+     * sender in a table at once instead of comparing it with every entry: a sender ID by itself, a short code by all its
+     * digits, a longer number by its last [MATCH_DIGITS] digits. Null for an empty address, which is never the same as any.
+     */
+    fun sameKey(raw: String): String? {
+        val n = normalize(raw)
+        if (n.isEmpty()) return null
+        if (!isPhoneNumber(n)) return "id:$n"
+        val digits = n.removePrefix("+")
+        return if (digits.length < MATCH_DIGITS) "short:$digits" else "tail:" + digits.takeLast(MATCH_DIGITS)
+    }
+
     fun lookupKey(raw: String): String? {
         val n = normalize(raw)
         if (n.isEmpty()) return null

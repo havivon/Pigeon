@@ -29,6 +29,7 @@ fun conversationMapper(context: Context, container: AppContainer, labels: DateLa
     ConversationMapper(
         labels, container.codeFinder, container.folderClassifier, context.getString(R.string.inbox_locked_snippet),
         folderLabel = { context.getString(it.labelRes) },
+        cache = container.analysisCache,
     )
 
 /**

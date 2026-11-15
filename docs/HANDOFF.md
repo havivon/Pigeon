@@ -48,7 +48,13 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   (`cacheDir/inbox-snapshot.json`, app-private, not backed up) keeps the last read list; `TelephonyMessageRepository`
   emits it first (`onStart`, only while READ_SMS is granted, else it is deleted) and the full read replaces it.
   Locked chats are saved without their text. Documented in CLAUDE.md (security).
-- 0.7.8 is installed on the phone (2026-11-15), its APK is in `/sdcard/Download/`.
+- **0.7.9** (versionCode 42), installed on the phone: the start measured on the phone (temporary timing logs, removed):
+  `verdictFor` scanned every spam verdict per conversation (926 x 582, about 1.8 s); now a table by
+  `PhoneNumbers.sameKey` (same meaning as `same`, tested on all pairs). The folders are kept between launches in
+  `AnalysisCache` (`cacheDir/analysis-cache.json`: thread id, a 64-bit fingerprint and the folder; no text; dropped
+  when the versionCode changes). List ready after a cold start: about 1.5 s -> 0.7 s (the first launch after an
+  install still classifies everything once). The dist APKs are debug builds (no keystore.properties here): a signed
+  release build would be faster still.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.
 
