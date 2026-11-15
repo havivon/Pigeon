@@ -49,8 +49,15 @@ object SpamScorer {
      * 7: a message with a one-time code is never spam by score alone (only a blocked word or the user's own mark makes it
      * spam), the six new service categories (telecom, health, bills, transport, travel, shopping) are service notices, and a
      * receipt on a receipt site (wee.ai, payper) is no short-link scam.
+     * 8: a known sender (a brand, an authority, a municipality) is judged by its links and the scam signs only: its survey,
+     * opt-out line, "click here" and sale wording are its ordinary mail. National Insurance is no longer taken for Bank Leumi,
+     * the links of the Israeli SMS platforms (l5k.me, sop1.biz...) are a known sender's own, and "ייחסם" counts only next to an
+     * account ("the junction will be closed" is a municipality's). New: a fake emergency alert with a link, a stopped or
+     * unpaid parcel, a courier named in the text with a payment link, escort ads, a login-attempt lure, drugs in a price list
+     * or a link's name, gambling bonuses, and a politician's name as the sender id.
+     * 9: a loan or a raffle from a known sender is its business (a bank's loan offer, the lottery's draw), not a lure.
      */
-    const val VERSION = 7
+    const val VERSION = 9
 
     /**
      * The score from which a message goes to the spam folder. Every message from an unknown sender starts
@@ -182,7 +189,7 @@ object SpamScorer {
      * authority and court under it (taxes.gov.il, btl.gov.il, police.gov.il, eca.gov.il), the Home Front Command's
      * oref.org.il, the toll roads' kvish6.co.il and fastlane.co.il, and the municipalities' muni.il.
      */
-    private val GOV_DOMAINS = listOf("gov.il", "oref.org.il", "kvish6.co.il", "fastlane.co.il", "muni.il")
+    private val GOV_DOMAINS = listOf("gov.il", "oref.org.il", "kvish6.co.il", "6cn.co.il", "fastlane.co.il", "muni.il")
 
     /**
      * The sender ids of the authorities and toll roads, found anywhere in the sender written as one run
@@ -191,7 +198,83 @@ object SpamScorer {
      */
     private val GOV_SENDER_MARKS = listOf(
         "govil", "kvish6", "כביש6", "fastlane", "netivmahir", "נתיבמהיר", "pikudhaoref", "פיקודהעורף", "oref", "misim",
-        "רשותהמסים", "taxauthority", "bituachleumi", "ביטוחלאומי", "israelpolice", "משטרתישראל", "רשותהאכיפה", "הוצאהלפועל",
+        "רשותהמסים", "taxauthority", "bituachleumi", "bituahleumi", "ביטוחלאומי", "israelpolice", "משטרתישראל", "רשותהאכיפה", "הוצאהלפועל",
+        "crossnorth",
+    )
+
+    /**
+     * Version 8: the municipalities' sender ids, as the whole sender ("RamatGan", "Or Yehuda") or by a mark anywhere in it
+     * ("TLV-Muni", "עירייתחולון"). A municipality's survey, event or road works notice is its own mail, opt-out line or not.
+     */
+    private val MUNICIPAL_SENDERS = setOf(
+        "ramatgan", "oryehuda", "petahtikva", "petachtikva", "ptikva", "telaviv", "telavivyafo", "tlv", "jerusalem", "haifa",
+        "rishonlezion", "rishonlezion", "holon", "batyam", "bneibrak", "givatayim", "herzliya", "raanana", "kfarsaba", "netanya",
+        "ashdod", "ashkelon", "beersheva", "beersheba", "rehovot", "modiin", "hodhasharon", "ramathasharon", "yehud",
+        "kiryatono", "roshhaayin", "nesziona", "lod", "ramla", "eilat", "nahariya", "afula", "karmiel", "hadera", "kiryatgat",
+        "kiryatshmona", "beitshemesh", "betshemesh", "yavne", "shoham", "tiberias", "tveria", "tsfat", "dimona", "sderot",
+        "netivot", "ofakim", "kiryatbialik", "kiryatmotzkin", "kiryatyam", "kiryatata", "givatshmuel", "elad", "beitar",
+        "maalehadumim", "ariel", "yokneam", "migdalhaemek", "nazerethillit", "nofhagalil", "umalfahm", "zichronyaakov",
+        "רמתגן", "אוריהודה", "פתחתקווה", "תלאביב", "ירושלים", "חיפה", "ראשוןלציון", "חולון", "בתים", "בניברק", "גבעתיים",
+        "הרצליה", "רעננה", "כפרסבא", "נתניה", "אשדוד", "אשקלון", "בארשבע", "רחובות", "מודיעין", "הודהשרון", "רמתהשרון", "יהוד",
+    )
+    private val MUNICIPAL_MARKS = listOf("muni", "iriya", "iriyat", "עיריית", "עירייה", "מועצה")
+
+    /** Version 8: a politician's or a party's name as the sender id ("BBNetanyahu", "BennyGantz"): a campaign. */
+    private val POLITICAL_SENDER_MARKS = listOf(
+        "netanyahu", "bibi", "gantz", "lapid", "bennett", "eisenkot", "bengvir", "smotrich", "liberman", "lieberman", "likud",
+        "yeshatid", "gideonsaar", "otzma", "zehavalevan", "kahollavan", "נתניהו", "ביבי", "גנץ", "לפיד", "בנט", "הליכוד",
+    )
+
+    /**
+     * Version 8: the link domains of the Israeli SMS platforms that brands, municipalities and couriers send through
+     * (l5k.me, sop1.biz...). From a known sender they are its own links: no short-link sign and no "links elsewhere". From a
+     * stranger they are short links like any other.
+     */
+    private val SMS_PLATFORM_HOSTS = setOf("l5k.me", "lp6.me", "sop1.biz", "did.li", "tt9.me", "2si.me", "macb.li")
+
+    /** Version 8: an emergency alert, which the Home Front Command sends with no link off its own sites. */
+    private val EMERGENCY_WORDS = words(
+        "התרעת חירום", "התראת חירום", "המרחב המוגן", "מרחב מוגן", "למרחב המוגן", "לממד", "אזעקה", "אזעקות", "צבע אדום",
+        "red alert", "rocket alert", "emergency alert",
+    )
+
+    /** Version 8: "ייחסם" and its kin count as an account threat only beside one of these. */
+    private val BLOCK_WORDS = words("ייחסם", "יחסם", "נחסם", "ייחסמו", "תיחסם", "תחסם")
+    private val ACCOUNT_WORDS = words(
+        "חשבון", "החשבון", "חשבונך", "חשבונכם", "הכרטיס", "כרטיסך", "כרטיס האשראי", "המנוי", "מנויך", "הגישה", "הגישה שלך",
+        "account", "card",
+    )
+
+    /** Version 8: a parcel, and what scammers say happened to it ("סטטוס משלוח: ... נעצר", "Pending: please pay"). */
+    private val PARCEL_WORDS = words("משלוח", "המשלוח", "משלוחך", "חבילה", "החבילה", "חבילתך", "shipment", "shipping", "parcel", "package")
+    private val PARCEL_STOP_WORDS = words(
+        "נעצר", "נעצרה", "עוכב", "עוכבה", "מעוכב", "מעוכבת", "pending", "stopped", "on hold", "held",
+    )
+
+    /** Version 8: escort ads. A sign of its own, as strong as a request for card details: no genuine sender writes it. */
+    private val ESCORT_WORDS = words(
+        "נערת ליווי", "נערות ליווי", "שירותי ליווי", "מארחת אותך", "מארחת אותכם", "דוגמנית בת", "עיסוי מפנק",
+        "עיסוי אירוטי", "דירה דיסקרטית", "בדירה דיסקרטית", "escort", "escorts",
+    )
+    private const val ESCORT = 35
+
+    /** Version 9: phrases that are a known sender's own business: a bank's loan, the lottery's raffle ("זכית" still counts). */
+    private val TRUSTED_BUSINESS = setOf("הלוואה", "loan", "מתנה חינם")
+
+    /** Version 8: drugs named in a link ("t.me/kanabbisisrael"). */
+    private val DRUG_LINK_MARKS = listOf("kanab", "kanaby", "cannab", "canab", "weed", "ganja", "marijuana", "420")
+
+    /** Version 8: a price list ("בוטיק10=400 פרימיום20=550"): the weights and prices of a seller. In the normalized text. */
+    private val PRICE_LIST = Regex("\\d+\\s?=\\s?\\d{2,}")
+
+    /** Version 8: the couriers a text may name while linking elsewhere ("ISRAIL POST: ... please pay https://trgool.com"). */
+    private val COURIER_BRANDS = setOf("israelpost", "dhl", "ups", "fedex", "usps")
+
+    /** Version 8: the brands an institution's longer sender id starts with ("MaccabiSKR", "HarelSummer", "BezeqEnergy"). */
+    private val INSTITUTION_PREFIXES = listOf(
+        "harel", "migdal", "clalbit", "phoenix", "menora", "ayalon", "hachshara", "maccabi", "clalit", "meuhedet", "leumit",
+        "bezeq", "cellcom", "pelephone", "hotmobile", "israelpost", "hapoalim", "mizrahi", "isracard",
+        "leumicard", "superpharm", "shufersal", "htzone", "elal", "machonmor",
     )
 
     /** Short authority ids that count only as the whole sender. */
@@ -320,10 +403,12 @@ object SpamScorer {
         "cannabis", "marijuana", "weed", "thc", "cocaine", "ecstasy", "mdma", "lsd", "ketamine",
         // Version 6: "medical" bags and boxes, and pills for potency
         "שקיות רפואי", "קופסאות רפואי", "מגוון רפואי", "זיקפה", "שפיכה מוקדמת", "ויאגרה", "סיאליס", "viagra", "cialis",
+        // Version 8: strains by name
+        "וודינג קייק", "ווידינג קייק", "קוש", "kush", "og kush", "wedding cake",
     )
 
     /** Slang that is also an everyday word ("ויד" is "ו" + "יד", "hash" is a sign): counted with a weight in grams or "discreet". */
-    private val AMBIGUOUS_DRUG_WORDS = words("ויד", "hash", "חממה", "באצים", "רפואי")
+    private val AMBIGUOUS_DRUG_WORDS = words("ויד", "hash", "חממה", "באצים", "רפואי", "בוטיק", "פרימיום")
 
     /** The wording of a hidden delivery. A drug word of its own, but it needs a sales cue other than the delivery. */
     private val DISCREET_WORDS = words(
@@ -366,6 +451,8 @@ object SpamScorer {
         "israir", "ישראייר", "arkia", "ארקיע", "maccabi", "מכבי", "clalit", "כללית", "meuhedet", "מאוחדת", "leumit",
         "לאומית", "netflix", "spotify", "google", "apple", "microsoft", "amazon", "aliexpress", "shein", "temu", "ebay",
         "paypal", "booking", "airbnb", "ravkav", "רבקו", "pango", "פנגו", "cellopark", "סלופארק",
+        // Version 8
+        "htzone", "manuipais", "paisplus", "machonmor", "מכוןמור", "hopon", "ravpass", "רבפס", "exelot", "yad2", "wobi", "amazon",
         // The state lottery and the sports pools
         "lotto", "לוטו", "pais", "פיס", "mifalhapais", "מפעלהפיס", "toto", "טוטו",
         // News services, whose alerts quote the authorities ("פיקוד העורף: ...") with a link to the article
@@ -404,19 +491,27 @@ object SpamScorer {
         // Loans and money.
         phrase("הלוואה", STRONG, "הלוואה", "הלוואות", "בלי בדיקות", "ללא בדיקות", "אישור מיידי"),
         phrase("loan", STRONG, "loan", "loans", "payday", "pre-approved", "no credit check", "instant approval"),
-        phrase("קזינו", STRONG, "קזינו", "הימורים", "קזינו אונליין", "רולטה", "רולטת", "בונוס הפקדה", "הימור חינם", "פוקר", "סלוטס", "סיבובים חינם"),
-        phrase("casino", STRONG, "casino", "betting", "sportsbook", "roulette", "poker", "slots", "free spins", "deposit bonus"),
+        phrase("קזינו", STRONG, "קזינו", "הימורים", "קזינו אונליין", "רולטה", "רולטת", "בונוס הפקדה", "הימור חינם", "פוקר", "סלוטס", "סיבובים חינם", "בונוס הצטרפות", "כל סיבוב זוכה"),
+        phrase("casino", STRONG, "casino", "betting", "sportsbook", "roulette", "poker", "slots", "free spins", "deposit bonus", "spin win", "spin and win"),
         // Phishing: account threats.
-        phrase("החשבון ייחסם", STRONG, "ייחסם", "יחסם", "הושעה", "נחסם", "אמת את הפרטים", "אמתו את הפרטים", "עדכן את הפרטים", "פעילות חריגה",
+        phrase("החשבון ייחסם", STRONG, "הושעה", "אמת את הפרטים", "אמתו את הפרטים", "עדכן את הפרטים", "פעילות חריגה",
             // Version 6
             "ננעל", "ננעלה", "הוגבל", "הוגבלה", "הגבלנו", "פעילויות חשודות", "פעילות חשודה", "עדכן את הנתונים שלך", "תביעה משפטית שהוגשה",
         ),
         // Asking the reader to prove who they are, next to a threat: the second sign of a phishing text
-        phrase("אמת זהותך", STRONG, "אמת זהותך", "אמת את זהותך", "אמתו את זהותכם", "מכשיר לא ידוע", "verify your identity"),
+        phrase(
+            "אמת זהותך", STRONG, "אמת זהותך", "אמת את זהותך", "אמתו את זהותכם", "מכשיר לא ידוע", "verify your identity",
+            // Version 8: the login-attempt lure, and a phone plan that "ends today"
+            "הכניסה האחרונה", "ניסיון כניסה", "ניסיון התחברות", "כניסה חשודה", "התחברות חשודה", "login attempt", "sign-in attempt",
+            "חבילת הסלולר שלך מסתיימת", "חבילת הגלישה שלך מסתיימת", "החבילה שלך מסתיימת",
+        ),
         // The wrong-address and stopped-parcel messages that copy the couriers
         phrase(
             "כתובת החבילה", STRONG, "כתובת החבילה", "הכתובת של החבילה", "הכתובת שגויה", "כתובת שגויה", "אשר את הכתובת",
             "מספר רחוב חסר", "המשלוח שלך נעצר", "החבילה שלך נעצרה", "your parcel has been stopped", "address is incorrect",
+            // Version 8
+            "אשר את פרטי המשלוח", "אשרו את פרטי המשלוח", "תאשר את פרטי המשלוח", "לאשר את פרטי המשלוח",
+            "shipping number", "shipment is pending", "please pay",
         ),
         phrase("account suspended", STRONG, "account suspended", "account locked", "account has been locked", "verify your account", "unusual activity", "confirm your identity"),
         // Calls to action: "לחץ כאן להסרה" is how many opt-out lines read, so they do not make it an ad.
@@ -519,6 +614,9 @@ object SpamScorer {
         val words = Text.words(sms.body)
         val reasons = ArrayList<SpamReason>()
         var score = UNKNOWN_SENDER
+        // Version 8: a known brand, an authority or a municipality is judged by its links and the scam signs, not by its
+        // ordinary mail (a survey, the opt-out line, "click here", a sale)
+        val trusted = isTrustedSender(sms)
         reasons += SpamReason.UnknownSender
 
         if (isForeignNumber(sms.address)) {
@@ -528,8 +626,9 @@ object SpamScorer {
 
         val links = LinkAnalyzer.findLinks(sms.body)
         // A known shortener, or a home-made one such as "lp6.me/nejcz" (LinkAnalyzer.looksShortened)
-        // Except the link to an online receipt (wee.ai, payper) in a receipt: those sites are shorteners by shape and receipts by use
-        if (links.any { it.isShortener && !ServiceCategories.isReceiptWithLink(it.host, sms.body) }) {
+        // Except the link to an online receipt (wee.ai, payper) in a receipt: those sites are shorteners by shape and receipts by use,
+        // and a known sender's link through the SMS platforms it sends with
+        if (links.any { it.isShortener && !ServiceCategories.isReceiptWithLink(it.host, sms.body) && !(trusted && isPlatformHost(it.host)) }) {
             score += SHORT_LINK
             reasons += SpamReason.ShortLink
         }
@@ -541,12 +640,12 @@ object SpamScorer {
             score += BRAND_SENDER
             reasons += SpamReason.BrandSender
         }
-        if (links.size >= MANY_LINKS_FROM) {
+        if (links.size >= MANY_LINKS_FROM && !trusted) {
             score += MANY_LINKS
             reasons += SpamReason.ManyLinks
         }
 
-        val poll = pollPoints(words)
+        val poll = if (trusted) 0 else minOf(pollPoints(words) + if (isPoliticalSender(sms.address)) POLL_POLITICS else 0, POLL_CAP)
         if (poll > 0) {
             score += poll
             reasons += SpamReason.Poll
@@ -556,6 +655,7 @@ object SpamScorer {
         var optOut = false
         var adWording = false
         for (phrase in PHRASES) {
+            if (trusted && (phrase.points < STRONG || phrase.label in TRUSTED_BUSINESS)) continue
             if (phrase.variants.any { Text.containsPhrase(words, it) }) {
                 phrasePoints += if (phrase.urgent && links.isNotEmpty()) URGENT_WITH_LINK else phrase.points
                 reasons += SpamReason.Keyword(phrase.label)
@@ -563,8 +663,21 @@ object SpamScorer {
                 adWording = adWording || phrase.ad
             }
         }
+        // Version 8: "ייחסם" is an account threat only beside an account ("הצומת ייחסם" is road works)
+        val accountThreat = Text.words(sms.body).let { w -> BLOCK_WORDS.any { Text.containsWords(w, it) } && ACCOUNT_WORDS.any { Text.containsWords(w, it) } }
+        if (accountThreat && SpamReason.Keyword("החשבון ייחסם") !in reasons) {
+            phrasePoints += STRONG
+            reasons += SpamReason.Keyword("החשבון ייחסם")
+        }
+        // Version 8: a parcel that "was stopped" or "is pending", from a sender that is no known courier or brand
+        if (!isKnownBrand(sms) && SpamReason.Keyword("כתובת החבילה") !in reasons &&
+            PARCEL_WORDS.any { Text.containsWords(words, it) } && PARCEL_STOP_WORDS.any { Text.containsWords(words, it) } && links.isNotEmpty()
+        ) {
+            phrasePoints += STRONG
+            reasons += SpamReason.Keyword("כתובת החבילה")
+        }
         // "פרסומת" at the start: the ad marker the law asks for, worth the same as the opt-out line and counted once with it
-        if (FolderClassifier.hasAdMarker(sms.body)) {
+        if (FolderClassifier.hasAdMarker(sms.body) && !trusted) {
             if (!optOut) {
                 phrasePoints += MODERATE
                 reasons += SpamReason.Keyword(if (Text.hasHebrew(sms.body)) "פרסומת" else "Ad")
@@ -586,6 +699,10 @@ object SpamScorer {
         if (!isKnownBrand(sms) && CHAIN_WORDS.count { Text.containsWords(spaced, it) } >= 2) {
             score += RELIGIOUS_CHAIN
             reasons += SpamReason.Keyword("שרשרת")
+        }
+        if (!trusted && ESCORT_WORDS.any { Text.containsWords(words, it) }) {
+            score += ESCORT
+            reasons += SpamReason.Keyword("ליווי")
         }
 
         if (impersonatesAuthority(sms, words, links)) {
@@ -669,6 +786,9 @@ object SpamScorer {
      * signs ([SpamReason.BrandSender] judges its links). A genuine authority's id ([isGovSender]) is judged by its links.
      */
     private fun impersonatesAuthority(sms: IncomingSms, words: List<String>, links: List<LinkInfo>): Boolean {
+        // Version 8: an emergency alert with a link off the authorities' sites ("התרעת חירום ... versionupdate.xyz")
+        val offGov = links.any { link -> GOV_DOMAINS.none { link.host == it || link.host.endsWith(".$it") } }
+        if (offGov && !isKnownBrand(sms) && EMERGENCY_WORDS.any { Text.containsWords(words, it) }) return true
         val authority = AUTHORITY_WORDS.any { Text.containsWords(words, it) }
         val debt = DEBT_WORDS.any { Text.containsWords(words, it) }
         if (!authority && !debt) return false
@@ -683,6 +803,34 @@ object SpamScorer {
         val municipal = Text.isAlphanumericSender(sms.address) && MUNICIPAL_WORDS.any { Text.containsWords(words, it) }
         return debt && payAsk && strayLink && !municipal
     }
+
+    /**
+     * Version 8: a known brand ([isKnownBrand], also by the start of a longer id: "MaccabiSKR"), an authority or a
+     * municipality: judged by its links and the scam signs only. Public for the release of its old verdicts.
+     */
+    fun isTrustedSender(sms: IncomingSms): Boolean {
+        if (isKnownBrand(sms) || isGovSender(sms.address) || isMunicipalSender(sms.address)) return true
+        if (!Text.isAlphanumericSender(sms.address)) return false
+        val compact = compactSender(sms.address)
+        return INSTITUTION_PREFIXES.any { compact.length > it.length && compact.startsWith(it) } ||
+            KNOWN_BRANDS.any { it.length >= MIN_PREFIX && compact.length > it.length && compact.startsWith(it) }
+    }
+
+    private fun compactSender(address: String) = Text.words(address.replace('-', ' ').replace('.', ' ').replace('_', ' ')).joinToString("")
+
+    private fun isMunicipalSender(address: String): Boolean {
+        if (!Text.isAlphanumericSender(address)) return false
+        val compact = compactSender(address)
+        return compact in MUNICIPAL_SENDERS || MUNICIPAL_MARKS.any { compact.contains(it) }
+    }
+
+    private fun isPoliticalSender(address: String): Boolean {
+        if (!Text.isAlphanumericSender(address)) return false
+        val compact = compactSender(address)
+        return compact == "shas" || POLITICAL_SENDER_MARKS.any { compact.contains(it) }
+    }
+
+    private fun isPlatformHost(host: String) = host.removePrefix("www.") in SMS_PLATFORM_HOSTS
 
     /** The sender id of an authority or a toll road ([GOV_SENDER_MARKS], [GOV_SENDER_NAMES]). Never a phone number. */
     private fun isGovSender(address: String): Boolean {
@@ -790,8 +938,10 @@ object SpamScorer {
         val discreet = DISCREET_WORDS.any { Text.containsWords(words, it) }
         // "weed killer" is the garden's: the word is left out when a gardening word follows it
         val words = words.filterIndexed { i, w -> !(w == "weed" && words.getOrNull(i + 1) in GARDEN_WORDS) }
-        val weight = DRUG_WEIGHT.containsMatchIn(Text.normalize(body))
-        val drug = DRUG_WORDS.any { Text.containsWords(words, it) } ||
+        val normalized = Text.normalize(body)
+        val weight = DRUG_WEIGHT.containsMatchIn(normalized) || PRICE_LIST.containsMatchIn(normalized)
+        val drugLink = links.any { l -> DRUG_LINK_MARKS.any { l.text.lowercase().contains(it) } }
+        val drug = DRUG_WORDS.any { Text.containsWords(words, it) } || drugLink ||
             (AMBIGUOUS_DRUG_WORDS.any { Text.containsWords(words, it) } && (weight || discreet))
         if (!drug && !discreet) return false
         val chat = asksToContactElsewhere(body, words, links) || links.any { it.isShortener }
@@ -848,8 +998,20 @@ object SpamScorer {
 
     /** An alphanumeric sender named like a known company, whose message links somewhere that company does not live. */
     private fun impersonatesBrand(sms: IncomingSms, links: List<LinkInfo>): Boolean {
-        if (links.isEmpty() || !Text.isAlphanumericSender(sms.address)) return false
-        val brand = LinkAnalyzer.brandNamed(sms.address) ?: sms.senderName?.let { LinkAnalyzer.brandNamed(it) } ?: return false
-        return links.any { !LinkAnalyzer.isGenuineHost(brand, it.host) }
+        if (links.isEmpty()) return false
+        val elsewhere = links.filter { !isPlatformHost(it.host) }
+        if (Text.isAlphanumericSender(sms.address)) {
+            val brand = LinkAnalyzer.brandNamed(sms.address) ?: sms.senderName?.let { LinkAnalyzer.brandNamed(it) }
+            if (brand != null) return elsewhere.any { !LinkAnalyzer.isGenuineHost(brand, it.host) }
+        }
+        // Version 8: a courier named in the text ("ISRAIL POST: ... please pay"), with a payment ask and a link off its sites
+        if (isKnownBrand(sms)) return false
+        val words = Text.words(sms.body)
+        val named = (words + words.zipWithNext { a, b -> a + b }).firstNotNullOfOrNull { w -> LinkAnalyzer.brandNamed(w)?.takeIf { it in COURIER_BRANDS } }
+            ?: return false
+        val pay = PAY_WORDS.any { Text.containsWords(words, it) } || Text.containsPhrase(words, "please pay") || Text.containsPhrase(words, "pending")
+        return pay && elsewhere.any { !LinkAnalyzer.isGenuineHost(named, it.host) }
     }
+
+    private const val MIN_PREFIX = 5
 }

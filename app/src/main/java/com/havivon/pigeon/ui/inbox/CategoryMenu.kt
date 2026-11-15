@@ -169,7 +169,7 @@ fun CategoryAction.dispatch(onFolder: (Folder) -> Unit, onCustomFolder: (CustomF
 }
 
 /**
- * The chosen category as a white pill on the header (the categories icon, its colour dot, its name, its number and ▾); a tap opens the
+ * The chosen category as a white pill on the header (the categories icon, its colour dot, its name and ▾); a tap opens the
  * menu of [entries] right under it.
  */
 @Composable
@@ -178,7 +178,7 @@ internal fun CategoryDropdown(entries: List<CategoryEntry>, onAction: (CategoryA
     var open by rememberSaveable { mutableStateOf(false) }
     val current = entries.current()
     val onWhite = c.onWhite
-    val description = stringResource(R.string.inbox_category_button_description, current.label(), current.count)
+    val description = stringResource(R.string.inbox_category_button_description, current.label())
     Box {
         Row(
             Modifier
@@ -200,7 +200,8 @@ internal fun CategoryDropdown(entries: List<CategoryEntry>, onAction: (CategoryA
                 ColourDot(dot)
                 Spacer(Modifier.width(7.dp))
             }
-            // The name is cut with "…" first: the number and the chevron always show
+            // The name is cut with "…" first: the chevron always shows. No unread number here: the Unread button shows it, and
+            // the open menu shows every category's
             Text(
                 current.label(),
                 color = onWhite,
@@ -210,10 +211,6 @@ internal fun CategoryDropdown(entries: List<CategoryEntry>, onAction: (CategoryA
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            if (current.count > 0) {
-                Spacer(Modifier.width(6.dp))
-                CountDot(current.count, selected = true)
-            }
             Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = onWhite, modifier = Modifier.size(22.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(c.surface)) {

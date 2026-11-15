@@ -136,7 +136,7 @@
     <string name="inbox_mark_all_read_short">הכל נקרא</string>
     <string name="inbox_mark_all_read_description">סמן את כל ההודעות כאן כנקראו</string>
     <string name="inbox_manage_categories">ניהול קטגוריות…</string>
-    <string name="inbox_category_button_description">קטגוריה: %1$s, %2$d. פותח את רשימת הקטגוריות</string>
+    <string name="inbox_category_button_description">קטגוריה: %1$s. פותח את רשימת הקטגוריות</string>
     <string name="inbox_category_chosen">נבחרה</string>
     <string name="mark_all_read_title">לסמן הכל כנקרא?</string>
     <plurals name="mark_all_read_body">

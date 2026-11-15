@@ -25,7 +25,7 @@ class SpamRulesV7Test {
 
     @Test
     fun theRulesAreVersionSeven() {
-        assertEquals(7, SpamScorer.VERSION)
+        assertTrue("version 7 or a later one", SpamScorer.VERSION >= 7)
     }
 
     @Test
@@ -134,6 +134,20 @@ class SpamRulesV7Test {
         spam.markSpam("ShopX", 1, listOf(SpamReason.ShortLink))
         SpamOnRead(hook, release = release::release) { t -> messages.recentMessages(t, 50).lastOrNull { !it.type.outgoing } }
             .judge(listOf(conversation(1, "ShopX", dateMillis = 1_000)), spam.verdicts.first())
+        assertEquals(1, spam.verdictState.value.size)
+    }
+
+    @Test
+    fun `version 8 - a verdict of the filter on a known sender's survey is dropped, the user's own mark is not`() = runTest {
+        val survey = "שלום, נשמח למענה על שאלון קצר על הביקור במרפאה: https://survey.example.co.il/q להסרה השב הסר"
+        seed(survey, "MaccabiSKR")
+        spam.markSpam("MaccabiSKR", 1, listOf(SpamReason.Poll, SpamReason.Keyword("הסר")))
+        judge.judge(listOf(conversation(1, "MaccabiSKR", dateMillis = 1_000)), spam.verdicts.first())
+        assertNull(spam.verdictFor("MaccabiSKR"))
+
+        spam.markSpam("MaccabiSKR", 1, listOf(SpamReason.MarkedByUser))
+        SpamOnRead(hook, release = release::release) { t -> messages.recentMessages(t, 50).lastOrNull { !it.type.outgoing } }
+            .judge(listOf(conversation(1, "MaccabiSKR", dateMillis = 1_000)), spam.verdicts.first())
         assertEquals(1, spam.verdictState.value.size)
     }
 }

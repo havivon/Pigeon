@@ -127,7 +127,7 @@
     <string name="inbox_mark_all_read_short">All read</string>
     <string name="inbox_mark_all_read_description">Mark all messages here as read</string>
     <string name="inbox_manage_categories">Manage categories…</string>
-    <string name="inbox_category_button_description">Category: %1$s, %2$d. Opens the list of categories</string>
+    <string name="inbox_category_button_description">Category: %1$s. Opens the list of categories</string>
     <string name="inbox_category_chosen">Chosen</string>
     <string name="mark_all_read_title">Mark all as read?</string>
     <plurals name="mark_all_read_body">

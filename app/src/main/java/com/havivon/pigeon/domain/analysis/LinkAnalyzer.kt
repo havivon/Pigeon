@@ -175,11 +175,13 @@ object LinkAnalyzer {
     private val BRANDS = listOf(
         Brand(
             "israelpost",
-            listOf("israelpost", "israpost", "isrpost", "doarisrael", "doar"),
+            listOf("israelpost", "israpost", "isrpost", "israilpost", "doarisrael", "doar"),
             listOf("israelpost.co.il", "israelpost.com", "postil.com"),
             listOf("דוארישראל", "ישראלפוסט"),
         ),
         Brand("gov.il", listOf("govil"), listOf("gov.il"), listOf("ממשלה")),
+        // National Insurance before Bank Leumi: "BituahLeumi" holds "leumi", and its links to btl.gov.il are its own
+        Brand("btl", listOf("bituahleumi", "bituachleumi"), listOf("btl.gov.il", "gov.il"), listOf("ביטוחלאומי")),
         Brand("leumi", listOf("leumi"), listOf("leumi.co.il", "leumi.com", "bankleumi.co.il", "leumi-card.co.il", "leumicard.co.il"), listOf("לאומי")),
         Brand(
             "hapoalim",

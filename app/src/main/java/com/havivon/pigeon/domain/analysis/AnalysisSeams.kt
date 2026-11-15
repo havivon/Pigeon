@@ -108,7 +108,9 @@ class CodeSpamRelease(
 ) {
     /** Drops the verdict on [message]'s sender when the rules above say so. */
     suspend fun release(message: StoredIncomingSms) {
-        if (CodeExtractor.extract(message.body, message.address, knownPerson = false) == null) return
+        // A code (version 7), or a known brand, authority or municipality (version 8: their survey or opt-out line is no ad)
+        val code = CodeExtractor.extract(message.body, message.address, knownPerson = false) != null
+        if (!code && !SpamScorer.isTrustedSender(IncomingSms(message.address, body = message.body))) return
         val verdict = spam.verdictFor(message.address) ?: return
         if (verdict.reasons.any { it == SpamReason.MarkedByUser || it == SpamReason.BlockedOnPhone || it is SpamReason.BlockedKeyword }) return
         val again = SpamScorer.score(
