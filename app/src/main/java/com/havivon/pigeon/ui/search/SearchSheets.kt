@@ -126,7 +126,6 @@ internal fun MessageActions(
         )
         SheetAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind)
         if (onMove != null) SheetAction(Icons.AutoMirrored.Rounded.DriveFileMove, stringResource(R.string.action_move_to_folder), onClick = onMove)
-        if (onMarkRead != null) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
         if (onSpam != null) {
             val isSpam = conversation?.isSpam == true
             SheetAction(
@@ -135,6 +134,7 @@ internal fun MessageActions(
                 onClick = onSpam,
             )
         }
+        if (onMarkRead != null) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
         if (onLock != null) {
             val locked = conversation?.locked == true
             SheetAction(

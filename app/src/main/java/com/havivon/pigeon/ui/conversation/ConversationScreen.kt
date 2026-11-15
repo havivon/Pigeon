@@ -1,5 +1,10 @@
 package com.havivon.pigeon.ui.conversation
 
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.RowScope
 import com.havivon.pigeon.ui.components.FitOrShort
 import com.havivon.pigeon.ui.components.TrailingOrBelow
 import android.annotation.SuppressLint
@@ -689,12 +694,34 @@ internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Uni
             .fillMaxWidth()
             .background(c.surface)
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .height(IntrinsicSize.Min)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        PillButton(copyLabel(count), Modifier.weight(1f), icon = Icons.Rounded.ContentCopy, filled = true, onClick = onCopy)
-        PillButton(stringResource(R.string.common_share), Modifier.weight(1f), icon = Icons.Rounded.Share, onClick = onShare)
-        if (onRemind != null) PillButton(stringResource(R.string.reminder_title), Modifier.weight(1f), icon = Icons.Rounded.Alarm, onClick = onRemind)
+        // Equal columns, the icon above its words: a longer word (or a large font) wraps inside its own column, and
+        // the three stay one height
+        SelectionAction(copyLabel(count), Icons.Rounded.ContentCopy, Modifier.weight(1f), onCopy)
+        SelectionAction(stringResource(R.string.common_share), Icons.Rounded.Share, Modifier.weight(1f), onShare)
+        if (onRemind != null) SelectionAction(stringResource(R.string.reminder_title), Icons.Rounded.Alarm, Modifier.weight(1f), onRemind)
+    }
+}
+
+@Composable
+private fun RowScope.SelectionAction(label: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    val c = HebTheme.colors
+    Column(
+        modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(16.dp))
+            .background(c.accent.copy(alpha = 0.12f))
+            .clickable(onClick = onClick, role = Role.Button)
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = c.accent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(label, color = c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, lineHeight = 16.sp)
     }
 }
 

@@ -326,6 +326,7 @@
     <string name="widget_code_subtitle">%1$s · %2$s · %3$s</string>
     <string name="widget_code_none">No code yet</string>
     <string name="widget_code_copied">Code copied</string>
+    <string name="code_auto_copied">Code copied, ready to paste</string>
     <plurals name="widget_ago_minutes">
         <item quantity="one">%1$d min ago</item>
         <item quantity="other">%1$d min ago</item>

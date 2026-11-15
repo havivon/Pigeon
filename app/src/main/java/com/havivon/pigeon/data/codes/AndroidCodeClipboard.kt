@@ -1,5 +1,8 @@
 package com.havivon.pigeon.data.codes
 
+import android.widget.Toast
+import android.os.Looper
+import android.os.Handler
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -33,6 +36,8 @@ class AndroidCodeClipboard(context: Context) : CodeClipboard {
     override fun copy(code: String, tag: String) {
         try {
             SensitiveClipboard.copySilently(app, app.getString(R.string.widget_code_kind), code, mapOf(TAG_EXTRA to tag))
+            // A short word that it is ready to paste (without the code itself: it may show over the lock screen)
+            Handler(Looper.getMainLooper()).post { Toast.makeText(app, R.string.code_auto_copied, Toast.LENGTH_SHORT).show() }
         } catch (_: RuntimeException) {
             // A clipboard that refuses: the code is still in the notification
         }

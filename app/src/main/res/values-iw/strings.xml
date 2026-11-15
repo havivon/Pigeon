@@ -345,6 +345,7 @@
     <string name="widget_code_kind">קוד אימות</string>
     <string name="widget_code_subtitle">%1$s · %2$s · %3$s</string>
     <string name="widget_code_none">אין קוד חדש</string>
+    <string name="code_auto_copied">הקוד הועתק, אפשר להדביק</string>
     <string name="widget_code_copied">הקוד הועתק</string>
     <plurals name="widget_ago_minutes">
         <item quantity="one">לפני דקה</item>

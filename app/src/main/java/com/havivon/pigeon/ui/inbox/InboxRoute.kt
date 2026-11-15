@@ -190,7 +190,7 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
 
     ConversationSheets(
         sheetFor, onDone = { sheetFor = null }, actions = vm.sheet, customFolders = state.customFolders,
-        onSelect = { vm.selectConversation(it.id) },
+        onSelect = { vm.selectConversation(it.id) }, withSpam = true,
     )
 
     if (askDelete) {
@@ -247,7 +247,7 @@ internal fun ConversationActions(
     onMove: () -> Unit,
     onLock: () -> Unit,
     onDelete: () -> Unit,
-    /** Only the search's sheet has these: open the conversation, mark it as spam (or "Not spam"), start a selection with it. */
+    /** Null leaves them out: open the conversation, mark it as spam (or "Not spam", next to "Move to category"), start a selection with it. */
     onOpen: (() -> Unit)? = null,
     onSpam: (() -> Unit)? = null,
     onSelect: (() -> Unit)? = null,
@@ -260,11 +260,6 @@ internal fun ConversationActions(
         if (conv.unread > 0) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
         SheetAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind)
         SheetAction(Icons.AutoMirrored.Rounded.DriveFileMove, stringResource(R.string.action_move_to_folder), onClick = onMove)
-        SheetAction(
-            if (conv.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
-            stringResource(if (conv.locked) R.string.action_unlock_chat else R.string.action_lock_chat),
-            onClick = onLock,
-        )
         if (onSpam != null) {
             SheetAction(
                 if (conv.isSpam) Icons.Rounded.VerifiedUser else Icons.Rounded.Report,
@@ -272,6 +267,11 @@ internal fun ConversationActions(
                 onClick = onSpam,
             )
         }
+        SheetAction(
+            if (conv.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
+            stringResource(if (conv.locked) R.string.action_unlock_chat else R.string.action_lock_chat),
+            onClick = onLock,
+        )
         if (onSelect != null) SheetAction(Icons.Rounded.CheckCircle, stringResource(R.string.search_action_select), onClick = onSelect)
         SheetAction(Icons.Rounded.Delete, stringResource(R.string.action_delete_conversation), danger = true, onClick = onDelete)
     }
