@@ -158,7 +158,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             },
             onBlockScreenshots = vm::setBlockScreenshots,
             // Turning the lock on or off proves first that the fingerprint or screen lock works
-            onAppLock = { on -> auth.authenticate { ok -> if (ok) vm.setAppLock(on) } },
+            onAppLock = { on -> auth.authenticateNow { ok -> if (ok) vm.setAppLock(on) } },
             onContactsPermission = {
                 if (phone.contacts) {
                     open(context, appDetails(context))

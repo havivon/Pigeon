@@ -80,7 +80,7 @@ fun ConversationSheets(
                 onLock = {
                     onDone()
                     when {
-                        conv.locked -> auth.authenticate { ok -> if (ok) actions.unlock(conv) }
+                        conv.locked -> auth.authenticateNow { ok -> if (ok) actions.unlock(conv) }
                         auth.available() -> actions.lock(conv)
                         else -> notices.show(needsScreenLock)
                     }

@@ -173,7 +173,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
             if (conversation.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
         ) {
             when {
-                conversation.locked -> auth.authenticate { ok -> if (ok) vm.unlock() }
+                conversation.locked -> auth.authenticateNow { ok -> if (ok) vm.unlock() }
                 auth.available() -> vm.lock()
                 else -> notices.show(needsScreenLock)
             }

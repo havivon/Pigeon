@@ -41,7 +41,10 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   always has a row of its own, with All / Unread / "Mark all read" under it (full label unless a large font or a narrow
   screen leaves no room). The search opened from a category keeps to it: `Screen.Search(category)`,
   `SearchFilters.category` (narrows, not one of `any`), a chip "In: <category>" whose X searches everywhere.
-- **Not done:** installing 0.7.6 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
+- **0.7.7** (versionCode 40): unlocking a locked chat (conversation menu, inbox sheet, search sheet) and changing the
+  app lock always ask (`Authenticator.authenticateNow`), skipping the 10-second reuse of a recent success that let
+  "unlock" through right after the chat was opened with a fingerprint.
+- **Not done:** installing 0.7.7 on the phone (it was not connected). When it is: `adb install -r` the dist APK,
   push it to `/sdcard/Download/`, launch with `am start -n com.havivon.pigeon/.IconEnvelope`.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.

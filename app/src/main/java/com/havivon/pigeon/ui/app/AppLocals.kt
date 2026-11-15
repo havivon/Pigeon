@@ -55,6 +55,12 @@ interface Authenticator {
 
     /** Asks, unless the owner proved it a moment ago; [onResult] true on success. Without a screen lock it succeeds at once. */
     fun authenticate(onResult: (Boolean) -> Unit)
+
+    /**
+     * Asks every time, even right after a success (opening the chat a moment ago does not count): for taking a protection away,
+     * such as unlocking a locked chat or turning the app lock off. [onResult] as in [authenticate].
+     */
+    fun authenticateNow(onResult: (Boolean) -> Unit) = authenticate(onResult)
 }
 
 val LocalNotices = staticCompositionLocalOf<Notices> { error("No Notices provided") }

@@ -229,7 +229,7 @@ internal fun MessageSheet(
                         onDone()
                         // Unlocking asks who is there first; locking needs a screen lock to be set
                         when {
-                            c.locked -> auth.authenticate { ok -> if (ok) vm.sheet.unlock(c) }
+                            c.locked -> auth.authenticateNow { ok -> if (ok) vm.sheet.unlock(c) }
                             auth.available() -> vm.sheet.lock(c)
                             else -> notices.show(needsScreenLock)
                         }

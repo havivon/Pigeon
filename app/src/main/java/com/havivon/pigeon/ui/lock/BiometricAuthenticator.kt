@@ -34,8 +34,13 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Authentic
     override fun available(): Boolean =
         BiometricManager.from(activity).canAuthenticate(BIOMETRIC_WEAK or DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
 
-    override fun authenticate(onResult: (Boolean) -> Unit) {
-        if (SystemClock.elapsedRealtime() - lastSuccess < REUSE_MS) {
+    override fun authenticate(onResult: (Boolean) -> Unit) = ask(reuse = true, onResult)
+
+    override fun authenticateNow(onResult: (Boolean) -> Unit) = ask(reuse = false, onResult)
+
+    /** [reuse]: a success of the last [REUSE_MS] answers at once (not for taking a protection away). */
+    private fun ask(reuse: Boolean, onResult: (Boolean) -> Unit) {
+        if (reuse && SystemClock.elapsedRealtime() - lastSuccess < REUSE_MS) {
             onResult(true)
             return
         }
