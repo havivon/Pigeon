@@ -55,6 +55,7 @@ English or a subagent reports in English). Code, commits and comments stay Engli
   when the versionCode changes). List ready after a cold start: about 1.5 s -> 0.7 s (the first launch after an
   install still classifies everything once). The dist APKs are debug builds (no keystore.properties here): a signed
   release build would be faster still.
+- **0.7.10** (versionCode 43), installed on the phone: in a conversation's multi-select a tap on the message text unselected it and the TextView's pending long press selected it again a moment later; the tap now cancels it (`cancelLongPress` + ACTION_CANCEL), and a long press while selecting toggles too. "Remind me" moved from the header to the bottom row (Copy / Share / Remind me) and works on several messages (one reminder each). "Copy" for one message, "Copy N together" for more (`copyLabel`, also in search). The reminder chip already showed on old messages whose date is still ahead (dates are read relative to when the message was written; test in RemindMeTest).
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.
 

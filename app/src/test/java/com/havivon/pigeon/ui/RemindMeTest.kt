@@ -137,14 +137,32 @@ class RemindMeTest {
     }
 
     @Test
-    fun `it is about one message, so several selected messages get no reminder`() = runTest {
+    fun `several selected messages each get the reminder`() = runTest {
         seedThread()
         val vm = thread()
         collect(vm.state)
         vm.select(10)
         vm.select(11)
-        vm.remindSelected(millis(2026, 11, 1, 20, 0))
-        assertTrue(reminders.state.value.isEmpty())
+        val at = millis(2026, 11, 1, 20, 0)
+        vm.remindSelected(at)
+        assertEquals(setOf(10L, 11L), reminders.state.value.map { it.messageId }.toSet())
+        assertTrue(reminders.state.value.all { it.triggerAtMillis == at })
+        assertEquals(2, scheduler.scheduled.size)
+        assertTrue(vm.selected.value.isEmpty())
+    }
+
+    @Test
+    fun `an old message offers a reminder while its date is still ahead`() = runTest {
+        messages.threads.value = listOf(conversation(1, "0525550100", name = "Danny", snippet = "x"))
+        messages.allMessages.value = listOf(
+            sms(20, 1, "The meeting is on 20/11 at 9:00", millis(2026, 9, 1, 10, 0)),
+            sms(21, 1, "The meeting is on 20/10 at 9:00", millis(2026, 9, 1, 10, 0)),
+        )
+        val vm = thread()
+        collect(vm.state)
+        val shown = vm.state.value.messages.associateBy { it.id }
+        assertEquals(millis(2026, 11, 20, 9, 0), shown.getValue(20).reminderAtMillis)
+        assertEquals(null, shown.getValue(21).reminderAtMillis)
     }
 
     // From the inbox

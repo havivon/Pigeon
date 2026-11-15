@@ -387,20 +387,20 @@ class ConversationViewModel(
     }
 
     /**
-     * "Remind me about this message": a reminder at [atMillis] on the one selected message (the button
-     * is only offered for exactly one), which replaces an earlier reminder on it. Times that already
-     * passed are ignored.
+     * "Remind me": a reminder at [atMillis] on each selected message, which replaces an earlier reminder on
+     * it. Times that already passed are ignored.
      */
     fun remindSelected(atMillis: Long) {
-        val message = selectedMessages().singleOrNull() ?: return
-        if (atMillis <= now()) return
+        val chosen = selectedMessages()
+        if (chosen.isEmpty() || atMillis <= now()) return
         clearSelection()
+        val ids = chosen.map { it.id }.toSet()
         viewModelScope.launch {
-            reminders.pending.first().filter { it.messageId == message.id }.forEach {
+            reminders.pending.first().filter { it.messageId in ids }.forEach {
                 scheduler.cancel(it.id)
                 reminders.delete(it.id)
             }
-            createReminder(message.id, message.body, atMillis)
+            for (message in chosen) createReminder(message.id, message.body, atMillis)
             events.trySend(ConversationEvent.ReminderCreated(labels.reminder(atMillis, now(), withTime = true)))
         }
     }

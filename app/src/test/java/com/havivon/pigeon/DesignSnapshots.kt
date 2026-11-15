@@ -55,7 +55,7 @@ class DesignSnapshots {
             )
         }
         shot("4_multi_select") {
-            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = PHONE)
+            ConversationScreen(danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = PHONE, onRemindSelected = {})
         }
         shot("5_spam") { SpamScreen(groupSpam(sample.spam)) }
         shot("6_color_rules") { RulesScreen(sample.rules) }

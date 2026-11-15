@@ -151,7 +151,7 @@ fun ConversationScreen(
     /** Whether every selected message is starred already (the star then removes them). */
     selectedStarred: Boolean = false,
     onStarSelected: () -> Unit = {},
-    /** "Remind me about this message"; null hides the button (it is about exactly one message). */
+    /** "Remind me" about the selected messages (a reminder on each); null hides the button. */
     onRemindSelected: (() -> Unit)? = null,
     onDeleteSelected: () -> Unit = {},
     onReminder: (Message) -> Unit = {},
@@ -212,7 +212,7 @@ fun ConversationScreen(
     }
     Column(Modifier.fillMaxSize().background(c.background)) {
         if (selecting) {
-            SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll, onStarSelected, onRemindSelected, onDeleteSelected)
+            SelectionBar(selectedIds.size, selectedStarred, onClearSelection, onSelectAll, onStarSelected, null, onDeleteSelected)
         } else {
             ThreadBar(conversation, subtitle, onBack, onCall, menu)
         }
@@ -247,7 +247,7 @@ fun ConversationScreen(
             }
         }
         if (selecting) {
-            SelectionActions(selectedIds.size, onCopySelected, onShareSelected)
+            SelectionActions(selectedIds.size, onCopySelected, onShareSelected, onRemindSelected)
         } else {
             Composer(draft, onDraft, onSend)
         }
@@ -562,6 +562,12 @@ private fun SelectableMessageText(
                             val isTap = abs(e.x - downX) < slop && abs(e.y - downY) < slop &&
                                 e.eventTime - e.downTime < ViewConfiguration.getLongPressTimeout()
                             if (isTap && multiSelect) {
+                                // The finger-down went to the TextView, which is now waiting to call it a long press:
+                                // without this cancel it did, a moment after the tap, and selected the message again
+                                cancelLongPress()
+                                val cancel = MotionEvent.obtain(e).apply { action = MotionEvent.ACTION_CANCEL }
+                                onTouchEvent(cancel)
+                                cancel.recycle()
                                 tap()
                                 return@setOnTouchListener true
                             }
@@ -676,7 +682,7 @@ private fun ReminderChip(text: String, set: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit) {
+internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit, onRemind: (() -> Unit)? = null) {
     val c = HebTheme.colors
     Row(
         Modifier
@@ -684,12 +690,18 @@ internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Uni
             .background(c.surface)
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        PillButton(stringResource(R.string.thread_copy_together, count), Modifier.weight(1f), icon = Icons.Rounded.ContentCopy, filled = true, onClick = onCopy)
+        PillButton(copyLabel(count), Modifier.weight(1f), icon = Icons.Rounded.ContentCopy, filled = true, onClick = onCopy)
         PillButton(stringResource(R.string.common_share), Modifier.weight(1f), icon = Icons.Rounded.Share, onClick = onShare)
+        if (onRemind != null) PillButton(stringResource(R.string.reminder_title), Modifier.weight(1f), icon = Icons.Rounded.Alarm, onClick = onRemind)
     }
 }
+
+/** "Copy" for one message; "Copy 3 together" only when there are several to join. */
+@Composable
+internal fun copyLabel(count: Int): String =
+    if (count == 1) stringResource(R.string.common_copy) else stringResource(R.string.thread_copy_together, count)
 
 /** The text field and send button; the button works (and looks it) only when there is text. */
 @Composable

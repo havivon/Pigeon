@@ -376,7 +376,7 @@ internal fun selectionActions(
     onRemind: (() -> Unit)?,
 ): List<SelectionAction> = buildList {
     if (hasMessages) {
-        add(SelectionAction(Icons.Rounded.ContentCopy, stringResource(R.string.thread_copy_together, count), onClick = onCopy))
+        add(SelectionAction(Icons.Rounded.ContentCopy, com.havivon.pigeon.ui.conversation.copyLabel(count), onClick = onCopy))
         add(SelectionAction(Icons.Rounded.Share, stringResource(R.string.common_share), onClick = onShare))
         add(
             SelectionAction(

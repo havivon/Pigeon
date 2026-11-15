@@ -211,7 +211,8 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
         },
         onMessageLongPress = { m ->
             textSelectionId = null
-            vm.select(m.id)
+            // While selecting, a long press works as a tap does: a second one on the same message unselects it
+            if (selected.isNotEmpty()) vm.toggleSelected(m.id) else vm.select(m.id)
         },
         onClearSelection = vm::clearSelection,
         onSelectAll = vm::selectAll,
@@ -243,7 +244,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
         menu = menu,
         selectedStarred = vm.allSelectedStarred(),
         onStarSelected = vm::starSelected,
-        onRemindSelected = if (selected.size == 1) ({ remindSheet = true }) else null,
+        onRemindSelected = { remindSheet = true },
         onDeleteSelected = { if (vm.canDelete) askDelete = AskDelete.Messages else vm.deleteSelected() },
         onReminder = vm::toggleReminder,
         onLink = { link = it },
