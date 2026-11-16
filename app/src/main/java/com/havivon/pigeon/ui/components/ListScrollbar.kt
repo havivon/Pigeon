@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -127,11 +126,19 @@ fun ListScrollbar(
         val movable = (track - thumb).coerceAtLeast(1f)
         val fraction = dragFraction ?: current.fraction
         val latest by rememberUpdatedState(current)
+        val latestMovable by rememberUpdatedState(movable)
+        // Where the thumb was last laid out on the track. The finger's position comes relative to the thumb, which moves
+        // with it: measured that way, each move was undone by the thumb's own and the list did not scroll. On the track it is steady
+        val thumbTop = remember { floatArrayOf(0f) }
         val touchHeight = with(density) { maxOf(thumb, minThumb).toDp() }
         Box(
             Modifier
                 .align(Alignment.TopEnd)
-                .offset { IntOffset(0, (fraction * movable).roundToInt()) }
+                .offset {
+                    val y = (fraction * movable).roundToInt()
+                    thumbTop[0] = y.toFloat()
+                    IntOffset(0, y)
+                }
                 .width(TOUCH_WIDTH)
                 .height(touchHeight)
                 // The thumb sits on the screen's edge, where gesture navigation takes a swipe for "back": without this the
@@ -142,12 +149,14 @@ fun ListScrollbar(
                         val down = awaitFirstDown()
                         down.consume()
                         pressed = true
-                        var f = latest.fraction
-                        dragFraction = f
+                        // Where on the thumb the finger took it, so the thumb does not jump to put its top under the finger
+                        val grab = down.position.y
+                        dragFraction = latest.fraction
                         try {
                             verticalDrag(down.id) { change ->
                                 change.consume()
-                                f = (f + change.positionChange().y / movable).coerceIn(0f, 1f)
+                                val onTrack = thumbTop[0] + change.position.y - grab
+                                val f = (onTrack / latestMovable).coerceIn(0f, 1f)
                                 dragFraction = f
                                 val info = state.layoutInfo
                                 val sizes = info.visibleItemsInfo.map { it.size }
