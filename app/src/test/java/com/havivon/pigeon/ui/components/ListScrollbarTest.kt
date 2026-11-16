@@ -36,6 +36,13 @@ class ListScrollbarTest {
         assertEquals(92, scrollTarget(2f, 100, 100f, 800).first)
     }
 
+    @Test
+    fun `the label is the row's date, today's rows show the word for today`() {
+        assertEquals("26/10/2026", scrollDate("26/10/2026", "Today"))
+        assertEquals("26/10/2026", scrollDate("Today 13:14 26/10/2026", "Today"))
+        assertEquals("Today", scrollDate("14:05", "Today"))
+    }
+
     private fun <T> assertNotNull(value: T?): T? {
         org.junit.Assert.assertNotNull(value)
         return value

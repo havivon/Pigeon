@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.inbox
 
+import com.havivon.pigeon.ui.components.scrollDate
 import com.havivon.pigeon.ui.components.ListScrollbar
 import androidx.compose.material.icons.rounded.Checklist
 import com.havivon.pigeon.ui.search.SelectionAction
@@ -300,7 +301,13 @@ private fun InboxList(
                 ConversationCard(it, ruleById[it.ruleId], showCategory, onOpen, onLongPress, selecting, it.id in selectedIds)
             }
         }
-        ListScrollbar(listState, Modifier.matchParentSize())
+        // The rows' dates by their keys, for the scrollbar's label (the unread list is keyed by message, the rest by conversation)
+        val today = stringResource(R.string.common_today)
+        val dates = remember(unreadMode, unreadMessages, conversations, today) {
+            if (unreadMode) unreadMessages.associate { it.messageId as Any to scrollDate(it.time, today) }
+            else conversations.associate { it.id as Any to scrollDate(it.time, today) }
+        }
+        ListScrollbar(listState, Modifier.matchParentSize(), label = { dates[it] })
     }
 }
 

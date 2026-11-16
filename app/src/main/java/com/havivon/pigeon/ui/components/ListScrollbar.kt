@@ -1,5 +1,10 @@
 package com.havivon.pigeon.ui.components
 
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -58,6 +63,14 @@ internal fun scrollPosition(
     return ScrollPosition((scrolled / (content - viewport)).coerceIn(0f, 1f), (viewport / content).coerceIn(0f, 1f))
 }
 
+/**
+ * The date a list row shows, for the scrollbar's label: the rows write the time for today ("14:05") and the date otherwise
+ * ("26/10/2026"), so a row without a date is today's.
+ */
+fun scrollDate(time: String, today: String): String = DATE.find(time)?.value ?: today
+
+private val DATE = Regex("""\d{2}/\d{2}/\d{4}""")
+
 /** The item and offset for a scrollbar dragged to [fraction] of the list: the inverse of [scrollPosition]. */
 internal fun scrollTarget(fraction: Float, totalItems: Int, averageItem: Float, viewport: Int): Pair<Int, Int> {
     val content = averageItem * totalItems
@@ -71,9 +84,17 @@ internal fun scrollTarget(fraction: Float, totalItems: Int, averageItem: Float, 
  * a thin, half-transparent thumb at the end edge (the left one in Hebrew) that turns solid and wider while a finger is on
  * it, and drags the list. Only the thumb takes touches, so the items under the edge stay tappable. Hidden while the list
  * fits on the screen. It keeps clear of the list's content padding (a header drawn over it), and of [top] / [bottom] besides.
+ * While it is dragged, [label] names where the list is: the date of the top row on the screen, by the row's key (null for
+ * a row with no date, a banner or a header: the next row's is taken).
  */
 @Composable
-fun ListScrollbar(state: LazyListState, modifier: Modifier = Modifier, top: androidx.compose.ui.unit.Dp = 0.dp, bottom: androidx.compose.ui.unit.Dp = 0.dp) {
+fun ListScrollbar(
+    state: LazyListState,
+    modifier: Modifier = Modifier,
+    top: androidx.compose.ui.unit.Dp = 0.dp,
+    bottom: androidx.compose.ui.unit.Dp = 0.dp,
+    label: ((key: Any) -> String?)? = null,
+) {
     val c = HebTheme.colors
     val scope = rememberCoroutineScope()
     val position by remember(state) {
@@ -150,7 +171,35 @@ fun ListScrollbar(state: LazyListState, modifier: Modifier = Modifier, top: andr
                     .background(if (pressed) c.accent else c.onSurfaceMuted),
             )
         }
+        // The date beside the thumb while a finger drags it, toward the middle of the screen
+        val shown = if (pressed && label != null) topLabel(state, label) else null
+        if (shown != null) {
+            Text(
+                shown,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset { IntOffset(0, (fraction * movable + thumb / 2).roundToInt() - with(density) { 18.dp.roundToPx() }) }
+                    .padding(end = TOUCH_WIDTH + 6.dp)
+                    .shadow(4.dp, RoundedCornerShape(50))
+                    .clip(RoundedCornerShape(50))
+                    .background(c.header)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
     }
+}
+
+/** The label of the first row at the top of the screen that has one. */
+private fun topLabel(state: LazyListState, label: (Any) -> String?): String? {
+    val info = state.layoutInfo
+    val top = info.viewportStartOffset + info.beforeContentPadding
+    return info.visibleItemsInfo
+        .filter { it.offset + it.size / 2 >= top }
+        .firstNotNullOfOrNull { label(it.key) }
 }
 
 /** The thumb's shortest length, and the width of the strip a finger can take it by. */

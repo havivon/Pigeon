@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.spam
 
+import com.havivon.pigeon.ui.components.scrollDate
 import com.havivon.pigeon.ui.components.ListScrollbar
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -187,7 +188,9 @@ fun SpamScreen(
                     )
                 }
             }
-            ListScrollbar(listState, Modifier.matchParentSize())
+            val today = stringResource(R.string.common_today)
+            val dates = remember(groups, today) { groups.associate { it.key as Any to scrollDate(it.time, today) } }
+            ListScrollbar(listState, Modifier.matchParentSize(), label = { dates[it] })
         }
     }
 }

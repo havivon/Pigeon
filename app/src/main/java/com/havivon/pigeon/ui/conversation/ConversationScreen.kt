@@ -258,7 +258,19 @@ fun ConversationScreen(
                     }
                 }
             }
-            ListScrollbar(listState, Modifier.matchParentSize())
+            // Each message's day, for the scrollbar's label: the day separator above it
+        val days = remember(items) {
+            var day: String? = null
+            buildMap<Any, String> {
+                for (item in items) {
+                    when (item) {
+                        is ThreadItem.Day -> day = item.label.also { put(itemKey(item), it) }
+                        is ThreadItem.Msg -> day?.let { put(item.message.id, it) }
+                    }
+                }
+            }
+        }
+        ListScrollbar(listState, Modifier.matchParentSize(), label = { days[it] })
         }
         if (selecting) {
             SelectionActions(selectedIds.size, onCopySelected, onShareSelected, onRemindSelected)

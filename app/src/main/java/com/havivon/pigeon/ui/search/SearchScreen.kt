@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.components.scrollDate
 import com.havivon.pigeon.ui.components.ListScrollbar
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.FolderChoice
@@ -200,7 +201,12 @@ fun SearchScreen(
                         }
                     }
                 }
-                ListScrollbar(listState, Modifier.matchParentSize())
+                val today = stringResource(R.string.common_today)
+                val dates = remember(state.conversations, state.messages, today) {
+                    state.conversations.associate { ("c" + it.id) as Any to scrollDate(it.time, today) } +
+                        state.messages.associate { ("m" + it.messageId) as Any to scrollDate(it.time, today) }
+                }
+                ListScrollbar(listState, Modifier.matchParentSize(), label = { dates[it] })
             }
         }
         if (selecting && actions.isNotEmpty()) SearchSelectionActions(actions)

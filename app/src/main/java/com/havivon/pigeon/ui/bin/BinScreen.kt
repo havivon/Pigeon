@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.bin
 
+import androidx.compose.runtime.remember
+import com.havivon.pigeon.ui.components.scrollDate
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.havivon.pigeon.ui.components.ListScrollbar
 import com.havivon.pigeon.ui.components.ButtonsRow
@@ -143,7 +145,11 @@ fun BinScreen(
                     )
                 }
             }
-            ListScrollbar(listState, Modifier.matchParentSize())
+            val today = stringResource(R.string.common_today)
+            val dates = remember(groups, today) {
+                groups.mapNotNull { g -> g.messages.firstOrNull()?.let { g.key as Any to scrollDate(it.time, today) } }.toMap()
+            }
+            ListScrollbar(listState, Modifier.matchParentSize(), label = { dates[it] })
         }
     }
 }

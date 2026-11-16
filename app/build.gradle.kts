@@ -15,8 +15,8 @@ android {
         applicationId = "com.havivon.pigeon"
         minSdk = 26
         targetSdk = 34
-        versionCode = 49
-        versionName = "0.8.3"
+        versionCode = 50
+        versionName = "0.8.4"
     }
 
     // The release key stays out of the (public) repo: keystore.properties next to settings.gradle.kts,
