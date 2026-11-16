@@ -1,5 +1,9 @@
 package com.havivon.pigeon.ui.conversation
 
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import androidx.compose.ui.res.pluralStringResource
 import android.content.ActivityNotFoundException
@@ -87,6 +91,9 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
     var textSelectionId by rememberSaveable { mutableStateOf<Long?>(null) }
     var link by remember { mutableStateOf<LinkInfo?>(null) }
     var remindSheet by rememberSaveable { mutableStateOf(false) }
+    // The message whose date has passed: first the question, then (for "Another time") the time chooser for it
+    var passedReminder by remember { mutableStateOf<ConversationEvent.ReminderPassed?>(null) }
+    var remindOther by remember { mutableStateOf<Long?>(null) }
     var moveSheet by rememberSaveable { mutableStateOf(false) }
     // The delete question that is open: of the selected messages, or of the whole conversation
     var askDelete by remember { mutableStateOf<AskDelete?>(null) }
@@ -136,6 +143,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
                     if (access.isDefault) notices.show(sendFailed) else notices.action(sendFailed, makeDefaultLabel, access.makeDefault)
                 ConversationEvent.NeedsDefault -> needsDefault()
                 is ConversationEvent.ReminderCreated -> notices.show(String.format(reminderCreatedFormat, e.label))
+                is ConversationEvent.ReminderPassed -> passedReminder = e
                 ConversationEvent.ReminderRemoved -> notices.show(reminderRemoved)
                 ConversationEvent.MovedToSpam -> {
                     notices.show(movedToSpam)
@@ -284,6 +292,34 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
             onMove = vm::moveTo,
             onCreate = { name, argb -> vm.createFolderAndMove(name, argb) },
             onDismiss = { moveSheet = false },
+        )
+    }
+
+    passedReminder?.let { passed ->
+        AlertDialog(
+            onDismissRequest = { passedReminder = null },
+            containerColor = HebTheme.colors.surface,
+            title = { Text(stringResource(R.string.reminder_passed_title), color = HebTheme.colors.onSurface, fontWeight = FontWeight.ExtraBold) },
+            text = { Text(stringResource(R.string.reminder_passed_body, passed.label), color = HebTheme.colors.onSurfaceMuted) },
+            confirmButton = {
+                TextButton(onClick = {
+                    passedReminder = null
+                    remindOther = passed.messageId
+                }) { Text(stringResource(R.string.reminder_passed_other), color = HebTheme.colors.accent, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { passedReminder = null }) { Text(stringResource(R.string.common_cancel), color = HebTheme.colors.accent) }
+            },
+        )
+    }
+
+    remindOther?.let { messageId ->
+        ReminderSheet(
+            onChoose = { at ->
+                remindOther = null
+                vm.remindMessage(messageId, at)
+            },
+            onDismiss = { remindOther = null },
         )
     }
 

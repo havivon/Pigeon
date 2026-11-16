@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -185,7 +186,8 @@ class SearchDateFilterTest {
         favorites.star(5, 2, "Leumi", null, october11.body, october11.dateMillis)
         val vm = search(starred = true)
         collect(vm.state)
-        advanceTimeBy(300)
+        // At once: the empty field does not wait out the typing pause
+        runCurrent()
         assertTrue(vm.state.value.filters.starred)
         assertEquals(listOf(2L, 5L), vm.state.value.ids())
     }

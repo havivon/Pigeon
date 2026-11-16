@@ -165,6 +165,21 @@ class RemindMeTest {
         assertEquals(null, shown.getValue(21).reminderAtMillis)
     }
 
+    @Test
+    fun `the button under a message makes no reminder for a date that has passed, and offers another time`() = runTest {
+        seedThread()
+        val vm = thread()
+        collect(vm.state)
+        val passed = com.havivon.pigeon.domain.model.Message(10, "Bring the form", "10:00", outgoing = false, reminder = "Today 09:00", reminderAtMillis = Now - 60_000)
+        vm.toggleReminder(passed)
+        assertTrue(reminders.state.value.isEmpty())
+        assertEquals(ConversationEvent.ReminderPassed(10, "Today 09:00"), vm.eventFlow.first())
+        // "Another time"
+        val later = millis(2026, 11, 2, 9, 0)
+        vm.remindMessage(10, later)
+        assertEquals(listOf(10L to later), reminders.state.value.map { it.messageId to it.triggerAtMillis })
+    }
+
     // From the inbox
 
     @Test

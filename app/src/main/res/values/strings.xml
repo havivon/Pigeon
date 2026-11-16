@@ -231,6 +231,9 @@
     <string name="thread_reminder_set">Reminder · %1$s</string>
     <string name="thread_reminder_created">Reminder saved for %1$s</string>
     <string name="thread_reminder_removed">Reminder removed</string>
+    <string name="reminder_passed_title">This date has passed</string>
+    <string name="reminder_passed_body">The date in the message (%1$s) has already passed, so no reminder was set. Set one for another time?</string>
+    <string name="reminder_passed_other">Another time</string>
     <string name="thread_spam_banner">Suspected spam. Be careful with its links.</string>
     <string name="thread_moved_to_spam">Moved to Spam</string>
 

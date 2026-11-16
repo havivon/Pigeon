@@ -241,7 +241,9 @@ class SearchViewModel(
      * with neither there is nothing to show.
      */
     private val results = combine(
-        query.debounce(DEBOUNCE_MS),
+        // Typing waits a moment, so not every letter searches; an empty field (the screen opening, the starred list, a
+        // cleared field) does not: it showed an empty list for that moment first
+        query.debounce { if (it.isBlank()) 0L else DEBOUNCE_MS },
         filters.map { BrowseKey(it.sender, it.any, it.starred, it.dates) }.distinctUntilChanged(),
         favorites.favorites,
     ) { q, f, favs -> Triple(q, f, favs) }.flatMapLatest { (q, f, favs) ->

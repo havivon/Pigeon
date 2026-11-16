@@ -102,6 +102,9 @@ sealed interface ConversationEvent {
     /** Deleting or retrying needs Pigeon to be the default SMS app; nothing was changed. */
     data object NeedsDefault : ConversationEvent
     data class ReminderCreated(val label: String) : ConversationEvent
+
+    /** The date in the message ([label]) has passed: no reminder was made; the screen offers another time for [messageId]. */
+    data class ReminderPassed(val messageId: Long, val label: String) : ConversationEvent
     data object ReminderRemoved : ConversationEvent
     data object MovedToSpam : ConversationEvent
     data object NotSpam : ConversationEvent
@@ -379,6 +382,9 @@ class ConversationViewModel(
                     reminders.delete(it.id)
                 }
                 events.trySend(ConversationEvent.ReminderRemoved)
+            } else if (at <= now()) {
+                // The screen showed the button before the time went by: no reminder in the past
+                events.trySend(ConversationEvent.ReminderPassed(message.id, message.reminder.orEmpty()))
             } else {
                 createReminder(message.id, message.text, at)
                 events.trySend(ConversationEvent.ReminderCreated(message.reminder.orEmpty()))
@@ -390,8 +396,12 @@ class ConversationViewModel(
      * "Remind me": a reminder at [atMillis] on each selected message, which replaces an earlier reminder on
      * it. Times that already passed are ignored.
      */
-    fun remindSelected(atMillis: Long) {
-        val chosen = selectedMessages()
+    fun remindSelected(atMillis: Long) = remind(selectedMessages(), atMillis)
+
+    /** "Remind me" at another time for one message (its own date had passed); the same as [remindSelected]. */
+    fun remindMessage(messageId: Long, atMillis: Long) = remind(latest.filter { it.id == messageId }, atMillis)
+
+    private fun remind(chosen: List<SmsMessage>, atMillis: Long) {
         if (chosen.isEmpty() || atMillis <= now()) return
         clearSelection()
         val ids = chosen.map { it.id }.toSet()

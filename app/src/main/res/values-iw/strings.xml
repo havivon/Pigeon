@@ -246,6 +246,9 @@
     <string name="thread_reminder_set">תזכורת · %1$s</string>
     <string name="thread_reminder_created">נשמרה תזכורת ל%1$s</string>
     <string name="thread_reminder_removed">התזכורת הוסרה</string>
+    <string name="reminder_passed_title">התאריך כבר עבר</string>
+    <string name="reminder_passed_body">התאריך שבהודעה (%1$s) כבר עבר, ולכן לא נקבעה תזכורת. לקבוע תזכורת לזמן אחר?</string>
+    <string name="reminder_passed_other">זמן אחר</string>
     <string name="thread_spam_banner">חשוד כספאם. היזהר מהקישורים שבו.</string>
     <string name="thread_moved_to_spam">הועבר לספאם</string>
 
