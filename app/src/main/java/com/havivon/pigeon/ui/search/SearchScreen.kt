@@ -168,6 +168,7 @@ fun SearchScreen(
             Box(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
                     when {
+                        !state.loaded -> Unit
                         state.query.isBlank() && !state.filters.any -> item {
                             EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
                         }

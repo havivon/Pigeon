@@ -144,6 +144,8 @@ data class SearchUiState(
     /** The colour rules, for the frame and the tag of the rows ([ruleId]). */
     val rules: List<ColorRule> = emptyList(),
     val messages: List<SearchHit> = emptyList(),
+    /** False until the first answer is in: the screen shows no "start" or "nothing found" text before it. */
+    val loaded: Boolean = true,
 ) {
     /** What the sender chip shows once a sender is chosen. */
     val senderName: String? get() = filters.sender?.label
@@ -319,7 +321,12 @@ class SearchViewModel(
                 ).takeIf { inScope(conversation) }
             },
         )
-    }.flowOn(work).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+    }.flowOn(work).stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        // Opened with its filters (the starred list) from the first frame, and with no placeholder text until the answer
+        SearchUiState(filters = filters.value, loaded = false),
+    )
 
     // The sender search (the "Sender" chip): typing finds, among everyone who ever wrote or was written to, the senders it means.
 

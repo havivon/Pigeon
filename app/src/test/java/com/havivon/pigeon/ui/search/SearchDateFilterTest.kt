@@ -31,6 +31,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -185,6 +186,9 @@ class SearchDateFilterTest {
         favorites.star(2, 1, "0525550100", "Danny", october5.body, october5.dateMillis)
         favorites.star(5, 2, "Leumi", null, october11.body, october11.dateMillis)
         val vm = search(starred = true)
+        // Before any answer: already the starred list (its chip on), and no "start searching" text
+        assertTrue(vm.state.value.filters.starred)
+        assertFalse(vm.state.value.loaded)
         collect(vm.state)
         // At once: the empty field does not wait out the typing pause
         runCurrent()

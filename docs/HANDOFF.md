@@ -65,6 +65,7 @@ English or a subagent reports in English). Code, commits and comments stay Engli
 - **0.8.5** (versionCode 51), installed: the scrollbar thumb could not be dragged on the phone (it sits on the screen edge, which gesture navigation keeps for "back"): `systemGestureExclusion()` on the thumb; thicker (7dp, 12dp pressed), touch area 40dp wide, at least 56dp tall.
 - **0.8.6** (versionCode 52), installed: the scrollbar thumb took the press but did not scroll. The drag was measured relative to the thumb, which moves with the finger, so each move was undone; now the finger's place on the track (`thumbTop` from the last layout + position - grab point).
 - **0.8.7** (versionCode 53), NOT installed yet (phone disconnected): the reminder button under a message makes no reminder once its date has passed (`ConversationEvent.ReminderPassed`): a dialog says so and offers "Another time" (`ReminderSheet` -> `vm.remindMessage`). The starred list (and any opening of search) no longer waits out the typing debounce: an empty field is not debounced.
+- **0.8.8** (versionCode 54), installed: the starred list still flashed the plain search's "start searching" text (the state's initial value had no filters) before its answer; now the initial state carries the filters and `loaded = false`, which shows no placeholder.
 - Stale test XMLs: if `testDebugUnitTest` says "Could not write XML test results", stop old Gradle/Java processes
   (`./gradlew --stop`) and delete `app/build/test-results/testDebugUnitTest`; the failures it shows are old.
 
