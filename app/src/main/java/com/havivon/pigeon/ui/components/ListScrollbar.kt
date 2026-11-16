@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.components
 
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
@@ -113,8 +114,8 @@ fun ListScrollbar(
     // While dragging, the thumb follows the finger rather than the estimate
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val current = position ?: if (pressed) ScrollPosition(dragFraction ?: 0f, 0.1f) else return
-    val width by animateDpAsState(if (pressed) 7.dp else 4.dp, label = "scrollbar width")
-    val alpha by animateFloatAsState(if (pressed) 1f else 0.35f, label = "scrollbar alpha")
+    val width by animateDpAsState(if (pressed) 12.dp else 7.dp, label = "scrollbar width")
+    val alpha by animateFloatAsState(if (pressed) 1f else 0.45f, label = "scrollbar alpha")
     val density = LocalDensity.current
     // Clear of a header or a bar the list is padded for (its content padding), and of [top] / [bottom] besides
     val padTop = with(density) { state.layoutInfo.beforeContentPadding.toDp() } + top
@@ -133,6 +134,9 @@ fun ListScrollbar(
                 .offset { IntOffset(0, (fraction * movable).roundToInt()) }
                 .width(TOUCH_WIDTH)
                 .height(touchHeight)
+                // The thumb sits on the screen's edge, where gesture navigation takes a swipe for "back": without this the
+                // phone kept the finger and the thumb could not be dragged
+                .systemGestureExclusion()
                 .pointerInput(state) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
@@ -163,7 +167,7 @@ fun ListScrollbar(
         ) {
             Box(
                 Modifier
-                    .padding(end = 3.dp)
+                    .padding(end = 4.dp)
                     .width(width)
                     .fillMaxHeight()
                     .alpha(alpha)
@@ -203,5 +207,5 @@ private fun topLabel(state: LazyListState, label: (Any) -> String?): String? {
 }
 
 /** The thumb's shortest length, and the width of the strip a finger can take it by. */
-private val MIN_THUMB = 40.dp
-private val TOUCH_WIDTH = 28.dp
+private val MIN_THUMB = 56.dp
+private val TOUCH_WIDTH = 40.dp
