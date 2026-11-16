@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.bin
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.havivon.pigeon.ui.components.ListScrollbar
 import com.havivon.pigeon.ui.components.ButtonsRow
 import com.havivon.pigeon.ui.components.HeaderTitle
 import androidx.compose.animation.animateContentSize
@@ -119,25 +121,29 @@ fun BinScreen(
             }
         },
     ) { top ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
-            item(key = "info") { BinInfoCard() }
-            if (groups.isEmpty() && loaded) {
-                item(key = "empty") {
-                    EmptyState(Icons.Rounded.RestoreFromTrash, stringResource(R.string.bin_empty_title), stringResource(R.string.bin_empty_body))
+        val listState = rememberLazyListState()
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(top = top, bottom = listBottomPadding(24.dp))) {
+                item(key = "info") { BinInfoCard() }
+                if (groups.isEmpty() && loaded) {
+                    item(key = "empty") {
+                        EmptyState(Icons.Rounded.RestoreFromTrash, stringResource(R.string.bin_empty_title), stringResource(R.string.bin_empty_body))
+                    }
+                }
+                items(groups, key = { it.key }) { group ->
+                    BinGroupCard(
+                        group,
+                        expanded = group.key in expanded && !group.locked,
+                        selecting = selecting,
+                        selected = group.key in selected,
+                        onClick = if (selecting) onToggleSelected else onToggle,
+                        onLongPress = onSelect,
+                        onRestore = { onRestore(setOf(group.key)) },
+                        onDeleteForever = { onDeleteForever(setOf(group.key)) },
+                    )
                 }
             }
-            items(groups, key = { it.key }) { group ->
-                BinGroupCard(
-                    group,
-                    expanded = group.key in expanded && !group.locked,
-                    selecting = selecting,
-                    selected = group.key in selected,
-                    onClick = if (selecting) onToggleSelected else onToggle,
-                    onLongPress = onSelect,
-                    onRestore = { onRestore(setOf(group.key)) },
-                    onDeleteForever = { onDeleteForever(setOf(group.key)) },
-                )
-            }
+            ListScrollbar(listState, Modifier.matchParentSize())
         }
     }
 }

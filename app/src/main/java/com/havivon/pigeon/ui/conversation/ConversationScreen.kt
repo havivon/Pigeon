@@ -1,5 +1,11 @@
 package com.havivon.pigeon.ui.conversation
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import com.havivon.pigeon.ui.components.ListScrollbar
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -222,34 +228,37 @@ fun ConversationScreen(
             ThreadBar(conversation, subtitle, onBack, onCall, menu)
         }
         if (spam && !selecting) SpamBanner(onNotSpam)
-        LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
-            state = listState,
-            contentPadding = PaddingValues(vertical = 12.dp),
-        ) {
-            if (loading && items.isEmpty()) item { LoadingMessages() }
-            items(items, key = ::itemKey) { item ->
-                when (item) {
-                    is ThreadItem.Day -> DayChip(item.label)
-                    is ThreadItem.Msg -> MessageRow(
-                        msg = item.message,
-                        ruleColor = if (spam) c.spam else item.message.ruleArgb?.let { Color(it) } ?: ruleColor,
-                        selectingText = item.message.id == activeSelectionId,
-                        previewSelection = previewSelection,
-                        selectionMode = selecting,
-                        selected = item.message.id in selectedIds,
-                        highlight = if (item.message.id == focusMessageId) ({ flashAlpha.value }) else null,
-                        onTap = { onMessageTap(item.message) },
-                        onLongPress = { onMessageLongPress(item.message) },
-                        onSelectionActive = { active ->
-                            val id = item.message.id
-                            activeSelectionId = if (active) id else activeSelectionId.takeUnless { it == id }
-                        },
-                        onReminder = { onReminder(item.message) },
-                        onLink = onLink,
-                    )
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                if (loading && items.isEmpty()) item { LoadingMessages() }
+                items(items, key = ::itemKey) { item ->
+                    when (item) {
+                        is ThreadItem.Day -> DayChip(item.label)
+                        is ThreadItem.Msg -> MessageRow(
+                            msg = item.message,
+                            ruleColor = if (spam) c.spam else item.message.ruleArgb?.let { Color(it) } ?: ruleColor,
+                            selectingText = item.message.id == activeSelectionId,
+                            previewSelection = previewSelection,
+                            selectionMode = selecting,
+                            selected = item.message.id in selectedIds,
+                            highlight = if (item.message.id == focusMessageId) ({ flashAlpha.value }) else null,
+                            onTap = { onMessageTap(item.message) },
+                            onLongPress = { onMessageLongPress(item.message) },
+                            onSelectionActive = { active ->
+                                val id = item.message.id
+                                activeSelectionId = if (active) id else activeSelectionId.takeUnless { it == id }
+                            },
+                            onReminder = { onReminder(item.message) },
+                            onLink = onLink,
+                        )
+                    }
                 }
             }
+            ListScrollbar(listState, Modifier.matchParentSize())
         }
         if (selecting) {
             SelectionActions(selectedIds.size, onCopySelected, onShareSelected, onRemindSelected)
@@ -734,6 +743,12 @@ internal fun copyLabel(count: Int): String =
 @Composable
 internal fun Composer(draft: String, onDraft: (String) -> Unit, onSend: () -> Unit, canSend: Boolean = draft.isNotBlank()) {
     val c = HebTheme.colors
+    // The field was only as big as its text, so a tap on the rest of the pill did nothing; and while a message's text (a
+    // native TextView, focusable for selection) held the focus, the first tap on the field only moved the focus back to
+    // Compose, without the keyboard. Now the whole pill focuses the field, and the field's focus always asks for the keyboard
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val pill = remember { MutableInteractionSource() }
     Column(
         Modifier
             .fillMaxWidth()
@@ -748,11 +763,19 @@ internal fun Composer(draft: String, onDraft: (String) -> Unit, onSend: () -> Un
                     .weight(1f)
                     .clip(RoundedCornerShape(22.dp))
                     .background(c.surfaceVariant)
+                    .clickable(interactionSource = pill, indication = null) {
+                        focus.requestFocus()
+                        keyboard?.show()
+                    }
                     .padding(horizontal = 16.dp, vertical = 11.dp),
             ) {
                 BasicTextField(
                     value = draft,
                     onValueChange = onDraft,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focus)
+                        .onFocusChanged { if (it.isFocused) keyboard?.show() },
                     textStyle = TextStyle(color = c.onSurface, fontSize = 16.sp),
                     cursorBrush = SolidColor(c.accent),
                     maxLines = 6,

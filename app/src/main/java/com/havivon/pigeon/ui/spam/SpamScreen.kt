@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.spam
 
+import com.havivon.pigeon.ui.components.ListScrollbar
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -155,35 +156,38 @@ fun SpamScreen(
             }
         },
     ) {
-        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
-            if (searching) {
-                item(key = "top-space") { Spacer(Modifier.height(8.dp)) }
-            } else {
-                item(key = "info") { InfoCard() }
-            }
-            if (groups.isEmpty() && searching && query.isNotBlank()) {
-                item(key = "no-results") {
-                    EmptyState(Icons.Rounded.SearchOff, stringResource(R.string.spam_search_empty_title), stringResource(R.string.spam_search_empty_body))
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
+                if (searching) {
+                    item(key = "top-space") { Spacer(Modifier.height(8.dp)) }
+                } else {
+                    item(key = "info") { InfoCard() }
                 }
-            } else if (groups.isEmpty() && emptyState != null && !searching) {
-                item(key = "empty") { emptyState() }
+                if (groups.isEmpty() && searching && query.isNotBlank()) {
+                    item(key = "no-results") {
+                        EmptyState(Icons.Rounded.SearchOff, stringResource(R.string.spam_search_empty_title), stringResource(R.string.spam_search_empty_body))
+                    }
+                } else if (groups.isEmpty() && emptyState != null && !searching) {
+                    item(key = "empty") { emptyState() }
+                }
+                items(groups, key = { it.key }) { group ->
+                    SpamGroupCard(
+                        group,
+                        expanded = group.key in expanded,
+                        messages = messages[group.key].orEmpty(),
+                        onToggle = if (selecting) onToggleSelected else onToggle,
+                        onLongPress = onSelect,
+                        selecting = selecting,
+                        selected = group.key in selected,
+                        onNotSpam = onNotSpam,
+                        onMove = onMove,
+                        onDelete = onDelete,
+                        onOpen = onOpen,
+                        onLink = onLink,
+                    )
+                }
             }
-            items(groups, key = { it.key }) { group ->
-                SpamGroupCard(
-                    group,
-                    expanded = group.key in expanded,
-                    messages = messages[group.key].orEmpty(),
-                    onToggle = if (selecting) onToggleSelected else onToggle,
-                    onLongPress = onSelect,
-                    selecting = selecting,
-                    selected = group.key in selected,
-                    onNotSpam = onNotSpam,
-                    onMove = onMove,
-                    onDelete = onDelete,
-                    onOpen = onOpen,
-                    onLink = onLink,
-                )
-            }
+            ListScrollbar(listState, Modifier.matchParentSize())
         }
     }
 }

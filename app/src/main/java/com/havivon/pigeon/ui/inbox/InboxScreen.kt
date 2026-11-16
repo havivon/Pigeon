@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.inbox
 
+import com.havivon.pigeon.ui.components.ListScrollbar
 import androidx.compose.material.icons.rounded.Checklist
 import com.havivon.pigeon.ui.search.SelectionAction
 import com.havivon.pigeon.ui.search.SelectMark
@@ -267,36 +268,39 @@ private fun InboxList(
     selecting: Boolean,
     selectedIds: Set<Long>,
 ) {
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
-        if (banner != null) item { banner() }
-        if (nothing && loading) {
-            item { LoadingConversations() }
-        } else if (nothing && emptyState != null) {
-            item { emptyState() }
-        }
-        if (unreadMode) {
-            // No pinned row and no sections: just the messages
-            items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], showCategory, onOpenMessage, onLongPressMessage) }
-            return@LazyColumn
-        }
-        if (pinned.isNotEmpty()) {
-            item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress, selecting, it.id in selectedIds) }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
+            if (banner != null) item { banner() }
+            if (nothing && loading) {
+                item { LoadingConversations() }
+            } else if (nothing && emptyState != null) {
+                item { emptyState() }
+            }
+            if (unreadMode) {
+                // No pinned row and no sections: just the messages
+                items(unreadMessages, key = { it.messageId }) { UnreadMessageCard(it, ruleById[it.ruleId], showCategory, onOpenMessage, onLongPressMessage) }
+                return@LazyColumn
+            }
+            if (pinned.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.inbox_pinned), Icons.Rounded.PushPin) }
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(pinned, key = { it.id }) { PinnedTile(it, ruleById[it.ruleId], onOpen, onLongPress, selecting, it.id in selectedIds) }
+                    }
                 }
             }
+            val rest = conversations.filterNot { it.pinned }
+            if (rest.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
+            }
+            items(rest, key = { it.id }) {
+                ConversationCard(it, ruleById[it.ruleId], showCategory, onOpen, onLongPress, selecting, it.id in selectedIds)
+            }
         }
-        val rest = conversations.filterNot { it.pinned }
-        if (rest.isNotEmpty()) {
-            item { SectionLabel(stringResource(R.string.inbox_all_conversations), Icons.Rounded.Forum) }
-        }
-        items(rest, key = { it.id }) {
-            ConversationCard(it, ruleById[it.ruleId], showCategory, onOpen, onLongPress, selecting, it.id in selectedIds)
-        }
+        ListScrollbar(listState, Modifier.matchParentSize())
     }
 }
 

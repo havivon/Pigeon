@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.components.ListScrollbar
 import com.havivon.pigeon.domain.model.CustomFolder
 import com.havivon.pigeon.domain.model.FolderChoice
 import androidx.activity.compose.BackHandler
@@ -163,40 +164,43 @@ fun SearchScreen(
                 }
             },
         ) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
-                when {
-                    state.query.isBlank() && !state.filters.any -> item {
-                        EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = rememberHeaderPadding(header, bottom = listBottomPadding(24.dp))) {
+                    when {
+                        state.query.isBlank() && !state.filters.any -> item {
+                            EmptyState(Icons.Rounded.Search, stringResource(R.string.search_start_title), stringResource(R.string.search_start_body))
+                        }
+                        state.isEmpty && !state.searching -> item {
+                            EmptyState(
+                                Icons.Rounded.SearchOff,
+                                // Nothing typed: the filters alone found nothing
+                                if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
+                                stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
+                            )
+                        }
                     }
-                    state.isEmpty && !state.searching -> item {
-                        EmptyState(
-                            Icons.Rounded.SearchOff,
-                            // Nothing typed: the filters alone found nothing
-                            if (state.query.isBlank()) stringResource(R.string.search_none_filtered_title) else stringResource(R.string.search_none_title, state.query.trim()),
-                            stringResource(if (state.filters.any) R.string.search_none_filtered else R.string.search_none_body),
-                        )
+                    if (state.conversations.isNotEmpty()) {
+                        item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
+                        items(state.conversations, key = { "c" + it.id }) {
+                            ConversationHit(
+                                it, ruleById[it.ruleId], state.query,
+                                selecting = selecting, selected = it.id in selectedConversationIds,
+                                onClick = { onConversationClick(it) }, onLongClick = { onConversationLongClick(it) },
+                            )
+                        }
+                    }
+                    if (state.messages.isNotEmpty()) {
+                        item { SectionLabel(stringResource(R.string.search_section_messages), Icons.Rounded.Search) }
+                        items(state.messages, key = { "m" + it.messageId }) {
+                            MessageHit(
+                                it, ruleById[it.ruleId], state.query,
+                                selecting = selecting, selected = it.messageId in selectedIds,
+                                onClick = { onMessageClick(it) }, onLongClick = { onMessageLongClick(it) },
+                            )
+                        }
                     }
                 }
-                if (state.conversations.isNotEmpty()) {
-                    item { SectionLabel(stringResource(R.string.search_section_conversations), Icons.Rounded.Forum) }
-                    items(state.conversations, key = { "c" + it.id }) {
-                        ConversationHit(
-                            it, ruleById[it.ruleId], state.query,
-                            selecting = selecting, selected = it.id in selectedConversationIds,
-                            onClick = { onConversationClick(it) }, onLongClick = { onConversationLongClick(it) },
-                        )
-                    }
-                }
-                if (state.messages.isNotEmpty()) {
-                    item { SectionLabel(stringResource(R.string.search_section_messages), Icons.Rounded.Search) }
-                    items(state.messages, key = { "m" + it.messageId }) {
-                        MessageHit(
-                            it, ruleById[it.ruleId], state.query,
-                            selecting = selecting, selected = it.messageId in selectedIds,
-                            onClick = { onMessageClick(it) }, onLongClick = { onMessageLongClick(it) },
-                        )
-                    }
-                }
+                ListScrollbar(listState, Modifier.matchParentSize())
             }
         }
         if (selecting && actions.isNotEmpty()) SearchSelectionActions(actions)
