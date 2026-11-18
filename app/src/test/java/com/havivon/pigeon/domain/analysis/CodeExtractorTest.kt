@@ -26,6 +26,10 @@ class CodeExtractorTest {
             "🔐 Your code: 918273 🔐" to "918273",
             "‏קוד: 123456‏" to "123456",
             "your code is 2026" to "2026",
+            // A long cue sentence with a year in a name: the code comes after "הוא:", farther than the cue's reach
+            "שלום, קוד האימות החד פעמי שלך לכניסה לאוברנייט עובדים הראל 2026 הוא:\n\n464802\n\nלהסרה: http://l5k.me/4qSv5" to "464802",
+            "Your one-time verification code for the Example Portal 2026 sign-in is: 731904" to "731904",
+            "קוד האימות לכנס 2026: 5521" to "5521",
         )
         for ((text, code) in cases) assertEquals(text, code, CodeExtractor.extract(text))
     }

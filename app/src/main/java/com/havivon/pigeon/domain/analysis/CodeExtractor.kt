@@ -41,20 +41,44 @@ object CodeExtractor {
     /** Rule 1: the number closest to a cue word, or null. */
     private fun cueCode(text: String): String? {
         val lower = lowerKeepingLength(text)
-        val cues = findCues(lower)
-        if (cues.isEmpty()) return null
+        val found = findCues(lower)
+        if (found.isEmpty()) return null
+        val cues = found + pointers(lower, found)
         val masked = mask(lower)
         var best: String? = null
         var bestScore = Int.MAX_VALUE
         for (candidate in candidates(masked)) {
-            val score = cues.minOf { distance(candidate.range, it) }
-            if (score <= MAX_DISTANCE && score < bestScore) {
+            val near = cues.minOf { distance(candidate.range, it) }
+            if (near > MAX_DISTANCE) continue
+            // "קוד האימות לכניסה לאתר הראל 2026 הוא: 464802": a year in the sentence is part of a name; it is the code
+            // only when no other number is near ("your code is 2026")
+            val score = near + if (looksLikeYear(candidate.digits)) YEAR_PENALTY else 0
+            if (score < bestScore) {
                 best = candidate.digits
                 bestScore = score
             }
         }
         return best
     }
+
+    /** "הוא", "היא", "is" or a colon: the word that hands over to the code ("קוד האימות ... הוא: 464802"). */
+    private val POINTER = Regex("(?<![\\p{L}])(?:הוא|היא|is|are)(?![\\p{L}])\\s*:?|:")
+
+    /**
+     * The first [POINTER] after each cue word, within reach of it: a long cue sentence ("קוד האימות החד פעמי שלך לכניסה
+     * לאתר ... הוא:") puts the code farther from "קוד" than [MAX_DISTANCE], but right after its "הוא:".
+     */
+    private fun pointers(lower: String, cues: List<IntRange>): List<IntRange> = cues.mapNotNull { cue ->
+        val range = POINTER.find(lower, cue.last + 1)?.range ?: return@mapNotNull null
+        // In the same sentence as the cue word, within a long sentence's length of it
+        range.takeIf { it.first - cue.last - 1 <= POINTER_REACH && lower.substring(cue.last + 1, it.first).none { c -> c in ".!?\n" } }
+    }
+
+    /** How far after its cue word a [POINTER] may be. */
+    private const val POINTER_REACH = 80
+
+    /** What a year-like number ("2026") adds to its distance from the cue: any other number near the cue wins. */
+    private const val YEAR_PENALTY = 60
 
     /** "RDSMTVQK is your Yahoo verification code": a code of letters and digits, named as the code in the same sentence. */
     private val LETTER_CODE = Regex("(?<![a-z0-9])([a-z0-9]{6,8})\\s+is\\s+your(?:\\s+[a-z]+){0,3}\\s+(?:verification|security|login|confirmation|one-time)\\s+(?:code|pin|password)(?![a-z])")
