@@ -92,6 +92,8 @@ data class AppSettings(
     val blockSpamOnPhone: Boolean = true,
     /** A one-time code that arrives is copied, so the keyboard offers it; it is cleared after a few minutes. */
     val autoCopyCodes: Boolean = true,
+    /** The number of unread messages on the app's launcher icon. Off: no badge at all. */
+    val iconBadge: Boolean = false,
     val welcomeDone: Boolean = false,
     /** Whether the app has asked (once, after becoming the default) for notifications and contacts. */
     val permissionsAsked: Boolean = false,

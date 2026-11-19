@@ -710,6 +710,8 @@
     <string name="settings_block_on_phone">חסום שולחי ספאם בכל הטלפון</string>
     <string name="settings_block_on_phone_note">„סמן כספאם” חוסם גם את המספר: מספרים חסומים לא יכולים להתקשר או לשלוח הודעות, בשום אפליקציה.</string>
     <string name="settings_auto_copy">העתק קודים אוטומטית</string>
+    <string name="settings_icon_badge">מספר על אייקון האפליקציה</string>
+    <string name="settings_icon_badge_note">כמה הודעות לא נקראו, על האייקון כל עוד יש התראה של Pigeon</string>
     <string name="settings_auto_copy_note">המקלדת תציע את הקוד להדבקה; הוא נמחק אחרי 3 דקות</string>
 
     <string name="blocked_title">מספרים חסומים</string>

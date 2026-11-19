@@ -148,6 +148,7 @@ fun SettingsRoute(onBack: () -> Unit, navigate: (Screen) -> Unit) {
             // Deleting needs the default SMS app; turning it off always works
             onAutoDeleteCodes = { on -> if (on && !defaultApp.isDefault) needsDefault() else vm.setAutoDeleteCodes(on) },
             onLockScreenText = vm::setLockScreenText,
+            onIconBadge = vm::setIconBadge,
             onSystemNotifications = {
                 open(context, Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
             },

@@ -327,6 +327,7 @@ class FakeSettings(initial: AppSettings = AppSettings()) : SettingsRepository {
     override suspend fun setPermissionsAsked(value: Boolean) = state.update { it.copy(permissionsAsked = value) }
     override suspend fun setBlockSpamOnPhone(value: Boolean) = state.update { it.copy(blockSpamOnPhone = value) }
     override suspend fun setAutoCopyCodes(value: Boolean) = state.update { it.copy(autoCopyCodes = value) }
+    override suspend fun setIconBadge(value: Boolean) = state.update { it.copy(iconBadge = value) }
     override suspend fun restoreBackedUp(values: AppSettings) = state.update { values.copy(welcomeDone = it.welcomeDone, permissionsAsked = it.permissionsAsked) }
 }
 

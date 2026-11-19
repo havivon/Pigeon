@@ -1,5 +1,10 @@
 package com.havivon.pigeon.data
 
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import com.havivon.pigeon.widget.WidgetSource
 import androidx.core.content.pm.PackageInfoCompat
 import com.havivon.pigeon.ui.common.AnalysisCache
 import java.io.File
@@ -159,8 +164,24 @@ class AppContainer(
     }
     val smsSender: SmsSender by lazy { TelephonySmsSender(app, messages, pendingSends, ::canWrite) }
     val notifier: MessageNotifier by lazy {
-        MessageNotifier(app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId })
+        MessageNotifier(
+            app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId },
+            // As the inbox's "All" and the counter widget count them: spam left out
+            unreadTotal = { WidgetSource(app).counter().unread },
+        )
     }
+    /**
+     * Keeps the number on the app icon right while the app runs (see [MessageNotifier]): once on launch, which also
+     * moves the notifications to the channels the setting asks for, then, only while the setting is on, whenever the
+     * unread messages change.
+     */
+    suspend fun keepIconBadge() {
+        settings.settings.map { it.iconBadge }.distinctUntilChanged().flatMapLatest { on ->
+            if (on) refreshSignals(accessChanges.flatMapLatest { messages.conversations }, spam.verdicts).onStart { emit(Unit) }
+            else flowOf(Unit)
+        }.collect { notifier.refreshBadge() }
+    }
+
     /** Keeps the home-screen widgets current: redraws them when anything they show changes. */
     val widgets: WidgetRefresher by lazy {
         WidgetRefresher(

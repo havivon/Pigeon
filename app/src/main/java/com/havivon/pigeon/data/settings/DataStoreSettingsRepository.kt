@@ -35,6 +35,7 @@ internal object SettingsKeys {
     val PERMISSIONS_ASKED = booleanPreferencesKey("permissions_asked")
     val BLOCK_SPAM_ON_PHONE = booleanPreferencesKey("block_spam_on_phone")
     val AUTO_COPY_CODES = booleanPreferencesKey("auto_copy_codes")
+    val ICON_BADGE = booleanPreferencesKey("icon_badge")
 }
 
 /** Reads the settings, with the defaults of [AppSettings] for anything never set (or unknown). */
@@ -55,6 +56,7 @@ internal fun Preferences.toAppSettings(): AppSettings {
         permissionsAsked = this[SettingsKeys.PERMISSIONS_ASKED] ?: defaults.permissionsAsked,
         blockSpamOnPhone = this[SettingsKeys.BLOCK_SPAM_ON_PHONE] ?: defaults.blockSpamOnPhone,
         autoCopyCodes = this[SettingsKeys.AUTO_COPY_CODES] ?: defaults.autoCopyCodes,
+        iconBadge = this[SettingsKeys.ICON_BADGE] ?: defaults.iconBadge,
     )
 }
 
@@ -106,6 +108,7 @@ class DataStoreSettingsRepository internal constructor(private val store: DataSt
     override suspend fun setPermissionsAsked(value: Boolean) = put(SettingsKeys.PERMISSIONS_ASKED, value)
     override suspend fun setBlockSpamOnPhone(value: Boolean) = put(SettingsKeys.BLOCK_SPAM_ON_PHONE, value)
     override suspend fun setAutoCopyCodes(value: Boolean) = put(SettingsKeys.AUTO_COPY_CODES, value)
+    override suspend fun setIconBadge(value: Boolean) = put(SettingsKeys.ICON_BADGE, value)
 
     /** Turning it on starts the count again from now; turning it off forgets when it started. */
     override suspend fun setAutoDeleteCodes(value: Boolean) {
@@ -133,6 +136,7 @@ class DataStoreSettingsRepository internal constructor(private val store: DataSt
             it[SettingsKeys.AUTO_DELETE_CODES] = values.autoDeleteCodes
             it[SettingsKeys.BLOCK_SPAM_ON_PHONE] = values.blockSpamOnPhone
             it[SettingsKeys.AUTO_COPY_CODES] = values.autoCopyCodes
+            it[SettingsKeys.ICON_BADGE] = values.iconBadge
             val since = values.autoDeleteCodesSinceMillis
             if (since == null) it.remove(SettingsKeys.AUTO_DELETE_CODES_SINCE) else it[SettingsKeys.AUTO_DELETE_CODES_SINCE] = since
         }

@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.settings
 
+import androidx.compose.material.icons.rounded.LooksOne
 import androidx.compose.ui.text.style.TextOverflow
 import com.havivon.pigeon.ui.components.TrailingOrBelow
 import com.havivon.pigeon.ui.components.HeaderTitle
@@ -119,6 +120,7 @@ data class SettingsActions(
     val onImportSettings: () -> Unit = {},
     val onAutoDeleteCodes: (Boolean) -> Unit = {},
     val onLockScreenText: (Boolean) -> Unit = {},
+    val onIconBadge: (Boolean) -> Unit = {},
     val onSystemNotifications: () -> Unit = {},
     val onAllowExactAlarms: () -> Unit = {},
     val onBlockScreenshots: (Boolean) -> Unit = {},
@@ -271,6 +273,14 @@ fun SettingsScreen(state: SettingsUiState, env: SettingsEnvironment, actions: Se
                         stringResource(R.string.settings_lock_screen_text_note),
                         s.lockScreenText,
                         onChange = actions.onLockScreenText,
+                    )
+                    RowDivider()
+                    SwitchRow(
+                        Icons.Rounded.LooksOne,
+                        stringResource(R.string.settings_icon_badge),
+                        stringResource(R.string.settings_icon_badge_note),
+                        s.iconBadge,
+                        onChange = actions.onIconBadge,
                     )
                     RowDivider()
                     NavRow(

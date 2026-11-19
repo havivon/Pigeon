@@ -30,6 +30,7 @@ class SettingsMappingTest {
         assertFalse(s.welcomeDone)
         assertTrue("Mark as spam blocks on the phone, as in Google Messages", s.blockSpamOnPhone)
         assertTrue("codes are copied for the keyboard", s.autoCopyCodes)
+        assertFalse("no number on the app icon unless the user asks", s.iconBadge)
         assertEquals("the app's original look", "sunset", s.skin)
     }
 
@@ -49,6 +50,7 @@ class SettingsMappingTest {
             SettingsKeys.PERMISSIONS_ASKED to true,
             SettingsKeys.BLOCK_SPAM_ON_PHONE to false,
             SettingsKeys.AUTO_COPY_CODES to false,
+            SettingsKeys.ICON_BADGE to true,
         )
         assertEquals(
             AppSettings(
@@ -65,6 +67,7 @@ class SettingsMappingTest {
                 permissionsAsked = true,
                 blockSpamOnPhone = false,
                 autoCopyCodes = false,
+                iconBadge = true,
             ),
             prefs.toAppSettings(),
         )

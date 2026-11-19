@@ -37,6 +37,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 app.notifier.cancel(threadId)
                 app.messages.markThreadRead(threadId)
                 app.widgets.updateNow()
+                app.notifier.refreshBadge()
             }
             ACTION_COPY_CODE -> {
                 val code = intent.getStringExtra(EXTRA_CODE)?.take(MAX_CODE_LENGTH)

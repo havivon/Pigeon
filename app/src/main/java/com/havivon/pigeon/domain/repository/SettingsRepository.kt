@@ -25,6 +25,7 @@ interface SettingsRepository {
     suspend fun setAutoDeleteCodesSince(millis: Long?)
     suspend fun setBlockSpamOnPhone(value: Boolean)
     suspend fun setAutoCopyCodes(value: Boolean)
+    suspend fun setIconBadge(value: Boolean)
     suspend fun setWelcomeDone(value: Boolean)
     suspend fun setPermissionsAsked(value: Boolean)
 

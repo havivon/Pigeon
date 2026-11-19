@@ -673,6 +673,8 @@
     <string name="settings_block_on_phone">Block spam senders on the whole phone</string>
     <string name="settings_block_on_phone_note">Mark as spam also blocks the number: blocked numbers can\'t call or text you, in any app.</string>
     <string name="settings_auto_copy">Copy codes automatically</string>
+    <string name="settings_icon_badge">Number on the app icon</string>
+    <string name="settings_icon_badge_note">How many messages are unread, shown on the icon while a Pigeon notification is there</string>
     <string name="settings_auto_copy_note">The keyboard offers the code to paste; it is cleared after 3 minutes</string>
 
     <string name="blocked_title">Blocked numbers</string>

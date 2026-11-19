@@ -68,6 +68,7 @@ class SettingsViewModel(
     fun setAutoDeleteCodes(value: Boolean) = launch { settings.setAutoDeleteCodes(value) }
     fun setBlockSpamOnPhone(value: Boolean) = launch { settings.setBlockSpamOnPhone(value) }
     fun setAutoCopyCodes(value: Boolean) = launch { settings.setAutoCopyCodes(value) }
+    fun setIconBadge(value: Boolean) = launch { settings.setIconBadge(value) }
 
     /** The screen asks for the fingerprint or screen lock first (see `SettingsRoute`), so this only stores the answer. */
     fun setAppLock(value: Boolean) = launch { settings.setAppLock(value) }
