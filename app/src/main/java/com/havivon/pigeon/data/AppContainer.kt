@@ -166,8 +166,8 @@ class AppContainer(
     val notifier: MessageNotifier by lazy {
         MessageNotifier(
             app, messages, contacts, locks, settings, codeFinder, isOnScreen = { it == visibleThreadId },
-            // As the inbox's "All" and the counter widget count them: spam left out
-            unreadTotal = { WidgetSource(app).counter().unread },
+            // As the inbox's "All" counts them: every category and none, spam left out
+            unreadTotal = { WidgetSource(app).unreadTotal() },
         )
     }
     /**

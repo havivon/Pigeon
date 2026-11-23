@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 private const val REMINDER_TEXT_LENGTH = 200
 
 /**
- * What the long-press sheet of a conversation does (pin, mark read or unread, remind me, lock, move to category, delete).
+ * What the long-press sheet of a conversation does (pin, mark read, remind me, lock, move to category, delete).
  * One class for every screen that offers the sheet: the inbox and the search results act through the same code,
  * with the same "default app only" rule for the actions that change Android's SMS database.
  */
@@ -67,13 +67,12 @@ class ConversationSheetActions(
     }
 
     /**
-     * "Mark as unread": the newest received message of each of [conversations], and the received ones of [messageIds].
-     * [onDone] gets how many were marked. False, and nothing changes, while Pigeon is not the default SMS app: the
-     * screen says so.
+     * "Mark as unread" for messages (the received ones of [messageIds]), never for a whole conversation. [onDone] gets
+     * how many were marked. False, and nothing changes, while Pigeon is not the default SMS app: the screen says so.
      */
-    fun markUnread(conversations: Set<Long>, messageIds: Set<Long> = emptySet(), onDone: (Int) -> Unit = {}): Boolean {
+    fun markUnread(messageIds: Set<Long>, onDone: (Int) -> Unit = {}): Boolean {
         if (!canWrite()) return false
-        scope.launch { onDone(messages.markThreadsUnread(conversations) + messages.markMessagesUnread(messageIds)) }
+        scope.launch { onDone(messages.markMessagesUnread(messageIds)) }
         return true
     }
 

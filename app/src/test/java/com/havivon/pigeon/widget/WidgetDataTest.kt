@@ -176,6 +176,19 @@ class WidgetDataTest {
     // The counter
 
     @Test
+    fun `the number on the icon counts every category and none, and a conversation too new for the list, but not spam`() {
+        val conversations = listOf(
+            // No category
+            conv(1, "Uncategorized", unread = 0, folder = Folder.All),
+            conv(2, "Bank", unread = 1, folder = Folder.Banks),
+            conv(3, "Junk", unread = 4, spam = true),
+        )
+        // The list is from the last launch (0 unread for 1, nothing of 9): the database's numbers count
+        assertEquals(2 + 1 + 1, WidgetDataBuilder.unreadTotal(conversations, mapOf(1L to 2, 2L to 1, 3L to 4, 9L to 1)))
+        assertEquals(0, WidgetDataBuilder.unreadTotal(conversations, emptyMap()))
+    }
+
+    @Test
     fun `the counter counts unread messages and spam conversations`() {
         val data = WidgetDataBuilder.counter(
             listOf(conv(1, "A", unread = 2), conv(2, "B", unread = 1, folder = Folder.Banks), conv(3, "Junk", unread = 4, spam = true), conv(4, "Junk 2", spam = true)),

@@ -1,6 +1,5 @@
 package com.havivon.pigeon.ui.inbox
 
-import androidx.compose.material.icons.rounded.MarkChatUnread
 import com.havivon.pigeon.ui.search.selectionActions
 import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import androidx.compose.ui.res.pluralStringResource
@@ -107,7 +106,6 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
     var remindSelection by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val markedRead = stringResource(R.string.search_marked_read)
-    val markedUnread = rememberMarkedUnreadNotice()
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     // Back leaves the selection first
@@ -128,9 +126,6 @@ fun InboxRoute(navigate: (Screen) -> Unit, openThread: (Long) -> Unit, openMessa
         // Asked first; while Pigeon may not delete, the reason at once instead
         onDelete = { if (vm.sheet.canDelete) askDelete = true else needsDefault() },
         onRemind = if (selectedCount == 1) ({ remindSelection = true }) else null,
-        onMarkUnread = vm.takeIf { state.conversations.any { it.id in selected && it.unread == 0 } }?.let { model: InboxViewModel ->
-            { if (!model.markSelectedUnread(markedUnread)) needsDefault() }
-        },
     )
 
     InboxScreen(
@@ -249,7 +244,6 @@ internal fun ConversationActions(
     conv: Conversation,
     onPin: () -> Unit,
     onMarkRead: () -> Unit,
-    onMarkUnread: () -> Unit,
     onRemind: () -> Unit,
     onMove: () -> Unit,
     onLock: () -> Unit,
@@ -264,11 +258,7 @@ internal fun ConversationActions(
         Spacer(Modifier.height(6.dp))
         if (onOpen != null) SheetAction(Icons.AutoMirrored.Rounded.OpenInNew, stringResource(R.string.search_action_open), onClick = onOpen)
         SheetAction(Icons.Rounded.PushPin, stringResource(if (conv.pinned) R.string.action_unpin else R.string.action_pin), onClick = onPin)
-        if (conv.unread > 0) {
-            SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
-        } else {
-            SheetAction(Icons.Rounded.MarkChatUnread, stringResource(R.string.action_mark_unread), onClick = onMarkUnread)
-        }
+        if (conv.unread > 0) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
         SheetAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind)
         SheetAction(Icons.AutoMirrored.Rounded.DriveFileMove, stringResource(R.string.action_move_to_folder), onClick = onMove)
         if (onSpam != null) {

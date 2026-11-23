@@ -42,6 +42,12 @@ interface MessageRepository {
     suspend fun unreadMessages(threadId: Long): List<SmsMessage>
 
     /**
+     * How many unread received messages each conversation has now, read from the database: [conversations] may still be
+     * the list kept from the last launch when a message starts the app.
+     */
+    suspend fun unreadByThread(): Map<Long, Int>
+
+    /**
      * The messages with these [ids], in any order; those gone or waiting to be deleted are left out. The inbox's
      * Unread list reads the [SmsConversation.unreadIds] of the conversations it shows: the same messages its
      * count is made of, so the two always agree.
@@ -62,9 +68,6 @@ interface MessageRepository {
 
     /** "Mark as unread" for these messages; only received ones can be. Returns how many were marked (0 for a viewer). */
     suspend fun markMessagesUnread(ids: Collection<Long>): Int
-
-    /** "Mark as unread" for conversations: the newest received message of each. Returns how many were marked (0 for a viewer). */
-    suspend fun markThreadsUnread(threadIds: Collection<Long>): Int
 
     /**
      * Deletes messages, with undo: they disappear from every Flow at once, and are removed from the

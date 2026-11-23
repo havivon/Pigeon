@@ -22,24 +22,20 @@ import com.havivon.pigeon.fakes.sms
 import com.havivon.pigeon.fakes.testMapper
 import com.havivon.pigeon.ui.conversation.ConversationEvent
 import com.havivon.pigeon.ui.conversation.ConversationViewModel
-import com.havivon.pigeon.ui.inbox.InboxViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** "Mark as unread": from a conversation, its selected messages, and the inbox's sheet and selection. */
+/** "Mark as unread" for the selected messages of an open conversation. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MarkUnreadTest {
 
@@ -64,11 +60,6 @@ class MarkUnreadTest {
         canWrite = { canWrite }, now = { Now }, work = main.dispatcher,
     )
 
-    private fun inbox() = InboxViewModel(
-        messages, FakeRules(), FakePins(), locks, FakeSpam(), FakeFolders(), testMoves(FakeFolders(), FakeSpam()), FakeReminders(), FakeScheduler(), mapper, MutableStateFlow(0), { "" }, { cancelled += it },
-        canWrite = { canWrite }, now = { Now }, work = main.dispatcher,
-    )
-
     private fun seed() {
         messages.threads.value = listOf(
             conversation(1, "0525550100", name = "Danny", snippet = "On my way", dateMillis = millis(2026, 11, 1, 10, 5)),
@@ -87,13 +78,14 @@ class MarkUnreadTest {
     private fun unreadIds() = messages.allMessages.value.filter { !it.read }.map { it.id }
 
     @Test
-    fun `an open conversation marked as unread stays unread while it closes, and is read when opened again`() = runTest {
+    fun `a message marked as unread stays unread while its conversation closes, and is read when opened again`() = runTest {
         seed()
         val vm = thread()
         collect(vm.state)
         vm.setVisible(true)
-        vm.markUnread()
-        assertEquals("the newest received message, not the sent one after it", listOf(11L, 20L), unreadIds())
+        vm.select(11)
+        vm.markSelectedUnread()
+        assertEquals(listOf(11L, 20L), unreadIds())
         assertEquals(ConversationEvent.MarkedUnread, vm.eventFlow.first())
         // The list is read again while the screen is still closing
         messages.allMessages.value = messages.allMessages.value.map { it.copy() } + sms(13, 1, "Seen while closing", millis(2026, 11, 1, 10, 6))
@@ -138,45 +130,10 @@ class MarkUnreadTest {
         canWrite = false
         val vm = thread()
         collect(vm.state)
-        vm.markUnread()
+        vm.select(11)
+        vm.markSelectedUnread()
         assertEquals(ConversationEvent.NeedsDefault, vm.eventFlow.first())
-        val inbox = inbox()
-        collect(inbox.state)
-        var told: Int? = null
-        assertFalse(inbox.sheet.markUnread(setOf(1L)) { told = it })
-        assertNull(told)
-        inbox.startSelecting()
-        inbox.toggleSelected(1)
-        assertFalse(inbox.markSelectedUnread { told = it })
-        assertEquals("the selection stays", setOf(1L), inbox.selected.value)
+        assertEquals("the selection stays", setOf(11L), vm.selected.value)
         assertEquals(listOf(20L), unreadIds())
-    }
-
-    @Test
-    fun `the inbox's sheet marks one conversation, and says when there is nothing received in it`() = runTest {
-        seed()
-        val vm = inbox()
-        collect(vm.state)
-        var marked = -1
-        assertTrue(vm.sheet.markUnread(setOf(1L)) { marked = it })
-        assertEquals(1, marked)
-        assertEquals(1, vm.state.value.all.first { it.id == 1L }.unread)
-        assertTrue(vm.sheet.markUnread(setOf(3L)) { marked = it })
-        assertEquals(0, marked)
-        assertTrue("no notification is cancelled", cancelled.isEmpty())
-    }
-
-    @Test
-    fun `the inbox's selection marks the conversations that are read and leaves the unread ones as they are`() = runTest {
-        seed()
-        messages.allMessages.value += sms(21, 2, "Older, read", millis(2026, 11, 1, 9, 30), "0541112222")
-        val vm = inbox()
-        collect(vm.state)
-        vm.startSelecting()
-        vm.toggleSelected(1)
-        vm.toggleSelected(2)
-        assertTrue(vm.markSelectedUnread())
-        assertEquals(listOf(11L, 20L), unreadIds())
-        assertTrue(vm.selected.value.isEmpty())
     }
 }

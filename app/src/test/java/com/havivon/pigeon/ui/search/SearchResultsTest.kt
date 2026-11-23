@@ -322,7 +322,7 @@ class SearchResultsTest {
     }
 
     @Test
-    fun `mark as unread takes the selected received messages and the newest of each selected conversation that is read`() = runTest {
+    fun `mark as unread takes the selected received messages, and is not offered for conversations`() = runTest {
         seed()
         messages.allMessages.value = messages.searchResults.messages
         val vm = search()
@@ -330,18 +330,18 @@ class SearchResultsTest {
         vm.select(10)
         assertFalse("a sent message alone: nothing to mark", vm.canMarkSelectedUnread())
         vm.toggleSelected(11)
-        vm.selectConversation(3)
-        // Unread already: left as it is
-        vm.selectConversation(2)
         assertTrue(vm.canMarkSelectedUnread())
+        vm.selectConversation(3)
+        assertFalse("a conversation is selected too", vm.canMarkSelectedUnread())
+        vm.toggleSelectedConversation(3)
         var marked = 0
         assertTrue(vm.markSelectedUnread { marked = it })
-        assertEquals(2, marked)
-        assertEquals(setOf(11L, 30L), messages.allMessages.value.filter { !it.read }.map { it.id }.toSet())
+        assertEquals(1, marked)
+        assertEquals(setOf(11L), messages.allMessages.value.filter { !it.read }.map { it.id }.toSet())
         assertTrue(vm.selected.value.isEmpty())
 
         val viewer = search(canWrite = false)
-        assertFalse(viewer.sheet.markUnread(setOf(1L)))
+        assertFalse(viewer.sheet.markUnread(setOf(11L)))
     }
 
     // Multi-select of message results

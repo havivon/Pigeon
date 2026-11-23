@@ -108,6 +108,9 @@ class FakeMessageRepository : MessageRepository {
     override suspend fun recentIncoming(limit: Int) =
         allMessages.value.filter { !it.type.outgoing }.sortedByDescending { it.dateMillis }.take(limit)
     override suspend fun unreadMessages(threadId: Long) = allMessages.value.filter { it.threadId == threadId && !it.read }
+    override suspend fun unreadByThread(): Map<Long, Int> =
+        allMessages.value.filter { !it.type.outgoing && !it.read }.groupingBy { it.threadId }.eachCount()
+
     val readById = mutableListOf<Collection<Long>>()
 
     override suspend fun messagesById(ids: Collection<Long>): List<SmsMessage> {
@@ -144,10 +147,6 @@ class FakeMessageRepository : MessageRepository {
         }
         return marked.size
     }
-
-    override suspend fun markThreadsUnread(threadIds: Collection<Long>): Int = markMessagesUnread(
-        threadIds.distinct().mapNotNull { t -> allMessages.value.filter { it.threadId == t && !it.type.outgoing }.maxByOrNull { it.dateMillis }?.id },
-    )
 
     override fun deleteMessages(ids: Set<Long>): PendingDeletion {
         hiddenMessages.update { it + ids }

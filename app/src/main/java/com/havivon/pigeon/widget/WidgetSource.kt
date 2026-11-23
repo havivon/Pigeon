@@ -41,6 +41,9 @@ internal class WidgetSource(private val context: Context) {
 
     suspend fun counter(): CounterWidgetData = WidgetDataBuilder.counter(conversations())
 
+    /** For the number on the app icon. */
+    suspend fun unreadTotal(): Int = WidgetDataBuilder.unreadTotal(conversations(), app.messages.unreadByThread())
+
     suspend fun code(): CodeWidgetData? {
         val all = conversations()
         val hidden = all.filter { it.locked || it.isSpam }.map { it.id }.toSet()

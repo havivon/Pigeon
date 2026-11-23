@@ -242,6 +242,18 @@ class TelephonyMessageRepository(
         )
     }
 
+    override suspend fun unreadByThread(): Map<Long, Int> = withContext(Dispatchers.IO) {
+        val hiddenNow = hidden.value
+        resolver.queryList(
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID, Telephony.Sms.THREAD_ID),
+            "${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue} AND ${Telephony.Sms.READ} = 0",
+        ) { it.long(Telephony.Sms._ID) to it.long(Telephony.Sms.THREAD_ID) }
+            .filter { (id, thread) -> thread > 0 && id !in hiddenNow.messages && thread !in hiddenNow.threads }
+            .groupingBy { it.second }
+            .eachCount()
+    }
+
     override suspend fun threadIdFor(addresses: List<String>): Long = withContext(Dispatchers.IO) {
         try {
             Telephony.Threads.getOrCreateThreadId(context, addresses.toSet())
@@ -309,27 +321,6 @@ class TelephonyMessageRepository(
                 }
             }
         }
-    }
-
-    override suspend fun markThreadsUnread(threadIds: Collection<Long>): Int {
-        if (!canWrite() || threadIds.isEmpty()) return 0
-        val newest = withContext(Dispatchers.IO) {
-            val deleted = hidden.value.messages
-            val best = HashMap<Long, Pair<Long, Long>>()
-            threadIds.distinct().chunked(MARK_READ_CHUNK).forEach { chunk ->
-                resolver.queryList(
-                    Telephony.Sms.CONTENT_URI,
-                    arrayOf(Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.DATE),
-                    "${Telephony.Sms.TYPE} = ${SmsType.Inbox.providerValue} AND ${Telephony.Sms.THREAD_ID} IN (${placeholders(chunk.size)})",
-                    chunk.map { it.toString() }.toTypedArray(),
-                ) { Triple(it.long(Telephony.Sms._ID), it.long(Telephony.Sms.THREAD_ID), it.long(Telephony.Sms.DATE)) }
-                    .forEach { (id, thread, date) ->
-                        if (id !in deleted && date >= (best[thread]?.second ?: Long.MIN_VALUE)) best[thread] = id to date
-                    }
-            }
-            best.values.map { it.first }
-        }
-        return markMessagesUnread(newest)
     }
 
     override fun deleteMessages(ids: Set<Long>): PendingDeletion {

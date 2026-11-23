@@ -105,6 +105,15 @@ object WidgetDataBuilder {
         return ContactsWidgetData(ordered.take(MAX_CONTACTS).map { WidgetContact(it.id, it.name, it.avatarArgb) })
     }
 
+    /**
+     * Every unread message outside spam, for the number on the app icon: [unreadByThread] as the database has it, whatever
+     * the conversation's category (or none), also of a conversation too new to be in [conversations].
+     */
+    fun unreadTotal(conversations: List<Conversation>, unreadByThread: Map<Long, Int>): Int {
+        val spam = conversations.filter { it.isSpam }.map { it.id }.toSet()
+        return unreadByThread.filterKeys { it !in spam }.values.sum()
+    }
+
     fun counter(conversations: List<Conversation>): CounterWidgetData =
         CounterWidgetData(unread = conversations.filter { !it.isSpam }.sumOf { it.unread }, spam = conversations.count { it.isSpam })
 

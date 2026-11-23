@@ -53,7 +53,7 @@ abstract class SearchSheetShots(config: DeviceConfig, private val hebrew: Boolea
     private fun MessageSheet() = MessageActions(hit, {}, {}, {}, {}, {}, {}, {}, onMove = {}, onMarkRead = {}, onMarkUnread = {}, onSpam = {}, onLock = {})
 
     @Composable
-    private fun ConversationSheet() = ConversationActions(conversation, {}, {}, {}, {}, {}, {}, {}, onOpen = {}, onSpam = {}, onSelect = {})
+    private fun ConversationSheet() = ConversationActions(conversation, {}, {}, {}, {}, {}, {}, onOpen = {}, onSpam = {}, onSelect = {})
 
     @Composable
     private fun Selecting(messages: Boolean) = SearchScreen(

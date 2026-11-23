@@ -226,7 +226,7 @@ internal fun MessageSheet(
                 onMarkUnread = hit.takeIf { !it.outgoing }?.let { h: SearchHit ->
                     {
                         onDone()
-                        if (!vm.sheet.markUnread(emptySet(), setOf(h.messageId), markedUnread)) needsDefault()
+                        if (!vm.sheet.markUnread(setOf(h.messageId), markedUnread)) needsDefault()
                     }
                 },
                 onSpam = conv?.let { c: Conversation ->

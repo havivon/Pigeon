@@ -60,7 +60,6 @@ fun ConversationSheets(
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val notSpamDone = stringResource(R.string.search_not_spam_done)
     val needsDefault = rememberNeedsDefaultNotice()
-    val markedUnread = rememberMarkedUnreadNotice()
 
     target?.let { conv ->
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -71,10 +70,6 @@ fun ConversationSheets(
                 onMarkRead = {
                     onDone()
                     if (!actions.markRead(conv)) needsDefault()
-                },
-                onMarkUnread = {
-                    onDone()
-                    if (!actions.markUnread(setOf(conv.id), onDone = markedUnread)) needsDefault()
                 },
                 onRemind = {
                     onDone()

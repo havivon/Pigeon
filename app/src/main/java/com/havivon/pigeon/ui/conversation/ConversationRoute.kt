@@ -1,7 +1,6 @@
 package com.havivon.pigeon.ui.conversation
 
 import com.havivon.pigeon.ui.inbox.rememberMarkedUnreadNotice
-import androidx.compose.material.icons.rounded.MarkChatUnread
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -194,7 +193,6 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
                 else -> notices.show(needsScreenLock)
             }
         },
-        ThreadMenuItem(stringResource(R.string.action_mark_unread), Icons.Rounded.MarkChatUnread) { vm.markUnread() },
         ThreadMenuItem(stringResource(R.string.action_move_to_folder), Icons.AutoMirrored.Rounded.DriveFileMove) { moveSheet = true },
         if (conversation.isSpam) {
             ThreadMenuItem(stringResource(R.string.spam_not_spam), Icons.Rounded.VerifiedUser) { vm.markNotSpam() }

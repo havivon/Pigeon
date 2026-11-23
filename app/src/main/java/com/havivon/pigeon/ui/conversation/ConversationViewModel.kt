@@ -252,16 +252,9 @@ class ConversationViewModel(
         readJob = viewModelScope.launch { messages.markThreadRead(threadId) }
     }
 
-    /** "Mark as unread" in the conversation's menu: its newest received message. */
-    fun markUnread() = markUnread { messages.markThreadsUnread(listOf(threadId)) }
-
     /** "Mark as unread" for the selected messages (those received). */
     fun markSelectedUnread() {
         val ids = selectedMessages().filter { !it.type.outgoing }.map { it.id }
-        markUnread { messages.markMessagesUnread(ids) }
-    }
-
-    private fun markUnread(write: suspend () -> Int) {
         if (!canWrite()) {
             events.trySend(ConversationEvent.NeedsDefault)
             return
@@ -270,7 +263,7 @@ class ConversationViewModel(
         // As sends and deletes: finished even when the user leaves the screen meanwhile
         appScope.launch {
             readJob?.join()
-            if (write() > 0) {
+            if (messages.markMessagesUnread(ids) > 0) {
                 clearSelection()
                 events.trySend(ConversationEvent.MarkedUnread)
             } else {
