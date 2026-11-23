@@ -135,6 +135,20 @@ class FakeMessageRepository : MessageRepository {
         threads.update { list -> list.map { if (it.threadId in ids) it.copy(unreadCount = 0) else it } }
     }
 
+    override suspend fun markMessagesUnread(ids: Collection<Long>): Int {
+        val marked = allMessages.value.filter { it.id in ids && !it.type.outgoing }
+        val unread = marked.map { it.id }.toSet()
+        allMessages.update { list -> list.map { if (it.id in unread) it.copy(read = false) else it } }
+        threads.update { list ->
+            list.map { c -> if (marked.any { it.threadId == c.threadId }) c.copy(unreadCount = allMessages.value.count { it.threadId == c.threadId && !it.type.outgoing && !it.read }) else c }
+        }
+        return marked.size
+    }
+
+    override suspend fun markThreadsUnread(threadIds: Collection<Long>): Int = markMessagesUnread(
+        threadIds.distinct().mapNotNull { t -> allMessages.value.filter { it.threadId == t && !it.type.outgoing }.maxByOrNull { it.dateMillis }?.id },
+    )
+
     override fun deleteMessages(ids: Set<Long>): PendingDeletion {
         hiddenMessages.update { it + ids }
         return Undo { hiddenMessages.update { it - ids } }

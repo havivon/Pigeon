@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.inbox.rememberMarkedUnreadNotice
+import androidx.compose.material.icons.rounded.MarkChatUnread
 import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -96,6 +98,7 @@ internal fun MessageActions(
     onDelete: () -> Unit,
     onMove: (() -> Unit)? = null,
     onMarkRead: (() -> Unit)? = null,
+    onMarkUnread: (() -> Unit)? = null,
     onSpam: (() -> Unit)? = null,
     onLock: (() -> Unit)? = null,
     noCategory: String = stringResource(R.string.search_no_category),
@@ -135,6 +138,7 @@ internal fun MessageActions(
             )
         }
         if (onMarkRead != null) SheetAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead)
+        if (onMarkUnread != null) SheetAction(Icons.Rounded.MarkChatUnread, stringResource(R.string.action_mark_unread), onClick = onMarkUnread)
         if (onLock != null) {
             val locked = conversation?.locked == true
             SheetAction(
@@ -178,6 +182,7 @@ internal fun MessageSheet(
     var moveFor by remember { mutableStateOf<SearchHit?>(null) }
     var deleteFor by remember { mutableStateOf<SearchHit?>(null) }
     val needsDefault = rememberNeedsDefaultNotice()
+    val markedUnread = rememberMarkedUnreadNotice()
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val needsScreenLock = stringResource(R.string.lock_needs_screen_lock)
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
@@ -215,6 +220,13 @@ internal fun MessageSheet(
                     {
                         onDone()
                         if (!vm.sheet.markRead(c)) needsDefault()
+                    }
+                },
+                // This message alone; a sent one cannot be unread
+                onMarkUnread = hit.takeIf { !it.outgoing }?.let { h: SearchHit ->
+                    {
+                        onDone()
+                        if (!vm.sheet.markUnread(emptySet(), setOf(h.messageId), markedUnread)) needsDefault()
                     }
                 },
                 onSpam = conv?.let { c: Conversation ->
@@ -374,6 +386,7 @@ internal fun selectionActions(
     onSpam: () -> Unit,
     onDelete: () -> Unit,
     onRemind: (() -> Unit)?,
+    onMarkUnread: (() -> Unit)? = null,
 ): List<SelectionAction> = buildList {
     if (hasMessages) {
         add(SelectionAction(Icons.Rounded.ContentCopy, com.havivon.pigeon.ui.conversation.copyLabel(count), onClick = onCopy))
@@ -387,6 +400,7 @@ internal fun selectionActions(
         )
     }
     add(SelectionAction(Icons.Rounded.DoneAll, stringResource(R.string.action_mark_read), onClick = onMarkRead))
+    if (onMarkUnread != null) add(SelectionAction(Icons.Rounded.MarkChatUnread, stringResource(R.string.action_mark_unread), onClick = onMarkUnread))
     add(SelectionAction(Icons.AutoMirrored.Rounded.DriveFileMove, stringResource(R.string.action_move_to_folder), onClick = onMove))
     add(SelectionAction(Icons.Rounded.Report, stringResource(R.string.action_mark_spam), onClick = onSpam))
     if (onRemind != null) add(SelectionAction(Icons.Rounded.Alarm, stringResource(R.string.reminder_title), onClick = onRemind))

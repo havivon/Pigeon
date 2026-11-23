@@ -61,8 +61,8 @@ object CodeExtractor {
         return best
     }
 
-    /** "הוא", "היא", "is" or a colon: the word that hands over to the code ("קוד האימות ... הוא: 464802"). */
-    private val POINTER = Regex("(?<![\\p{L}])(?:הוא|היא|is|are)(?![\\p{L}])\\s*:?|:")
+    /** "הוא", "היא", "is" or a colon (not a time's or a link's): the word that hands over to the code ("קוד האימות ... הוא: 464802"). */
+    private val POINTER = Regex("(?<![\\p{L}])(?:הוא|היא|is|are)(?![\\p{L}])\\s*:?|(?<!\\d):(?!//)")
 
     /**
      * The first [POINTER] after each cue word, within reach of it: a long cue sentence ("קוד האימות החד פעמי שלך לכניסה

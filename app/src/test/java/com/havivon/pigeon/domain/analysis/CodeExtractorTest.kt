@@ -35,6 +35,15 @@ class CodeExtractorTest {
     }
 
     @Test
+    fun theColonOfATimeOrALinkDoesNotHandOverToACode() {
+        val cases = listOf(
+            "הקוד האישי יישלח אליך מחר בבוקר לאחר אישור המנהל בשעה 12:30 אסמכתא 5544331",
+            "הקוד האישי יישלח אליך מחר בבוקר לאחר אישור המנהל https://example.com 5544331",
+        )
+        for (text in cases) assertNull(text, CodeExtractor.extract(text))
+    }
+
+    @Test
     fun joinedAndGroupedCodes() {
         val cases = listOf(
             "G-123456 is your Google verification code." to "123456",

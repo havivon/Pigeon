@@ -445,6 +445,23 @@ class SearchViewModel(
         return read
     }
 
+    /** Whether the selection has anything to mark as unread: a received message, or a conversation that is read. */
+    fun canMarkSelectedUnread(): Boolean = selectedHits().any { !it.outgoing } || readSelectedConversations().isNotEmpty()
+
+    private fun readSelectedConversations(): Set<Long> =
+        state.value.conversations.filter { it.id in _selectedConversations.value && it.unread == 0 }.map { it.id }.toSet()
+
+    /**
+     * "Mark as unread" on the selection: the selected received messages themselves, and the newest received one of each
+     * selected conversation. False, and nothing changes, while Pigeon is not the default SMS app.
+     */
+    fun markSelectedUnread(onDone: (Int) -> Unit = {}): Boolean {
+        val hits = selectedHits().filter { !it.outgoing }.map { it.messageId }.toSet()
+        if (!sheet.markUnread(readSelectedConversations(), hits, onDone)) return false
+        clearSelection()
+        return true
+    }
+
     /** "Mark as spam" on the selection's conversations. */
     fun markSelectedSpam() {
         sheet.markSpamAll(selectedConversationList())

@@ -156,6 +156,9 @@
     <string name="action_pin">הצמד למעלה</string>
     <string name="action_unpin">בטל הצמדה</string>
     <string name="action_mark_read">סמן כנקראה</string>
+    <string name="action_mark_unread">סמן כלא נקראה</string>
+    <string name="marked_unread">סומנה כלא נקראה</string>
+    <string name="marked_unread_none">אין הודעה שהתקבלה לסמן כלא נקראה</string>
     <string name="action_lock_chat">נעל שיחה</string>
     <string name="action_unlock_chat">בטל נעילה</string>
     <string name="action_mark_spam">סמן כספאם</string>

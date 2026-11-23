@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.conversation
 
+import androidx.compose.material.icons.rounded.MarkChatUnread
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.focus.onFocusChanged
@@ -164,6 +165,7 @@ fun ConversationScreen(
     onStarSelected: () -> Unit = {},
     /** "Remind me" about the selected messages (a reminder on each); null hides the button. */
     onRemindSelected: (() -> Unit)? = null,
+    onMarkUnreadSelected: (() -> Unit)? = null,
     onDeleteSelected: () -> Unit = {},
     onReminder: (Message) -> Unit = {},
     onLink: (LinkInfo) -> Unit = {},
@@ -273,7 +275,7 @@ fun ConversationScreen(
         ListScrollbar(listState, Modifier.matchParentSize(), label = { days[it] })
         }
         if (selecting) {
-            SelectionActions(selectedIds.size, onCopySelected, onShareSelected, onRemindSelected)
+            SelectionActions(selectedIds.size, onCopySelected, onShareSelected, onRemindSelected, onMarkUnreadSelected)
         } else {
             Composer(draft, onDraft, onSend)
         }
@@ -708,7 +710,13 @@ private fun ReminderChip(text: String, set: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Unit, onRemind: (() -> Unit)? = null) {
+internal fun SelectionActions(
+    count: Int,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+    onRemind: (() -> Unit)? = null,
+    onMarkUnread: (() -> Unit)? = null,
+) {
     val c = HebTheme.colors
     Row(
         Modifier
@@ -720,10 +728,11 @@ internal fun SelectionActions(count: Int, onCopy: () -> Unit, onShare: () -> Uni
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Equal columns, the icon above its words: a longer word (or a large font) wraps inside its own column, and
-        // the three stay one height
+        // they all stay one height
         SelectionAction(copyLabel(count), Icons.Rounded.ContentCopy, Modifier.weight(1f), onCopy)
         SelectionAction(stringResource(R.string.common_share), Icons.Rounded.Share, Modifier.weight(1f), onShare)
         if (onRemind != null) SelectionAction(stringResource(R.string.reminder_title), Icons.Rounded.Alarm, Modifier.weight(1f), onRemind)
+        if (onMarkUnread != null) SelectionAction(stringResource(R.string.action_mark_unread), Icons.Rounded.MarkChatUnread, Modifier.weight(1f), onMarkUnread)
     }
 }
 

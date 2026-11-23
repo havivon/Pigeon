@@ -81,7 +81,7 @@ abstract class LargeTextShots(config: DeviceConfig, private val hebrew: Boolean)
             Scrim { MarkAllReadDialogContent(s.unread.size, stringResource(R.string.common_folder_all), {}, {}) }
         }
         shot("conversation_selection") {
-            ConversationScreen(s.danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = "052-555-0123", onRemindSelected = {})
+            ConversationScreen(s.danny, sample.dannyThread, rule = null, draft = "", selectedIds = setOf(4L, 5L, 6L), subtitle = "052-555-0123", onRemindSelected = {}, onMarkUnreadSelected = {})
         }
         shot("conversation_composer") {
             ConversationScreen(

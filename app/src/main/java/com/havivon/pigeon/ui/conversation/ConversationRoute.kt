@@ -1,5 +1,7 @@
 package com.havivon.pigeon.ui.conversation
 
+import com.havivon.pigeon.ui.inbox.rememberMarkedUnreadNotice
+import androidx.compose.material.icons.rounded.MarkChatUnread
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -132,6 +134,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
     val customFolders by rememberUpdatedState(state.customFolders)
     val reminderCreatedFormat = stringResource(R.string.thread_reminder_created)
     val needsDefault = rememberNeedsDefaultNotice()
+    val markedUnread = rememberMarkedUnreadNotice()
     // The events are collected once: read the access as it is when one comes
     val access by rememberUpdatedState(LocalDefaultApp.current)
     val makeDefaultLabel = stringResource(R.string.needs_default_action)
@@ -145,6 +148,11 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
                 is ConversationEvent.ReminderCreated -> notices.show(String.format(reminderCreatedFormat, e.label))
                 is ConversationEvent.ReminderPassed -> passedReminder = e
                 ConversationEvent.ReminderRemoved -> notices.show(reminderRemoved)
+                ConversationEvent.MarkedUnread -> {
+                    markedUnread(1)
+                    onClosed()
+                }
+                ConversationEvent.NothingToMarkUnread -> markedUnread(0)
                 ConversationEvent.MovedToSpam -> {
                     notices.show(movedToSpam)
                     onClosed()
@@ -186,6 +194,7 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
                 else -> notices.show(needsScreenLock)
             }
         },
+        ThreadMenuItem(stringResource(R.string.action_mark_unread), Icons.Rounded.MarkChatUnread) { vm.markUnread() },
         ThreadMenuItem(stringResource(R.string.action_move_to_folder), Icons.AutoMirrored.Rounded.DriveFileMove) { moveSheet = true },
         if (conversation.isSpam) {
             ThreadMenuItem(stringResource(R.string.spam_not_spam), Icons.Rounded.VerifiedUser) { vm.markNotSpam() }
@@ -253,6 +262,10 @@ fun ConversationRoute(threadId: Long, focusMessageId: Long?, onBack: () -> Unit,
         selectedStarred = vm.allSelectedStarred(),
         onStarSelected = vm::starSelected,
         onRemindSelected = { remindSheet = true },
+        // Only messages received: a sent one cannot be unread
+        onMarkUnreadSelected = vm.takeIf { state.messages.any { !it.outgoing && it.id in selected } }?.let { model: ConversationViewModel ->
+            { model.markSelectedUnread() }
+        },
         onDeleteSelected = { if (vm.canDelete) askDelete = AskDelete.Messages else vm.deleteSelected() },
         onReminder = vm::toggleReminder,
         onLink = { link = it },

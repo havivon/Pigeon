@@ -60,6 +60,12 @@ interface MessageRepository {
      */
     suspend fun markThreadsRead(threadIds: Collection<Long>)
 
+    /** "Mark as unread" for these messages; only received ones can be. Returns how many were marked (0 for a viewer). */
+    suspend fun markMessagesUnread(ids: Collection<Long>): Int
+
+    /** "Mark as unread" for conversations: the newest received message of each. Returns how many were marked (0 for a viewer). */
+    suspend fun markThreadsUnread(threadIds: Collection<Long>): Int
+
     /**
      * Deletes messages, with undo: they disappear from every Flow at once, and are removed from the
      * system database only when [UNDO_WINDOW_MILLIS] ends without [PendingDeletion.undo].

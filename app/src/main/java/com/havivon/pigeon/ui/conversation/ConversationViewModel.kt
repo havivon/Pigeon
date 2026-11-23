@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.conversation
 
+import kotlinx.coroutines.Job
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.havivon.pigeon.domain.PhoneNumbers
@@ -106,6 +107,12 @@ sealed interface ConversationEvent {
     /** The date in the message ([label]) has passed: no reminder was made; the screen offers another time for [messageId]. */
     data class ReminderPassed(val messageId: Long, val label: String) : ConversationEvent
     data object ReminderRemoved : ConversationEvent
+
+    /** Marked as unread: the screen closes, since a conversation on the screen counts as read. */
+    data object MarkedUnread : ConversationEvent
+
+    /** Nothing was marked: there is no received message. */
+    data object NothingToMarkUnread : ConversationEvent
     data object MovedToSpam : ConversationEvent
     data object NotSpam : ConversationEvent
 
@@ -229,14 +236,52 @@ class ConversationViewModel(
         markRead()
     }
 
+    /** After "Mark as unread", until the conversation is opened again: what was just marked must not be read while the screen closes. */
+    @Volatile
+    private var keepUnread = false
+
+    /** The last marking as read: "Mark as unread" waits for it, or it would undo the mark. */
+    @Volatile
+    private var readJob: Job? = null
+
     private fun markRead() {
+        if (keepUnread) return
         cancelNotification(threadId)
         // A viewer may not write: the default messaging app keeps its own read state
         if (!canWrite()) return
-        viewModelScope.launch { messages.markThreadRead(threadId) }
+        readJob = viewModelScope.launch { messages.markThreadRead(threadId) }
+    }
+
+    /** "Mark as unread" in the conversation's menu: its newest received message. */
+    fun markUnread() = markUnread { messages.markThreadsUnread(listOf(threadId)) }
+
+    /** "Mark as unread" for the selected messages (those received). */
+    fun markSelectedUnread() {
+        val ids = selectedMessages().filter { !it.type.outgoing }.map { it.id }
+        markUnread { messages.markMessagesUnread(ids) }
+    }
+
+    private fun markUnread(write: suspend () -> Int) {
+        if (!canWrite()) {
+            events.trySend(ConversationEvent.NeedsDefault)
+            return
+        }
+        keepUnread = true
+        // As sends and deletes: finished even when the user leaves the screen meanwhile
+        appScope.launch {
+            readJob?.join()
+            if (write() > 0) {
+                clearSelection()
+                events.trySend(ConversationEvent.MarkedUnread)
+            } else {
+                keepUnread = false
+                events.trySend(ConversationEvent.NothingToMarkUnread)
+            }
+        }
     }
 
     fun setVisible(value: Boolean) {
+        if (value) keepUnread = false
         visible = value
         if (value && latest.any { !it.type.outgoing && !it.read }) markRead()
     }

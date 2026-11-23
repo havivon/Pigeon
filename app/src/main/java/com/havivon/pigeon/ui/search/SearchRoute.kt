@@ -1,5 +1,6 @@
 package com.havivon.pigeon.ui.search
 
+import com.havivon.pigeon.ui.inbox.rememberMarkedUnreadNotice
 import com.havivon.pigeon.domain.model.FolderChoice
 import com.havivon.pigeon.ui.components.ConfirmDeleteDialog
 import androidx.compose.ui.res.pluralStringResource
@@ -73,6 +74,7 @@ fun SearchRoute(
     val reminderCreated = stringResource(R.string.thread_reminder_created)
     val needsDefault = rememberNeedsDefaultNotice()
     val markedRead = stringResource(R.string.search_marked_read)
+    val markedUnread = rememberMarkedUnreadNotice()
     val movedToSpam = stringResource(R.string.thread_moved_to_spam)
     val selecting = selectionMode
     val count = selected.size + selectedConversations.size
@@ -102,6 +104,9 @@ fun SearchRoute(
         // Asked first; while Pigeon may not delete, the reason at once instead
         onDelete = { if (vm.sheet.canDelete) askDelete = true else needsDefault() },
         onRemind = if (count == 1) ({ remindSheet = true }) else null,
+        onMarkUnread = vm.takeIf { it.canMarkSelectedUnread() }?.let { model: SearchViewModel ->
+            { if (!model.markSelectedUnread(markedUnread)) needsDefault() }
+        },
     )
     // After "Delete" in the question: the selection goes, with one undo for all
     val deleteSelected: () -> Unit = {

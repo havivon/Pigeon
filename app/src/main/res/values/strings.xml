@@ -145,6 +145,9 @@
     <string name="action_pin">Pin to the top</string>
     <string name="action_unpin">Unpin</string>
     <string name="action_mark_read">Mark as read</string>
+    <string name="action_mark_unread">Mark as unread</string>
+    <string name="marked_unread">Marked as unread</string>
+    <string name="marked_unread_none">There is no received message to mark as unread</string>
     <string name="action_lock_chat">Lock chat</string>
     <string name="action_unlock_chat">Unlock chat</string>
     <string name="action_mark_spam">Mark as spam</string>

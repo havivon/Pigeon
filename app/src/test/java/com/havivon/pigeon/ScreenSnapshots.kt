@@ -302,7 +302,7 @@ class NewScreensSnapshots {
     fun screens() {
         shot("30_inbox_actions_sheet") {
             InboxScreen(s.sample.inbox, s.sample.rules, s.sample.folderCounts, s.sample.dateLine)
-            Sheet { ConversationActions(s.sample.inbox.first(), {}, {}, {}, {}, {}, {}, onSpam = {}) }
+            Sheet { ConversationActions(s.sample.inbox.first(), {}, {}, {}, {}, {}, {}, {}, onSpam = {}) }
         }
         shot("31_search") { SearchScreen(s.search, autoFocus = false) }
         shot("32_new_message") { NewMessageScreen(s.newMessage, autoFocus = false) }
