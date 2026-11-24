@@ -360,6 +360,11 @@
     <string name="notification_channel_messages">Messages</string>
     <string name="notification_channel_messages_hidden">Messages (text hidden on the lock screen)</string>
     <string name="notification_channel_reminders">Reminders</string>
+    <string name="notification_channel_unread">Number on the app icon (silent)</string>
+    <plurals name="notification_unread_count">
+        <item quantity="one">%1$d unread message</item>
+        <item quantity="other">%1$d unread messages</item>
+    </plurals>
     <string name="notification_reply">Reply</string>
     <string name="notification_mark_read">Mark as read</string>
     <string name="notification_copy_code">Copy %1$s</string>
@@ -677,7 +682,7 @@
     <string name="settings_block_on_phone_note">Mark as spam also blocks the number: blocked numbers can\'t call or text you, in any app.</string>
     <string name="settings_auto_copy">Copy codes automatically</string>
     <string name="settings_icon_badge">Number on the app icon</string>
-    <string name="settings_icon_badge_note">How many messages are unread, shown on the icon while a Pigeon notification is there</string>
+    <string name="settings_icon_badge_note">How many messages are unread, until you read them. While no message notification is showing, a silent one keeps the number on the icon.</string>
     <string name="settings_auto_copy_note">The keyboard offers the code to paste; it is cleared after 3 minutes</string>
 
     <string name="blocked_title">Blocked numbers</string>

@@ -58,8 +58,12 @@ class ReminderBootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in ACTIONS) return
-        val notifier = AppContainer.from(context).reminderNotifier
-        runAsync("ReminderBoot") { notifier.restoreAll() }
+        val app = AppContainer.from(context)
+        runAsync("ReminderBoot") {
+            app.reminderNotifier.restoreAll()
+            // A reboot or an update takes the notifications away, and with them the number on the icon
+            app.notifier.refreshBadge()
+        }
     }
 
     companion object {

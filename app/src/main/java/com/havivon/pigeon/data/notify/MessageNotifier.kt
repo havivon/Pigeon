@@ -38,6 +38,11 @@ private const val REPLIED_LINES = 6
 private const val TAG_THREAD = "thread"
 private const val TAG_UNSAVED = "unsaved"
 
+/** The one quiet "unread messages" notification, see [MessageNotifier]; its own group, so it is never bundled with the messages. */
+private const val TAG_QUIET = "unread"
+private const val QUIET_ID = 1
+private const val QUIET_GROUP = "unread"
+
 /** A notification's own unread count, kept in its extras: [Notification.number] may carry the rest of the badge too. */
 private const val EXTRA_OWN = "com.havivon.pigeon.own_unread"
 
@@ -53,7 +58,9 @@ private const val EXTRA_OWN = "com.havivon.pigeon.own_unread"
  * app's notifications, so with only one conversation's notification it showed that conversation's count. With the
  * setting on, the newest notification also carries the unread messages that have no notification ([unreadTotal], as
  * on the inbox's "All", spam left out), so the sum is all of them. With it off the notifications go to channels without
- * a badge. Android shows a badge only while a notification is there: none left, no number.
+ * a badge. A launcher shows a number only while a notification is there, so when none is left and messages are still
+ * unread, a quiet notification (no sound, only the count, not on the lock screen) carries it ([BadgePlan]). It comes back
+ * if swiped away: the user asked for the number until all is read, and turns it off in the settings.
  */
 class MessageNotifier(
     private val context: Context,
@@ -170,13 +177,11 @@ class MessageNotifier(
      */
     private suspend fun notifyCounted(tag: String, id: Int, builder: NotificationCompat.Builder, own: Int, s: AppSettings) {
         cancelled -= key(tag, id)
-        val number = if (s.iconBadge) {
-            val others = active().filterNot { it.tag == tag && it.id == id }
-            own + (unreadTotal() - own - others.sumOf { ownCount(it.notification) }).coerceAtLeast(0)
-        } else {
-            own
-        }
-        builder.setNumber(number).addExtras(Bundle().apply { putInt(EXTRA_OWN, own) })
+        val others = active().filterNot { it.tag == tag && it.id == id }.map { it.shown() }
+        // The newest, whatever the times say: a late message's own time may be hours ago
+        val newest = BadgePlan.Shown(key(tag, id), own, Long.MAX_VALUE)
+        val number = BadgePlan.of(others + newest, if (s.iconBadge) unreadTotal() else 0, s.iconBadge).numbers.getValue(newest.key)
+        builder.setNumber(number).setDeleteIntent(dismissed(tag, id)).addExtras(Bundle().apply { putInt(EXTRA_OWN, own) })
         notify(tag, id, builder)
         balance(s, justPosted = key(tag, id))
     }
@@ -189,14 +194,15 @@ class MessageNotifier(
     private suspend fun balance(s: AppSettings, justPosted: String?) {
         val badge = s.iconBadge
         val list = active().filterNot { key(it.tag, it.id) == justPosted }
-        val carrier = if (badge && justPosted == null) list.maxByOrNull { it.notification.`when` } else null
-        val rest = if (carrier != null) (unreadTotal() - list.sumOf { ownCount(it.notification) }).coerceAtLeast(0) else 0
+        // After a post the new one carries the rest, so the others have only their own
+        val plan = BadgePlan.of(list.map { it.shown() }, if (badge && justPosted == null) unreadTotal() else 0, badge)
+        if (plan.quiet > 0) showQuiet(plan.quiet, s) else hideQuiet()
         var moved = false
         for (sbn in list) {
             val n = sbn.notification
             val channel = n.channelId ?: continue
             val wanted = if (NotificationChannels.isMessages(channel)) NotificationChannels.withBadge(channel, badge) else channel
-            val number = ownCount(n) + if (sbn === carrier) rest else 0
+            val number = plan.numbers.getValue(key(sbn.tag, sbn.id))
             if (wanted == channel && n.number == number) continue
             if (wanted != channel) {
                 NotificationChannels.forMessages(context, lockScreenText = !NotificationChannels.isHidden(channel), badge = badge)
@@ -206,6 +212,7 @@ class MessageNotifier(
         }
         // Before an old channel goes, the one in use exists, with the user's sound copied from it
         val current = NotificationChannels.forMessages(context, s.lockScreenText, badge)
+        if (!badge) NotificationChannels.deleteUnreadCount(context)
         if (!moved) NotificationChannels.deleteUnused(context, inUse = setOf(current), busy = list.mapNotNull { it.notification.channelId }.toSet())
     }
 
@@ -224,6 +231,48 @@ class MessageNotifier(
         }
     }
 
+    /** Carries [count] while no message notification does. Posted silently, and only when the count changed or it is not there. */
+    private fun showQuiet(count: Int, s: AppSettings) {
+        val shown = quiet()
+        if (shown != null && shown.notification.number == count && key(TAG_QUIET, QUIET_ID) !in cancelled) return
+        cancelled -= key(TAG_QUIET, QUIET_ID)
+        val builder = NotificationCompat.Builder(context, NotificationChannels.forUnreadCount(context))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(Skin.fromId(s.skin).notificationArgb)
+            .setContentTitle(context.resources.getQuantityString(R.plurals.notification_unread_count, count, count))
+            .setNumber(count)
+            .setSilent(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
+            .setLocalOnly(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+            .setGroup(QUIET_GROUP)
+            .setContentIntent(openApp(threadId = 0))
+            .setDeleteIntent(dismissed(TAG_QUIET, QUIET_ID))
+        notify(TAG_QUIET, QUIET_ID, builder)
+    }
+
+    private fun hideQuiet() {
+        if (quiet() == null) return
+        cancelled += key(TAG_QUIET, QUIET_ID)
+        manager.cancel(TAG_QUIET, QUIET_ID)
+    }
+
+    private fun quiet(): StatusBarNotification? =
+        try {
+            system.activeNotifications.firstOrNull { it.tag == TAG_QUIET && it.id == QUIET_ID }
+        } catch (_: RuntimeException) {
+            null
+        }
+
+    /** The user swiped a notification away: the number it carried moves on (see [NotificationActionReceiver]). */
+    private fun dismissed(tag: String, id: Int): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, 0, NotificationActionReceiver.dismissedIntent(context, tag, id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
     /** The app's message notifications on the screen now, without those just cancelled. */
     private fun active(): List<StatusBarNotification> =
         try {
@@ -233,6 +282,8 @@ class MessageNotifier(
         }
 
     private fun ownCount(n: Notification): Int = n.extras.getInt(EXTRA_OWN, n.number)
+
+    private fun StatusBarNotification.shown() = BadgePlan.Shown(key(tag, id), ownCount(notification), notification.`when`)
 
     private fun key(tag: String?, id: Int) = "$tag:$id"
 

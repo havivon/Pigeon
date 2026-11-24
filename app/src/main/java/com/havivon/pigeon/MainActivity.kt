@@ -104,6 +104,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun systemDark() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
+    /** The home screen may show now: the number on the icon, also after a tap took the notification that carried it. */
+    override fun onStop() {
+        super.onStop()
+        val app = AppContainer.from(this)
+        app.appScope.launch { app.notifier.refreshBadge() }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         LaunchRequests.handle(intent)

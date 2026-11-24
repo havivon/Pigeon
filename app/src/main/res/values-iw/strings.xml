@@ -383,6 +383,12 @@
     <string name="notification_channel_messages">הודעות</string>
     <string name="notification_channel_messages_hidden">הודעות (בלי הטקסט במסך הנעילה)</string>
     <string name="notification_channel_reminders">תזכורות</string>
+    <string name="notification_channel_unread">מספר על אייקון האפליקציה (שקט)</string>
+    <plurals name="notification_unread_count">
+        <item quantity="one">הודעה אחת שלא נקראה</item>
+        <item quantity="two">%1$d הודעות שלא נקראו</item>
+        <item quantity="other">%1$d הודעות שלא נקראו</item>
+    </plurals>
     <string name="notification_reply">השב</string>
     <string name="notification_mark_read">סמן כנקרא</string>
     <string name="notification_copy_code">העתק %1$s</string>
@@ -714,7 +720,7 @@
     <string name="settings_block_on_phone_note">„סמן כספאם” חוסם גם את המספר: מספרים חסומים לא יכולים להתקשר או לשלוח הודעות, בשום אפליקציה.</string>
     <string name="settings_auto_copy">העתק קודים אוטומטית</string>
     <string name="settings_icon_badge">מספר על אייקון האפליקציה</string>
-    <string name="settings_icon_badge_note">כמה הודעות לא נקראו, על האייקון כל עוד יש התראה של Pigeon</string>
+    <string name="settings_icon_badge_note">כמה הודעות לא נקראו, עד שקוראים אותן. כשאין התראה על הודעה, התראה שקטה שומרת את המספר על האייקון.</string>
     <string name="settings_auto_copy_note">המקלדת תציע את הקוד להדבקה; הוא נמחק אחרי 3 דקות</string>
 
     <string name="blocked_title">מספרים חסומים</string>

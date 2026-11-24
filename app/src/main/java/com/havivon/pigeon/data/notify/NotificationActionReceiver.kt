@@ -18,6 +18,11 @@ import com.havivon.pigeon.data.sms.MAX_SEND_LENGTH
 class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_DISMISSED) {
+            val app = AppContainer.from(context)
+            runAsync(TAG) { app.notifier.refreshBadge() }
+            return
+        }
         val threadId = intent.getLongExtra(EXTRA_THREAD_ID, 0L)
         if (threadId <= 0) return
         val app = AppContainer.from(context)
@@ -55,10 +60,17 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val ACTION_REPLY = "com.havivon.pigeon.action.REPLY"
         const val ACTION_MARK_READ = "com.havivon.pigeon.action.MARK_READ"
         const val ACTION_COPY_CODE = "com.havivon.pigeon.action.COPY_CODE"
+        const val ACTION_DISMISSED = "com.havivon.pigeon.action.DISMISSED"
         const val KEY_REPLY = "reply_text"
         const val EXTRA_THREAD_ID = "thread_id"
         const val EXTRA_ADDRESS = "address"
         const val EXTRA_CODE = "code"
+
+        /** A swiped-away notification; it carries nothing, the number on the icon is worked out again. */
+        fun dismissedIntent(context: Context, tag: String, id: Int): Intent =
+            Intent(context, NotificationActionReceiver::class.java)
+                .setAction(ACTION_DISMISSED)
+                .setData(Uri.parse("pigeon://dismissed/$tag/$id"))
 
         /** One distinct intent per action and thread (the data makes it distinct), so PendingIntents never overwrite each other. */
         fun intent(context: Context, action: String, threadId: Long): Intent =

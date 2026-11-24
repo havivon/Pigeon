@@ -37,6 +37,9 @@ object NotificationChannels {
     /** Reminders while "message text on the lock screen" is off, for the same reason as [MESSAGES_HIDDEN]. */
     const val REMINDERS_HIDDEN = "reminders_hidden_nobadge"
 
+    /** The quiet "unread messages" notification that keeps the number on the icon; it exists only while that setting is on. */
+    const val UNREAD_COUNT = "unread_count"
+
     /** Every message channel, by (text hidden, badge). */
     internal fun messageChannel(hidden: Boolean, badge: Boolean): String = when {
         hidden && badge -> MESSAGES_HIDDEN
@@ -79,6 +82,23 @@ object NotificationChannels {
             copyFrom = listOf(withBadge(id, !badge), messageChannel(hidden = false, badge = badge), messageChannel(hidden = false, badge = !badge)),
         )
         return id
+    }
+
+    /** The channel for the quiet unread count: no sound, no heads-up, with a badge. Only while "number on the app icon" is on. */
+    fun forUnreadCount(context: Context): String {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(UNREAD_COUNT) == null) {
+            val channel = NotificationChannel(UNREAD_COUNT, context.getString(R.string.notification_channel_unread), NotificationManager.IMPORTANCE_LOW)
+            channel.setShowBadge(true)
+            channel.lockscreenVisibility = Notification.VISIBILITY_SECRET
+            manager.createNotificationChannel(channel)
+        }
+        return UNREAD_COUNT
+    }
+
+    internal fun deleteUnreadCount(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(UNREAD_COUNT) != null) manager.deleteNotificationChannel(UNREAD_COUNT)
     }
 
     /** The channel for a reminder notification, creating it when it is first needed. Never a badge. */
